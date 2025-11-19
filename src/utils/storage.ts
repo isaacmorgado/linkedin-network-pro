@@ -9,6 +9,8 @@ import {
   WATCHLIST_PEOPLE_STORAGE_KEY,
   WATCHLIST_COMPANIES_STORAGE_KEY
 } from '../types/watchlist';
+import type { OnboardingState, JobPreferences } from '../types/onboarding';
+import { ONBOARDING_STORAGE_KEY } from '../types/onboarding';
 
 // Get watchlist from storage
 export async function getWatchlist(): Promise<WatchlistPerson[]> {
@@ -313,4 +315,54 @@ export async function markStepConnected(pathId: string, stepIndex: number): Prom
 export async function isConnectionPathSaved(targetProfileUrl: string): Promise<boolean> {
   const paths = await getConnectionPaths();
   return paths.some((p) => p.id === targetProfileUrl);
+}
+
+// ========================================
+// Onboarding Storage Functions
+// ========================================
+
+// Get onboarding state
+export async function getOnboardingState(): Promise<OnboardingState> {
+  try {
+    const result = await chrome.storage.local.get(ONBOARDING_STORAGE_KEY);
+    return result[ONBOARDING_STORAGE_KEY] || {
+      isComplete: false,
+      currentStep: 0,
+    };
+  } catch (error) {
+    console.error('[Uproot] Error getting onboarding state:', error);
+    return {
+      isComplete: false,
+      currentStep: 0,
+    };
+  }
+}
+
+// Save onboarding state
+export async function saveOnboardingState(state: OnboardingState): Promise<void> {
+  try {
+    await chrome.storage.local.set({ [ONBOARDING_STORAGE_KEY]: state });
+    console.log('[Uproot] Onboarding state saved:', state);
+  } catch (error) {
+    console.error('[Uproot] Error saving onboarding state:', error);
+    throw error;
+  }
+}
+
+// Complete onboarding with preferences
+export async function completeOnboarding(preferences: JobPreferences): Promise<void> {
+  const state: OnboardingState = {
+    isComplete: true,
+    completedAt: Date.now(),
+    currentStep: 3, // Final step
+    preferences,
+  };
+  await saveOnboardingState(state);
+  console.log('[Uproot] Onboarding completed with preferences');
+}
+
+// Check if onboarding is complete
+export async function isOnboardingComplete(): Promise<boolean> {
+  const state = await getOnboardingState();
+  return state.isComplete;
 }

@@ -13,6 +13,7 @@ import { TAB_CONFIGS, getVisibleTabs } from '../../config/tabs';
 import { ProfileTab } from '../tabs/ProfileTab';
 import { CompanyTab } from '../tabs/CompanyTab';
 import { WatchlistTab } from '../tabs/WatchlistTab';
+import { OnboardingTab } from '../tabs/OnboardingTab';
 
 // Tab content props interface
 interface TabContentProps {
@@ -24,6 +25,7 @@ const TabContent: Record<string, React.ComponentType<TabContentProps>> = {
   profile: ProfileTab,
   company: CompanyTab,
   watchlist: WatchlistTab,
+  onboarding: OnboardingTab,
   // Other tabs will use placeholder for now
 };
 
@@ -64,9 +66,17 @@ interface TabNavigationProps {
 export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabNavigationProps) {
   const pageContext = usePageContext();
   const { getCountForTab } = useBadgeCounts();
+  const [isFirstRun, setIsFirstRun] = React.useState(false);
 
-  // TODO: Get isFirstRun from storage
-  const isFirstRun = false;
+  // Check onboarding status on mount
+  useEffect(() => {
+    async function checkOnboarding() {
+      const { isOnboardingComplete } = await import('../../utils/storage');
+      const completed = await isOnboardingComplete();
+      setIsFirstRun(!completed);
+    }
+    checkOnboarding();
+  }, []);
 
   // Get visible tabs based on page context
   const visibleTabs = useMemo(() => {
