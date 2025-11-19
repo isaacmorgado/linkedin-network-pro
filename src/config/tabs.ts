@@ -39,8 +39,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     icon: BookmarkCheck,
     shortcut: 2,
     alwaysVisible: true,
-    badge: true,
-    badgeColor: 'blue',
+    badge: false,
   },
 
   {
