@@ -61,16 +61,19 @@ export default defineContentScript({
 
     // Listen for toggle messages from popup
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      console.log('📨 Message received:', message.type);
+      console.log('📨 Message received:', message);
 
       if (message.type === 'TOGGLE_PANEL') {
         const container = document.getElementById('linkedin-extension-root');
         if (container) {
-          container.style.display = container.style.display === 'none' ? 'block' : 'none';
-          sendResponse({ success: true });
+          const isHidden = container.style.display === 'none';
+          container.style.display = isHidden ? '' : 'none';
+          console.log('🔄 Panel toggled:', isHidden ? 'SHOWING' : 'HIDING');
+          sendResponse({ success: true, action: isHidden ? 'shown' : 'hidden' });
         } else {
+          console.log('⚠️ Container not found, injecting panel...');
           injectPanel();
-          sendResponse({ success: true });
+          sendResponse({ success: true, action: 'injected' });
         }
       }
 
