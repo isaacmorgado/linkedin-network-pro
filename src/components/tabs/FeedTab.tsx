@@ -1,6 +1,7 @@
 /**
- * Feed Tab - Activity Dashboard
- * Shows job alerts, company updates, and connection activity
+ * Feed Tab - Unified Activity & Notifications Dashboard
+ * Shows all activity: job alerts, company updates, connection activity,
+ * application status changes, and recommendations in one place
  */
 
 import React, { useState } from 'react';
@@ -44,6 +45,16 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
     },
     {
       id: '2',
+      type: 'application_status',
+      timestamp: Date.now() - 1000 * 60 * 60, // 1 hour ago
+      read: false,
+      title: 'Application Update',
+      description: 'Your application for Product Designer at Airbnb was viewed by the hiring team',
+      company: 'Airbnb',
+      actionLabel: 'View Application',
+    },
+    {
+      id: '3',
       type: 'company_update',
       timestamp: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
       read: false,
@@ -53,7 +64,7 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
       actionLabel: 'See Post',
     },
     {
-      id: '3',
+      id: '4',
       type: 'connection_update',
       timestamp: Date.now() - 1000 * 60 * 60 * 5, // 5 hours ago
       read: true,
@@ -179,7 +190,7 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
               margin: 0,
             }}
           >
-            Job alerts, updates, and activity from your watchlist
+            All notifications, job alerts, and updates in one place
           </p>
         )}
       </div>
@@ -321,6 +332,8 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
     switch (item.type) {
       case 'job_alert':
         return <Briefcase size={iconSize} color="#0077B5" />;
+      case 'application_status':
+        return <CheckCircle2 size={iconSize} color="#FF3B30" />;
       case 'company_update':
         return <Building2 size={iconSize} color="#FF9500" />;
       case 'connection_update':
@@ -337,6 +350,8 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
     switch (item.type) {
       case 'job_alert':
         return 'rgba(0, 119, 181, 0.1)';
+      case 'application_status':
+        return 'rgba(255, 59, 48, 0.1)';
       case 'company_update':
         return 'rgba(255, 149, 0, 0.1)';
       case 'connection_update':

@@ -1,18 +1,17 @@
 /**
  * Tab Navigation Type Definitions - Simplified Structure
  *
- * 6 core tabs (always visible) + 2 context-sensitive + 1 special
+ * 4 core tabs (always visible) + 3 context-sensitive + 1 special
  */
 
 import type { LucideIcon } from 'lucide-react';
 
 // Simplified Tab IDs
 export type TabId =
-  // Always visible (5 core tabs)
-  | 'feed'          // Activity feed
+  // Always visible (4 core tabs)
+  | 'feed'          // Activity feed (includes all notifications/alerts)
   | 'watchlist'     // Saved people/companies/paths
   | 'resume'        // Resume editor
-  | 'notifications' // Alerts
   | 'settings'      // Preferences
   // Context-sensitive (3 tabs)
   | 'profile'       // Only on person pages
@@ -75,9 +74,8 @@ export interface NavigationState {
 
 // Badge counts for tabs that support badges
 export interface BadgeCounts {
-  notifications: number;
-  watchlist: number;
   feed: number;
+  watchlist: number;
 }
 
 // Component props

@@ -20,7 +20,7 @@ import type { TabConfig } from '../types/navigation';
 
 export const TAB_CONFIGS: TabConfig[] = [
   // ========================================
-  // ALWAYS VISIBLE (5 core tabs)
+  // ALWAYS VISIBLE (4 core tabs)
   // ========================================
 
   {
@@ -52,20 +52,10 @@ export const TAB_CONFIGS: TabConfig[] = [
   },
 
   {
-    id: 'notifications',
-    label: 'Alerts',
-    icon: Bell,
-    shortcut: 4,
-    alwaysVisible: true,
-    badge: true,
-    badgeColor: 'red',
-  },
-
-  {
     id: 'settings',
     label: 'Settings',
     icon: Settings2,
-    shortcut: 5,
+    shortcut: 4,
     alwaysVisible: true,
     badge: false,
   },
@@ -78,7 +68,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'profile',
     label: 'Profile',
     icon: UserCircle,
-    shortcut: 6,
+    shortcut: 5,
     alwaysVisible: false,
     visibleOn: ['profile'], // Only on person pages
     badge: false,
@@ -88,7 +78,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'company',
     label: 'Company',
     icon: Building2,
-    shortcut: 7,
+    shortcut: 6,
     alwaysVisible: false,
     visibleOn: ['company'], // Only on company pages
     badge: false,
@@ -98,7 +88,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'jobs',
     label: 'Jobs',
     icon: Briefcase,
-    shortcut: 8,
+    shortcut: 7,
     alwaysVisible: false,
     visibleOn: ['job'], // Only on job pages
     badge: false,
@@ -112,7 +102,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'onboarding',
     label: 'Get Started',
     icon: Rocket,
-    shortcut: 9,
+    shortcut: 8,
     alwaysVisible: false, // Only shown on first run
     badge: false,
   },
