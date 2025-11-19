@@ -33,9 +33,10 @@ export function FloatingPanel() {
         height: panelSize.height,
       }}
       minWidth={350}
-      minHeight={400}
-      bounds="body"
-      enableResizing={{
+      minHeight={isMinimized ? 60 : 400}
+      bounds="window"
+      disableDragging={false}
+      enableResizing={isMinimized ? false : {
         top: false,
         right: true,
         bottom: true,
@@ -45,11 +46,14 @@ export function FloatingPanel() {
         bottomLeft: true,
         topLeft: false,
       }}
+      size={isMinimized ? { width: panelSize.width, height: 60 } : undefined}
       onResize={(e, direction, ref, delta, position) => {
-        setPanelSize({
-          width: parseInt(ref.style.width),
-          height: parseInt(ref.style.height),
-        });
+        if (!isMinimized) {
+          setPanelSize({
+            width: parseInt(ref.style.width),
+            height: parseInt(ref.style.height),
+          });
+        }
       }}
       style={{
         zIndex: 999999,

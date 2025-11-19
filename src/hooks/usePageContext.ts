@@ -67,6 +67,14 @@ export function usePageContext(): PageContext {
                             jsonLdData?.image ||
                             null;
 
+        // Debug logging
+        console.log('[Uproot] Profile detected:', {
+          name,
+          headline: headline.substring(0, 50),
+          hasImage: !!profileImage,
+          url,
+        });
+
         return {
           type: 'profile',
           isProfilePage: true,
@@ -142,6 +150,7 @@ export function usePageContext(): PageContext {
       }
 
       // Default to feed
+      console.log('[Uproot] Page type detected: feed/other', { url, pathname });
       return {
         type: 'feed',
         isProfilePage: false,

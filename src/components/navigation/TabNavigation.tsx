@@ -61,8 +61,14 @@ export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabN
 
   // Get visible tabs based on page context
   const visibleTabs = useMemo(() => {
-    return getVisibleTabs(pageContext.type, isFirstRun);
-  }, [pageContext.type, isFirstRun]);
+    const tabs = getVisibleTabs(pageContext.type, isFirstRun);
+    console.log('[Uproot] Visible tabs:', {
+      pageType: pageContext.type,
+      isProfilePage: pageContext.isProfilePage,
+      tabIds: tabs.map(t => t.id),
+    });
+    return tabs;
+  }, [pageContext.type, isFirstRun, pageContext.isProfilePage]);
 
   // Add badge counts to tabs
   const tabsWithBadges = useMemo(() => {
