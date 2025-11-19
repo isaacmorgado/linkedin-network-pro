@@ -320,23 +320,23 @@ function WelcomeStep() {
         />
         <Feature
           icon="📝"
-          title="Optimized Resume & Cover Letters"
-          description="Auto-generate tailored resumes and cover letters for every job that bypass ATS"
+          title="ATS-Beating Resume & Cover Letters"
+          description="Auto-generate tailored resumes and cover letters for every job that bypass ATS systems"
         />
         <Feature
           icon="🤖"
           title="Smart Application Assistant"
-          description="Save common questions or let AI fill them out - sounds human, beats ATS every time"
-        />
-        <Feature
-          icon="💾"
-          title="Answer Library"
-          description="Highlight questions in applications, paste your saved answers instantly"
+          description="Highlight & save common questions, paste answers instantly, or let AI fill it out - sounds human, beats ATS"
         />
         <Feature
           icon="✉️"
-          title="AI Messages"
-          description="Generate personalized connection messages instantly"
+          title="AI Connection Messages"
+          description="Generate personalized connection messages with behavioral psychology that get responses"
+        />
+        <Feature
+          icon="🧠"
+          title="UX Psychology & Behavioral Tech"
+          description="Animations and micro-interactions designed to keep you motivated and engaged throughout your job search"
         />
       </div>
 
