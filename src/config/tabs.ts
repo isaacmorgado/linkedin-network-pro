@@ -122,24 +122,35 @@ export function getVisibleTabs(
   pageContextType: string,
   isFirstRun: boolean
 ): TabConfig[] {
-  return TAB_CONFIGS.filter((tab) => {
+  console.log('[Uproot] getVisibleTabs called with:', { pageContextType, isFirstRun });
+
+  const visibleTabs = TAB_CONFIGS.filter((tab) => {
     // Special case: onboarding only on first run
     if (tab.id === 'onboarding') {
-      return isFirstRun;
+      const shouldShow = isFirstRun;
+      console.log(`[Uproot] Tab "${tab.id}": ${shouldShow ? 'VISIBLE' : 'HIDDEN'} (first run: ${isFirstRun})`);
+      return shouldShow;
     }
 
     // Always visible tabs
     if (tab.alwaysVisible) {
+      console.log(`[Uproot] Tab "${tab.id}": VISIBLE (always visible)`);
       return true;
     }
 
     // Context-sensitive tabs
     if (tab.visibleOn) {
-      return tab.visibleOn.includes(pageContextType as any);
+      const shouldShow = tab.visibleOn.includes(pageContextType as any);
+      console.log(`[Uproot] Tab "${tab.id}": ${shouldShow ? 'VISIBLE' : 'HIDDEN'} (visibleOn: ${JSON.stringify(tab.visibleOn)}, current: ${pageContextType})`);
+      return shouldShow;
     }
 
+    console.log(`[Uproot] Tab "${tab.id}": HIDDEN (no visibility rules)`);
     return false;
   });
+
+  console.log('[Uproot] Final visible tabs:', visibleTabs.map(t => t.id));
+  return visibleTabs;
 }
 
 // Helper: Get tab by ID
