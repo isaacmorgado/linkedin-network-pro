@@ -70,7 +70,7 @@ export function usePageContext(): PageContext {
         // Debug logging
         console.log('[Uproot] Profile detected:', {
           name,
-          headline: headline.substring(0, 50),
+          headline,
           hasImage: !!profileImage,
           url,
         });

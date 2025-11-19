@@ -2,7 +2,7 @@
  * Main Floating Panel Component - WITH TAB NAVIGATION
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
 import { X, Minimize2, Maximize2 } from 'lucide-react';
 import { TabNavigation } from './navigation/TabNavigation';
@@ -12,6 +12,8 @@ export function FloatingPanel() {
   const [activeTab, setActiveTab] = useState<TabId>('feed');
   const [panelSize, setPanelSize] = useState({ width: 400, height: 500 });
   const [isMinimized, setIsMinimized] = useState(false);
+  const [panelPosition, setPanelPosition] = useState({ x: 100, y: 100 });
+  const rndRef = useRef<Rnd>(null);
 
   const handleClose = () => {
     const container = document.getElementById('linkedin-extension-root');
@@ -24,14 +26,47 @@ export function FloatingPanel() {
     setIsMinimized(!isMinimized);
   };
 
+  // Auto-reposition when minimized and at bottom of viewport
+  useEffect(() => {
+    if (!isMinimized || !rndRef.current) return;
+
+    const checkPosition = () => {
+      const viewportHeight = window.innerHeight;
+      const panelHeight = 60; // Minimized height
+      const currentY = panelPosition.y;
+
+      // If panel is below 80% of viewport height when minimized, animate it back up
+      const maxAllowedY = viewportHeight - panelHeight - 20; // 20px padding from bottom
+
+      if (currentY > maxAllowedY) {
+        const newY = Math.max(20, maxAllowedY); // At least 20px from top
+
+        // Smooth animation using updatePosition
+        rndRef.current?.updatePosition({ x: panelPosition.x, y: newY });
+        setPanelPosition({ x: panelPosition.x, y: newY });
+
+        console.log('[Uproot] Auto-repositioned minimized panel:', { from: currentY, to: newY });
+      }
+    };
+
+    // Check immediately when minimized
+    checkPosition();
+
+    // Also check on window resize
+    window.addEventListener('resize', checkPosition);
+    return () => window.removeEventListener('resize', checkPosition);
+  }, [isMinimized, panelPosition.x, panelPosition.y]);
+
   return (
     <Rnd
+      ref={rndRef}
       default={{
-        x: 100,
-        y: 100,
+        x: panelPosition.x,
+        y: panelPosition.y,
         width: panelSize.width,
         height: panelSize.height,
       }}
+      position={panelPosition}
       minWidth={350}
       minHeight={isMinimized ? 60 : 400}
       bounds="window"
@@ -47,6 +82,9 @@ export function FloatingPanel() {
         topLeft: false,
       }}
       size={isMinimized ? { width: panelSize.width, height: 60 } : undefined}
+      onDragStop={(e, data) => {
+        setPanelPosition({ x: data.x, y: data.y });
+      }}
       onResize={(e, direction, ref, delta, position) => {
         if (!isMinimized) {
           setPanelSize({
@@ -57,6 +95,7 @@ export function FloatingPanel() {
       }}
       style={{
         zIndex: 999999,
+        transition: isMinimized ? 'all 400ms cubic-bezier(0.4, 0.0, 0.2, 1)' : 'none',
       }}
     >
       <div
