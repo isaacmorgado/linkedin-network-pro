@@ -22,10 +22,6 @@ export default defineConfig({
       'https://www.linkedin.com/*',
       'https://*.supabase.co/*',
     ],
-    oauth2: {
-      client_id: process.env.GOOGLE_CLIENT_ID || '',
-      scopes: ['email', 'profile'],
-    },
     action: {
       default_title: 'LinkedIn Network Pro',
     },
