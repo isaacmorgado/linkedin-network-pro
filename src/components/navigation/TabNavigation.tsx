@@ -1,52 +1,145 @@
 /**
- * Tab Navigation Component (Stub - Phase 3)
+ * Tab Navigation Component - Simplified 6+2+1 Structure
+ * Apple-inspired bottom tab bar with context-sensitive tabs
  */
 
-import React from 'react';
-import { User, BookmarkIcon, Briefcase, Activity, Bell, Settings } from 'lucide-react';
+import React, { useEffect, useMemo } from 'react';
+import type { TabId } from '../../types/navigation';
+import { TabButton } from './TabButton';
+import { usePageContext } from '../../hooks/usePageContext';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useBadgeCounts } from '../../hooks/useBadgeCounts';
+import { TAB_CONFIGS, getVisibleTabs } from '../../config/tabs';
+
+// Tab content components (stubs for now - will be built next)
+const TabPlaceholder = ({ title }: { title: string }) => (
+  <div style={{
+    padding: '24px',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  }}>
+    <h3 style={{
+      fontSize: '18px',
+      fontWeight: '600',
+      margin: '0 0 8px 0',
+      color: '#1d1d1f',
+    }}>
+      {title}
+    </h3>
+    <p style={{
+      fontSize: '14px',
+      color: '#6e6e73',
+      margin: 0,
+    }}>
+      Coming soon...
+    </p>
+  </div>
+);
 
 interface TabNavigationProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
+  panelWidth?: number;
 }
 
-export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'watchlist', label: 'Watchlist', icon: BookmarkIcon },
-    { id: 'jobs', label: 'Jobs', icon: Briefcase },
-    { id: 'feed', label: 'Feed', icon: Activity },
-    { id: 'notifications', label: 'Alerts', icon: Bell },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabNavigationProps) {
+  const pageContext = usePageContext();
+  const { getCountForTab } = useBadgeCounts();
+
+  // TODO: Get isFirstRun from storage
+  const isFirstRun = false;
+
+  // Get visible tabs based on page context
+  const visibleTabs = useMemo(() => {
+    return getVisibleTabs(pageContext.type, isFirstRun);
+  }, [pageContext.type, isFirstRun]);
+
+  // Add badge counts to tabs
+  const tabsWithBadges = useMemo(() => {
+    return visibleTabs.map((tab) => ({
+      ...tab,
+      badgeCount: getCountForTab(tab.id),
+    }));
+  }, [visibleTabs, getCountForTab]);
+
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts({
+    activeTab,
+    visibleTabs: tabsWithBadges.map((t) => t.id),
+    onTabChange,
+    enabled: true,
+  });
+
+  // Auto-switch away from hidden tabs
+  useEffect(() => {
+    const isActiveTabVisible = tabsWithBadges.some((tab) => tab.id === activeTab);
+    if (!isActiveTabVisible && tabsWithBadges.length > 0) {
+      // Switch to first visible tab (usually Feed)
+      onTabChange(tabsWithBadges[0].id);
+    }
+  }, [activeTab, tabsWithBadges, onTabChange]);
+
+  // Determine if we should use compact mode
+  const isCompact = panelWidth < 400;
 
   return (
-    <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        width: '100%',
+      }}
+    >
+      {/* Tab Content Area */}
+      <div
+        role="tabpanel"
+        id={`panel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          backgroundColor: '#FFFFFF',
+        }}
+      >
+        {/* Render placeholder for now - actual tab components coming next */}
+        <TabPlaceholder title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} />
+      </div>
 
-        return (
-          <button
+      {/* Bottom Tab Bar - Apple Style */}
+      <div
+        role="tablist"
+        aria-label="Main navigation"
+        aria-orientation="horizontal"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          gap: isCompact ? '2px' : '4px',
+          padding: '8px',
+          borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          minHeight: '60px',
+          position: 'relative',
+        }}
+      >
+        {tabsWithBadges.map((tab) => (
+          <TabButton
             key={tab.id}
+            tab={tab}
+            isActive={activeTab === tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`
-              flex-1 flex flex-col items-center gap-1 py-3 px-2
-              transition-colors relative
-              ${isActive
-                ? 'text-blue-600 dark:text-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }
-            `}
-          >
-            <Icon className="w-5 h-5" />
-            <span className="text-xs font-medium">{tab.label}</span>
-            {isActive && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
-        );
-      })}
+            badgeCount={tab.badgeCount}
+            compact={isCompact}
+          />
+        ))}
+      </div>
     </div>
   );
 }

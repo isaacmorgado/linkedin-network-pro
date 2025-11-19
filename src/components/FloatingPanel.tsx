@@ -1,12 +1,18 @@
 /**
- * Main Floating Panel Component - SIMPLIFIED VERSION THAT ACTUALLY WORKS
+ * Main Floating Panel Component - WITH TAB NAVIGATION
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Rnd } from 'react-rnd';
-import { X } from 'lucide-react';
+import { X, Minimize2, Maximize2 } from 'lucide-react';
+import { TabNavigation } from './navigation/TabNavigation';
+import type { TabId } from '../types/navigation';
 
 export function FloatingPanel() {
+  const [activeTab, setActiveTab] = useState<TabId>('feed');
+  const [panelSize, setPanelSize] = useState({ width: 400, height: 500 });
+  const [isMinimized, setIsMinimized] = useState(false);
+
   const handleClose = () => {
     const container = document.getElementById('linkedin-extension-root');
     if (container) {
@@ -14,17 +20,27 @@ export function FloatingPanel() {
     }
   };
 
+  const handleMinimize = () => {
+    setIsMinimized(!isMinimized);
+  };
+
   return (
     <Rnd
       default={{
         x: 100,
         y: 100,
-        width: 400,
-        height: 500,
+        width: panelSize.width,
+        height: panelSize.height,
       }}
       minWidth={350}
       minHeight={400}
       bounds="window"
+      onResize={(e, direction, ref, delta, position) => {
+        setPanelSize({
+          width: parseInt(ref.style.width),
+          height: parseInt(ref.style.height),
+        });
+      }}
       style={{
         zIndex: 999999,
       }}
@@ -32,7 +48,7 @@ export function FloatingPanel() {
       <div
         style={{
           width: '100%',
-          height: '100%',
+          height: isMinimized ? '60px' : '100%',
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           borderRadius: '16px',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
@@ -41,119 +57,124 @@ export function FloatingPanel() {
           flexDirection: 'column',
           overflow: 'hidden',
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          transition: 'height 300ms cubic-bezier(0.4, 0.0, 0.2, 1)',
         }}
       >
         {/* Header - Draggable */}
         <div
           style={{
             padding: '16px',
-            borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+            borderBottom: isMinimized ? 'none' : '1px solid rgba(0, 0, 0, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             cursor: 'move',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
           }}
         >
-          <h2 style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>
-            Uproot
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: 'bold',
+              }}
+            >
+              UP
+            </div>
+            <h2
+              style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                margin: 0,
+                color: '#1d1d1f',
+              }}
+            >
+              Uproot
+            </h2>
+          </div>
 
-          <button
-            onClick={handleClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={16} />
-          </button>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              onClick={handleMinimize}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '6px',
+                transition: 'background-color 150ms',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+              title={isMinimized ? 'Maximize' : 'Minimize'}
+            >
+              {isMinimized ? (
+                <Maximize2 size={14} color="#6e6e73" />
+              ) : (
+                <Minimize2 size={14} color="#6e6e73" />
+              )}
+            </button>
+
+            <button
+              onClick={handleClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '6px',
+                transition: 'background-color 150ms',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 59, 48, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+              title="Close"
+            >
+              <X size={14} color="#FF3B30" />
+            </button>
+          </div>
         </div>
 
-        {/* Content */}
-        <div
-          style={{
-            flex: 1,
-            padding: '24px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center',
-            gap: '20px',
-          }}
-        >
+        {/* Tab Navigation & Content */}
+        {!isMinimized && (
           <div
             style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)',
+              flex: 1,
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '24px',
-              fontWeight: 'bold',
+              flexDirection: 'column',
+              overflow: 'hidden',
             }}
           >
-            LN
+            <TabNavigation
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              panelWidth={panelSize.width}
+            />
           </div>
-
-          <div>
-            <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' }}>
-              Uproot
-            </h1>
-            <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
-              AI-powered networking assistant
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '300px' }}>
-            <button
-              style={{
-                width: '100%',
-                padding: '12px 24px',
-                backgroundColor: '#0077B5',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-              }}
-            >
-              Sign in with Google
-            </button>
-
-            <button
-              style={{
-                width: '100%',
-                padding: '12px 24px',
-                backgroundColor: 'white',
-                color: '#333',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-              }}
-            >
-              Sign in with Email
-            </button>
-          </div>
-
-          <p style={{ fontSize: '12px', color: '#999', margin: '20px 0 0 0' }}>
-            ✅ Extension is working!<br />
-            🎯 Drag this panel to move it<br />
-            📍 Phase 1 Complete
-          </p>
-        </div>
+        )}
       </div>
     </Rnd>
   );
