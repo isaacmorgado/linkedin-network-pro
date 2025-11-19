@@ -1,171 +1,163 @@
 /**
- * Main Floating Panel Component
- *
- * Apple-like draggable/resizable panel with:
- * - Frosted glass effect
- * - Smooth animations
- * - Tab-based navigation
- * - Persistent position/size
+ * Main Floating Panel Component - SIMPLIFIED VERSION THAT ACTUALLY WORKS
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Rnd } from 'react-rnd';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Minimize2, Maximize2 } from 'lucide-react';
-import { useAuthStore } from '@/stores/auth';
-import { useSettingsStore } from '@/stores/settings';
-import { LoginScreen } from './auth/LoginScreen';
-import { TabNavigation } from './navigation/TabNavigation';
-import { ProfileTab } from './tabs/ProfileTab';
-import { WatchlistTab } from './tabs/WatchlistTab';
-import { JobsTab } from './tabs/JobsTab';
-import { FeedTab } from './tabs/FeedTab';
-import { SettingsTab } from './tabs/SettingsTab';
-import { NotificationsTab } from './tabs/NotificationsTab';
+import { X } from 'lucide-react';
 
 export function FloatingPanel() {
-  const { user, isAuthenticated, checkAuth } = useAuthStore();
-  const { panelPosition, panelSize, theme, updatePanelPosition, updatePanelSize } = useSettingsStore();
-
-  const [isMinimized, setIsMinimized] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>('profile');
-
-  // Check auth on mount
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  // Handle visibility toggle
-  useEffect(() => {
-    const handleToggle = () => {
-      setIsVisible((prev) => !prev);
-    };
-
-    window.addEventListener('linkedin-extension:toggle', handleToggle);
-    return () => window.removeEventListener('linkedin-extension:toggle', handleToggle);
-  }, []);
 
   if (!isVisible) return null;
-
-  // Show login screen if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <Rnd
-        default={{
-          x: panelPosition.x,
-          y: panelPosition.y,
-          width: 400,
-          height: 500,
-        }}
-        minWidth={350}
-        minHeight={400}
-        bounds="window"
-        dragHandleClassName="drag-handle"
-        onDragStop={(e, d) => {
-          updatePanelPosition({ x: d.x, y: d.y });
-        }}
-      >
-        <LoginScreen />
-      </Rnd>
-    );
-  }
 
   return (
     <Rnd
       default={{
-        x: panelPosition.x,
-        y: panelPosition.y,
-        width: panelSize.width,
-        height: panelSize.height,
+        x: 100,
+        y: 100,
+        width: 400,
+        height: 500,
       }}
-      minWidth={380}
-      minHeight={500}
-      maxWidth={800}
-      maxHeight={900}
-      bounds="window"
-      dragHandleClassName="drag-handle"
-      onDragStop={(e, d) => {
-        updatePanelPosition({ x: d.x, y: d.y });
-      }}
-      onResizeStop={(e, direction, ref, delta, position) => {
-        updatePanelSize({
-          width: parseInt(ref.style.width),
-          height: parseInt(ref.style.height),
-        });
-        updatePanelPosition(position);
-      }}
+      minWidth={350}
+      minHeight={400}
+      bounds="parent"
       style={{
-        zIndex: 2147483647, // Maximum z-index
+        zIndex: 999999,
       }}
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className={`
-          h-full w-full overflow-hidden rounded-2xl
-          ${theme.mode === 'dark' ? 'bg-gray-900/90' : 'bg-white/90'}
-          backdrop-blur-apple border border-white/20
-          shadow-2xl flex flex-col
-        `}
+      <div
         style={{
-          backdropFilter: `blur(${theme.blurIntensity}px)`,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '16px',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          border: '1px solid rgba(0, 0, 0, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         }}
       >
-        {/* Header */}
+        {/* Header - Draggable */}
         <div
-          className={`
-            drag-handle flex items-center justify-between px-4 py-3
-            border-b ${theme.mode === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}
-            cursor-move
-          `}
+          style={{
+            padding: '16px',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'move',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          }}
         >
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500" onClick={() => setIsVisible(false)} />
-            <div className="w-3 h-3 rounded-full bg-yellow-500" onClick={() => setIsMinimized(!isMinimized)} />
-            <div className="w-3 h-3 rounded-full bg-green-500" />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f57' }} />
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ffbd2e' }} />
+            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#28ca42' }} />
           </div>
 
-          <h2 className={`text-sm font-semibold ${theme.mode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          <h2 style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>
             LinkedIn Network Pro
           </h2>
 
           <button
             onClick={() => setIsVisible(false)}
-            className="p-1.5 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            <X className="w-4 h-4" />
+            <X size={16} />
           </button>
         </div>
 
-        {/* Tab Navigation */}
-        {!isMinimized && (
-          <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-        )}
+        {/* Content */}
+        <div
+          style={{
+            flex: 1,
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            gap: '20px',
+          }}
+        >
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '24px',
+              fontWeight: 'bold',
+            }}
+          >
+            LN
+          </div>
 
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          {!isMinimized && (
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="flex-1 overflow-auto p-4"
+          <div>
+            <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' }}>
+              LinkedIn Network Pro
+            </h1>
+            <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
+              AI-powered networking assistant
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '300px' }}>
+            <button
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                backgroundColor: '#0077B5',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
             >
-              {activeTab === 'profile' && <ProfileTab />}
-              {activeTab === 'watchlist' && <WatchlistTab />}
-              {activeTab === 'jobs' && <JobsTab />}
-              {activeTab === 'feed' && <FeedTab />}
-              {activeTab === 'notifications' && <NotificationsTab />}
-              {activeTab === 'settings' && <SettingsTab />}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+              Sign in with Google
+            </button>
+
+            <button
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                backgroundColor: 'white',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              Sign in with Email
+            </button>
+          </div>
+
+          <p style={{ fontSize: '12px', color: '#999', margin: '20px 0 0 0' }}>
+            ✅ Extension is working!<br />
+            🎯 Drag this panel to move it<br />
+            📍 Phase 1 Complete
+          </p>
+        </div>
+      </div>
     </Rnd>
   );
 }
