@@ -3,7 +3,8 @@
  * Wrapper around chrome.storage.local for type-safe operations
  */
 
-import type { WatchlistPerson, WATCHLIST_STORAGE_KEY } from '../types/watchlist';
+import type { WatchlistPerson, WatchlistCompany } from '../types/watchlist';
+import { WATCHLIST_PEOPLE_STORAGE_KEY, WATCHLIST_COMPANIES_STORAGE_KEY } from '../types/watchlist';
 
 // Get watchlist from storage
 export async function getWatchlist(): Promise<WatchlistPerson[]> {
@@ -88,4 +89,99 @@ export async function updateWatchlistPerson(id: string, updates: Partial<Watchli
 export async function isInWatchlist(profileUrl: string): Promise<boolean> {
   const watchlist = await getWatchlist();
   return watchlist.some((p) => p.id === profileUrl);
+}
+
+// ============================================================================
+// COMPANY WATCHLIST FUNCTIONS
+// ============================================================================
+
+// Get company watchlist from storage
+export async function getCompanyWatchlist(): Promise<WatchlistCompany[]> {
+  try {
+    const result = await chrome.storage.local.get(WATCHLIST_COMPANIES_STORAGE_KEY);
+    return result[WATCHLIST_COMPANIES_STORAGE_KEY] || [];
+  } catch (error) {
+    console.error('[Uproot] Error getting company watchlist:', error);
+    return [];
+  }
+}
+
+// Save company watchlist to storage
+export async function saveCompanyWatchlist(companies: WatchlistCompany[]): Promise<void> {
+  try {
+    await chrome.storage.local.set({ [WATCHLIST_COMPANIES_STORAGE_KEY]: companies });
+    console.log('[Uproot] Company watchlist saved:', companies.length, 'companies');
+  } catch (error) {
+    console.error('[Uproot] Error saving company watchlist:', error);
+    throw error;
+  }
+}
+
+// Add company to watchlist
+export async function addCompanyToWatchlist(
+  company: Omit<WatchlistCompany, 'id' | 'addedAt'>
+): Promise<WatchlistCompany> {
+  const companies = await getCompanyWatchlist();
+
+  // Generate ID from company URL
+  const id = company.companyUrl;
+
+  // Check if already in watchlist
+  const existingIndex = companies.findIndex((c) => c.id === id);
+  if (existingIndex !== -1) {
+    console.log('[Uproot] Company already in watchlist:', company.name);
+    return companies[existingIndex];
+  }
+
+  // Create new watchlist company
+  const newCompany: WatchlistCompany = {
+    ...company,
+    id,
+    addedAt: Date.now(),
+    jobAlertEnabled: company.jobAlertEnabled ?? false,
+  };
+
+  // Add to beginning of list
+  companies.unshift(newCompany);
+
+  await saveCompanyWatchlist(companies);
+  console.log('[Uproot] Added company to watchlist:', company.name);
+
+  return newCompany;
+}
+
+// Remove company from watchlist
+export async function removeCompanyFromWatchlist(id: string): Promise<void> {
+  const companies = await getCompanyWatchlist();
+  const filteredCompanies = companies.filter((c) => c.id !== id);
+
+  await saveCompanyWatchlist(filteredCompanies);
+  console.log('[Uproot] Removed company from watchlist:', id);
+}
+
+// Update company in watchlist
+export async function updateWatchlistCompany(
+  id: string,
+  updates: Partial<WatchlistCompany>
+): Promise<void> {
+  const companies = await getCompanyWatchlist();
+  const index = companies.findIndex((c) => c.id === id);
+
+  if (index === -1) {
+    throw new Error('Company not found in watchlist');
+  }
+
+  companies[index] = {
+    ...companies[index],
+    ...updates,
+  };
+
+  await saveCompanyWatchlist(companies);
+  console.log('[Uproot] Updated watchlist company:', id);
+}
+
+// Check if company is in watchlist
+export async function isCompanyInWatchlist(companyUrl: string): Promise<boolean> {
+  const companies = await getCompanyWatchlist();
+  return companies.some((c) => c.id === companyUrl);
 }

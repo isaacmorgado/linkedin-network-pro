@@ -15,8 +15,9 @@ export type TabId =
   | 'resume'        // Resume editor
   | 'notifications' // Alerts
   | 'settings'      // Preferences
-  // Context-sensitive (2 tabs)
+  // Context-sensitive (3 tabs)
   | 'profile'       // Only on person pages
+  | 'company'       // Only on company pages
   | 'jobs'          // Only on job pages
   // Special (1 tab)
   | 'onboarding';   // First-run only
@@ -44,6 +45,14 @@ export interface PageContext {
     title: string;
     company: string;
     jobUrl: string;
+  } | null;
+  companyData?: {
+    name: string;
+    industry?: string;
+    companyUrl: string;
+    companyLogo?: string | null;
+    followerCount?: string;
+    employeeCount?: string;
   } | null;
 }
 

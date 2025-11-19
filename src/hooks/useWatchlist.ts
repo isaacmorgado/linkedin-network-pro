@@ -1,28 +1,38 @@
 /**
  * Watchlist Hook
- * Manages watchlist state and operations
+ * Manages watchlist state and operations for both people and companies
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { WatchlistPerson } from '../types/watchlist';
+import type { WatchlistPerson, WatchlistCompany } from '../types/watchlist';
 import {
   getWatchlist,
   addToWatchlist as addToWatchlistStorage,
   removeFromWatchlist as removeFromWatchlistStorage,
   updateWatchlistPerson as updateWatchlistPersonStorage,
   isInWatchlist as isInWatchlistStorage,
+  getCompanyWatchlist,
+  addCompanyToWatchlist as addCompanyToWatchlistStorage,
+  removeCompanyFromWatchlist as removeCompanyFromWatchlistStorage,
+  updateWatchlistCompany as updateWatchlistCompanyStorage,
+  isCompanyInWatchlist as isCompanyInWatchlistStorage,
 } from '../utils/storage';
 
 export function useWatchlist() {
   const [watchlist, setWatchlist] = useState<WatchlistPerson[]>([]);
+  const [companyWatchlist, setCompanyWatchlist] = useState<WatchlistCompany[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load watchlist from storage
+  // Load watchlists from storage
   const loadWatchlist = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getWatchlist();
-      setWatchlist(data);
+      const [people, companies] = await Promise.all([
+        getWatchlist(),
+        getCompanyWatchlist(),
+      ]);
+      setWatchlist(people);
+      setCompanyWatchlist(companies);
     } catch (error) {
       console.error('[Uproot] Error loading watchlist:', error);
     } finally {
@@ -71,6 +81,47 @@ export function useWatchlist() {
     return isInWatchlistStorage(profileUrl);
   }, []);
 
+  // Add company to watchlist
+  const addCompany = useCallback(async (company: Omit<WatchlistCompany, 'id' | 'addedAt'>) => {
+    try {
+      const newCompany = await addCompanyToWatchlistStorage(company);
+      setCompanyWatchlist((prev) => [newCompany, ...prev.filter((c) => c.id !== newCompany.id)]);
+      return newCompany;
+    } catch (error) {
+      console.error('[Uproot] Error adding company to watchlist:', error);
+      throw error;
+    }
+  }, []);
+
+  // Remove company from watchlist
+  const removeCompany = useCallback(async (id: string) => {
+    try {
+      await removeCompanyFromWatchlistStorage(id);
+      setCompanyWatchlist((prev) => prev.filter((c) => c.id !== id));
+    } catch (error) {
+      console.error('[Uproot] Error removing company from watchlist:', error);
+      throw error;
+    }
+  }, []);
+
+  // Update company in watchlist
+  const updateCompany = useCallback(async (id: string, updates: Partial<WatchlistCompany>) => {
+    try {
+      await updateWatchlistCompanyStorage(id, updates);
+      setCompanyWatchlist((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...updates } : c))
+      );
+    } catch (error) {
+      console.error('[Uproot] Error updating watchlist company:', error);
+      throw error;
+    }
+  }, []);
+
+  // Check if company is in watchlist
+  const isCompanyInWatchlist = useCallback(async (companyUrl: string) => {
+    return isCompanyInWatchlistStorage(companyUrl);
+  }, []);
+
   // Load watchlist on mount
   useEffect(() => {
     loadWatchlist();
@@ -79,8 +130,13 @@ export function useWatchlist() {
   // Listen for storage changes from other tabs/contexts
   useEffect(() => {
     const handleStorageChange = (changes: any, areaName: string) => {
-      if (areaName === 'local' && changes.uproot_watchlist) {
-        setWatchlist(changes.uproot_watchlist.newValue || []);
+      if (areaName === 'local') {
+        if (changes.uproot_watchlist) {
+          setWatchlist(changes.uproot_watchlist.newValue || []);
+        }
+        if (changes.uproot_watchlist_companies) {
+          setCompanyWatchlist(changes.uproot_watchlist_companies.newValue || []);
+        }
       }
     };
 
@@ -89,12 +145,20 @@ export function useWatchlist() {
   }, []);
 
   return {
+    // People watchlist
     watchlist,
     isLoading,
     addPerson,
     removePerson,
     updatePerson,
     isPersonInWatchlist,
+    // Company watchlist
+    companyWatchlist,
+    addCompany,
+    removeCompany,
+    updateCompany,
+    isCompanyInWatchlist,
+    // Common
     refresh: loadWatchlist,
   };
 }

@@ -108,13 +108,68 @@ function detectContext(): PageContext {
   }
 
   // Company page detection
-  if (url.includes('/company/')) {
+  if (url.includes('/company/') || pathname.match(/^\/company\/[^/]+\/?$/)) {
+    // Try multiple selectors for company name
+    const nameElement =
+      document.querySelector('h1.org-top-card-summary__title') ||
+      document.querySelector('h1[data-anonymize="company-name"]') ||
+      document.querySelector('.org-top-card-summary__title') ||
+      document.querySelector('h1');
+
+    // Try to get industry/tagline
+    const industryElement =
+      document.querySelector('.org-top-card-summary__tagline') ||
+      document.querySelector('[data-anonymize="industry"]') ||
+      document.querySelector('.org-page-details__definition-text');
+
+    // Try to get company logo
+    const logoElement =
+      document.querySelector('img.org-top-card-primary-content__logo') ||
+      document.querySelector('img[alt*="logo" i]') ||
+      document.querySelector('.org-top-card-primary-content__logo img');
+
+    // Try to get follower/employee counts
+    const statsElements = document.querySelectorAll('.org-top-card-summary-info-list__info-item');
+    let followerCount = '';
+    let employeeCount = '';
+
+    statsElements.forEach((stat) => {
+      const text = stat.textContent?.trim() || '';
+      if (text.includes('followers')) {
+        followerCount = text.replace(/\s*followers/i, '').trim();
+      } else if (text.includes('employees')) {
+        employeeCount = text.replace(/\s*employees/i, '').trim();
+      }
+    });
+
+    const name = nameElement?.textContent?.trim() || 'Unknown Company';
+    const industry = industryElement?.textContent?.trim() || '';
+    const companyLogo = (logoElement as HTMLImageElement)?.src || null;
+
+    // Debug logging
+    console.log('[Uproot] Company detected:', {
+      name,
+      industry,
+      hasLogo: !!companyLogo,
+      followerCount,
+      employeeCount,
+      url,
+    });
+
     return {
       type: 'company',
       isProfilePage: false,
       isJobPage: false,
       profileData: null,
       jobData: null,
+      companyData: {
+        name,
+        industry: industry || undefined,
+        companyUrl: url,
+        companyLogo,
+        followerCount: followerCount || undefined,
+        employeeCount: employeeCount || undefined,
+      },
     };
   }
 

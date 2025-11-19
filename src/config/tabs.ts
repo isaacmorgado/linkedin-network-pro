@@ -12,6 +12,7 @@ import {
   Bell,
   Settings2,
   UserCircle,
+  Building2,
   Briefcase,
   Rocket,
 } from 'lucide-react';
@@ -80,7 +81,7 @@ export const TAB_CONFIGS: TabConfig[] = [
   },
 
   // ========================================
-  // CONTEXT-SENSITIVE (2 tabs)
+  // CONTEXT-SENSITIVE (3 tabs)
   // ========================================
 
   {
@@ -94,10 +95,20 @@ export const TAB_CONFIGS: TabConfig[] = [
   },
 
   {
+    id: 'company',
+    label: 'Company',
+    icon: Building2,
+    shortcut: 8,
+    alwaysVisible: false,
+    visibleOn: ['company'], // Only on company pages
+    badge: false,
+  },
+
+  {
     id: 'jobs',
     label: 'Jobs',
     icon: Briefcase,
-    shortcut: 8,
+    shortcut: 9,
     alwaysVisible: false,
     visibleOn: ['job'], // Only on job pages
     badge: false,
@@ -111,7 +122,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'onboarding',
     label: 'Get Started',
     icon: Rocket,
-    shortcut: 9,
+    shortcut: 10,
     alwaysVisible: false, // Only shown on first run
     badge: false,
   },

@@ -11,11 +11,13 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useBadgeCounts } from '../../hooks/useBadgeCounts';
 import { TAB_CONFIGS, getVisibleTabs } from '../../config/tabs';
 import { ProfileTab } from '../tabs/ProfileTab';
+import { CompanyTab } from '../tabs/CompanyTab';
 import { WatchlistTab } from '../tabs/WatchlistTab';
 
 // Tab content components
 const TabContent: Record<string, React.ComponentType> = {
   profile: ProfileTab,
+  company: CompanyTab,
   watchlist: WatchlistTab,
   // Other tabs will use placeholder for now
 };

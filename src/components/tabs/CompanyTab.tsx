@@ -1,69 +1,60 @@
 /**
- * Profile Actions Tab
- * Shown only on LinkedIn person profile pages
+ * Company Tab
+ * Shown only on LinkedIn company pages
  *
  * Features:
- * 1. Find Best Route - Calculate shortest connection path
- * 2. Generate Connection Message - AI-powered personalized intro
- * 3. Add to Watchlist - Save person for tracking
+ * 1. Add to Watchlist - Save company for tracking
+ * 2. Enable Job Alerts - Monitor for new job postings
+ * 3. View Company Jobs - Quick link to company's job listings
  */
 
 import React, { useState } from 'react';
-import { GitBranch, MessageSquare, BookmarkPlus, User, Briefcase, Loader2 } from 'lucide-react';
+import { Building2, Bell, Briefcase, BookmarkPlus, Loader2, ExternalLink } from 'lucide-react';
 import { usePageContext } from '../../hooks/usePageContext';
 import { useWatchlist } from '../../hooks/useWatchlist';
 
-export function ProfileTab() {
+export function CompanyTab() {
   const pageContext = usePageContext();
-  const { addPerson } = useWatchlist();
-  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
-  const [isLoadingMessage, setIsLoadingMessage] = useState(false);
+  const { addCompany } = useWatchlist();
   const [isAddingToWatchlist, setIsAddingToWatchlist] = useState(false);
 
-  // Extract profile data from context
-  const profileData = pageContext.profileData;
-  const name = profileData?.name || 'Unknown Person';
-  const headline = profileData?.headline || '';
-  const profileImage = profileData?.profileImage;
+  // Extract company data from context
+  const companyData = pageContext.companyData;
+  const name = companyData?.name || 'Unknown Company';
+  const industry = companyData?.industry || '';
+  const companyLogo = companyData?.companyLogo;
+  const followerCount = companyData?.followerCount;
+  const employeeCount = companyData?.employeeCount;
 
-  const handleFindRoute = async () => {
-    setIsLoadingRoute(true);
-    // TODO: Implement pathfinding algorithm
-    setTimeout(() => {
-      setIsLoadingRoute(false);
-      console.log('Finding route to', name);
-    }, 1500);
-  };
-
-  const handleGenerateMessage = async () => {
-    setIsLoadingMessage(true);
-    // TODO: Implement AI message generation
-    setTimeout(() => {
-      setIsLoadingMessage(false);
-      console.log('Generating message for', name);
-    }, 2000);
-  };
-
-  const handleAddToWatchlist = async () => {
-    if (!profileData) {
-      console.error('[Uproot] No profile data available');
+  const handleAddToWatchlist = async (enableJobAlerts: boolean = false) => {
+    if (!companyData) {
+      console.error('[Uproot] No company data available');
       return;
     }
 
     setIsAddingToWatchlist(true);
     try {
-      await addPerson({
+      await addCompany({
         name,
-        headline,
-        profileUrl: profileData.profileUrl,
-        profileImage,
+        industry,
+        companyUrl: companyData.companyUrl,
+        companyLogo,
+        jobAlertEnabled: enableJobAlerts,
       });
 
-      console.log('[Uproot] Added to watchlist:', name);
+      console.log('[Uproot] Added company to watchlist:', name, { jobAlerts: enableJobAlerts });
     } catch (error) {
-      console.error('[Uproot] Failed to add to watchlist:', error);
+      console.error('[Uproot] Failed to add company to watchlist:', error);
     } finally {
       setIsAddingToWatchlist(false);
+    }
+  };
+
+  const handleViewJobs = () => {
+    if (companyData) {
+      // Navigate to company jobs page
+      const jobsUrl = companyData.companyUrl.replace(/\/?$/, '/jobs/');
+      window.open(jobsUrl, '_blank');
     }
   };
 
@@ -76,7 +67,7 @@ export function ProfileTab() {
         overflow: 'auto',
       }}
     >
-      {/* Profile Header */}
+      {/* Company Header */}
       <div
         style={{
           padding: '20px',
@@ -85,21 +76,22 @@ export function ProfileTab() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
-          {/* Profile Image or Fallback Icon */}
-          {profileImage ? (
+          {/* Company Logo or Fallback Icon */}
+          {companyLogo ? (
             <img
-              src={profileImage}
+              src={companyLogo}
               alt={name}
               style={{
                 width: '56px',
                 height: '56px',
-                borderRadius: '50%',
-                objectFit: 'cover',
+                borderRadius: '12px',
+                objectFit: 'contain',
                 border: '2px solid rgba(0, 119, 181, 0.2)',
+                backgroundColor: '#FFFFFF',
+                padding: '4px',
                 flexShrink: 0,
               }}
               onError={(e) => {
-                // If image fails to load, hide it and show fallback
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
@@ -108,7 +100,7 @@ export function ProfileTab() {
               style={{
                 width: '56px',
                 height: '56px',
-                borderRadius: '50%',
+                borderRadius: '12px',
                 background: 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)',
                 display: 'flex',
                 alignItems: 'center',
@@ -119,7 +111,7 @@ export function ProfileTab() {
                 flexShrink: 0,
               }}
             >
-              <User size={28} strokeWidth={2} />
+              <Building2 size={28} strokeWidth={2} />
             </div>
           )}
 
@@ -135,12 +127,12 @@ export function ProfileTab() {
             >
               {name}
             </h2>
-            {headline && (
+            {industry && (
               <p
                 style={{
                   fontSize: '13px',
                   color: '#6e6e73',
-                  margin: 0,
+                  margin: '0 0 4px 0',
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '6px',
@@ -150,7 +142,20 @@ export function ProfileTab() {
                 }}
               >
                 <Briefcase size={14} style={{ marginTop: '2px', flexShrink: 0 }} />
-                <span style={{ flex: 1 }}>{headline}</span>
+                <span style={{ flex: 1 }}>{industry}</span>
+              </p>
+            )}
+            {(followerCount || employeeCount) && (
+              <p
+                style={{
+                  fontSize: '12px',
+                  color: '#8e8e93',
+                  margin: 0,
+                }}
+              >
+                {followerCount && `${followerCount} followers`}
+                {followerCount && employeeCount && ' · '}
+                {employeeCount && `${employeeCount} employees`}
               </p>
             )}
           </div>
@@ -166,37 +171,37 @@ export function ProfileTab() {
           gap: '12px',
         }}
       >
-        {/* Find Best Route Card */}
-        <ActionCard
-          icon={GitBranch}
-          title="Find Best Route"
-          description="See the shortest connection path to reach this person"
-          buttonText={isLoadingRoute ? 'Finding...' : 'Calculate Route'}
-          buttonColor="#0077B5"
-          isLoading={isLoadingRoute}
-          onClick={handleFindRoute}
-        />
-
-        {/* Generate Connection Message Card */}
-        <ActionCard
-          icon={MessageSquare}
-          title="Generate Connection Message"
-          description="AI-powered personalized introduction message"
-          buttonText={isLoadingMessage ? 'Generating...' : 'Generate Message'}
-          buttonColor="#30D158"
-          isLoading={isLoadingMessage}
-          onClick={handleGenerateMessage}
-        />
-
-        {/* Add to Watchlist Card */}
+        {/* Add to Watchlist (Simple) */}
         <ActionCard
           icon={BookmarkPlus}
           title="Add to Watchlist"
-          description="Track this person's activity and connection status"
+          description="Track this company and monitor their updates"
           buttonText={isAddingToWatchlist ? 'Adding...' : 'Add to Watchlist'}
           buttonColor="#FF9500"
           isLoading={isAddingToWatchlist}
-          onClick={handleAddToWatchlist}
+          onClick={() => handleAddToWatchlist(false)}
+        />
+
+        {/* Add with Job Alerts */}
+        <ActionCard
+          icon={Bell}
+          title="Watch for Job Openings"
+          description="Get notified when this company posts new jobs matching your preferences"
+          buttonText={isAddingToWatchlist ? 'Adding...' : 'Enable Job Alerts'}
+          buttonColor="#30D158"
+          isLoading={isAddingToWatchlist}
+          onClick={() => handleAddToWatchlist(true)}
+        />
+
+        {/* View Jobs */}
+        <ActionCard
+          icon={ExternalLink}
+          title="View Open Positions"
+          description="Browse current job listings at this company"
+          buttonText="View Jobs"
+          buttonColor="#0077B5"
+          isLoading={false}
+          onClick={handleViewJobs}
         />
       </div>
 
@@ -217,7 +222,7 @@ export function ProfileTab() {
             textAlign: 'center',
           }}
         >
-          ðŸ’¡ Tip: Use Alt+7 to quickly access Profile Actions
+          =¡ Tip: Enable job alerts to get notified of new openings
         </p>
       </div>
     </div>
