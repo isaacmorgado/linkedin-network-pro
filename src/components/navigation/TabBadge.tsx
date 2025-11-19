@@ -34,8 +34,8 @@ export function TabBadge({ count, color = 'red' }: TabBadgeProps) {
     <div
       style={{
         position: 'absolute',
-        top: '-4px',
-        right: '-4px',
+        top: '-6px',
+        right: '-8px',
         minWidth: '18px',
         height: '18px',
         borderRadius: '9px',
