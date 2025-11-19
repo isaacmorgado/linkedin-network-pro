@@ -21,7 +21,7 @@ export function FloatingPanel() {
       }}
       minWidth={350}
       minHeight={400}
-      bounds="parent"
+      bounds="window"
       style={{
         zIndex: 999999,
       }}
@@ -52,12 +52,6 @@ export function FloatingPanel() {
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
           }}
         >
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f57' }} />
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ffbd2e' }} />
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#28ca42' }} />
-          </div>
-
           <h2 style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>
             LinkedIn Network Pro
           </h2>
