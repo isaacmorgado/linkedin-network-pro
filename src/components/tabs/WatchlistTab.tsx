@@ -10,7 +10,11 @@ import type { WatchlistPerson, WatchlistCompany, ConnectionPath } from '../../ty
 
 type WatchlistView = 'network' | 'people' | 'companies';
 
-export function WatchlistTab() {
+interface WatchlistTabProps {
+  panelWidth?: number;
+}
+
+export function WatchlistTab({ panelWidth = 400 }: WatchlistTabProps) {
   const {
     connectionPaths,
     watchlist,
@@ -151,6 +155,7 @@ export function WatchlistTab() {
           pathCount={connectionPaths.length}
           peopleCount={watchlist.length}
           companyCount={companyWatchlist.length}
+          panelWidth={panelWidth}
         />
 
         {/* Empty State */}
@@ -259,6 +264,7 @@ export function WatchlistTab() {
         pathCount={connectionPaths.length}
         peopleCount={watchlist.length}
         companyCount={companyWatchlist.length}
+        panelWidth={panelWidth}
       />
 
       {/* List */}
@@ -469,9 +475,18 @@ interface TabSwitcherProps {
   pathCount: number;
   peopleCount: number;
   companyCount: number;
+  panelWidth?: number;
 }
 
-function TabSwitcher({ activeView, onViewChange, pathCount, peopleCount, companyCount }: TabSwitcherProps) {
+function TabSwitcher({ activeView, onViewChange, pathCount, peopleCount, companyCount, panelWidth = 400 }: TabSwitcherProps) {
+  // Responsive sizing based on panel width
+  const isNarrow = panelWidth < 360;
+  const isCompact = panelWidth < 400;
+  const showIcons = !isNarrow;
+  const fontSize = isNarrow ? '12px' : '14px';
+  const padding = isNarrow ? '8px 12px' : isCompact ? '9px 14px' : '10px 16px';
+  const gap = isNarrow ? '4px' : '8px';
+  const iconSize = isNarrow ? 14 : 16;
   return (
     <div
       style={{
@@ -480,23 +495,23 @@ function TabSwitcher({ activeView, onViewChange, pathCount, peopleCount, company
         backgroundColor: 'rgba(255, 149, 0, 0.03)',
       }}
     >
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ display: 'flex', gap }}>
         <button
           onClick={() => onViewChange('network')}
           style={{
             flex: 1,
-            padding: '10px 16px',
+            padding,
             backgroundColor: activeView === 'network' ? '#0077B5' : 'transparent',
             color: activeView === 'network' ? '#FFFFFF' : '#6e6e73',
             border: activeView === 'network' ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
             borderRadius: '8px',
-            fontSize: '14px',
+            fontSize,
             fontWeight: '600',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px',
+            gap: '6px',
             transition: 'all 150ms',
           }}
           onMouseEnter={(e) => {
@@ -510,7 +525,7 @@ function TabSwitcher({ activeView, onViewChange, pathCount, peopleCount, company
             }
           }}
         >
-          <GitBranch size={16} strokeWidth={2} />
+          {showIcons && <GitBranch size={iconSize} strokeWidth={2} />}
           Network
           {pathCount > 0 && (
             <span
@@ -531,18 +546,18 @@ function TabSwitcher({ activeView, onViewChange, pathCount, peopleCount, company
           onClick={() => onViewChange('people')}
           style={{
             flex: 1,
-            padding: '10px 16px',
+            padding,
             backgroundColor: activeView === 'people' ? '#0077B5' : 'transparent',
             color: activeView === 'people' ? '#FFFFFF' : '#6e6e73',
             border: activeView === 'people' ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
             borderRadius: '8px',
-            fontSize: '14px',
+            fontSize,
             fontWeight: '600',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px',
+            gap: '6px',
             transition: 'all 150ms',
           }}
           onMouseEnter={(e) => {
@@ -556,7 +571,7 @@ function TabSwitcher({ activeView, onViewChange, pathCount, peopleCount, company
             }
           }}
         >
-          <User size={16} strokeWidth={2} />
+          {showIcons && <User size={iconSize} strokeWidth={2} />}
           People
           {peopleCount > 0 && (
             <span
@@ -577,18 +592,18 @@ function TabSwitcher({ activeView, onViewChange, pathCount, peopleCount, company
           onClick={() => onViewChange('companies')}
           style={{
             flex: 1,
-            padding: '10px 16px',
+            padding,
             backgroundColor: activeView === 'companies' ? '#0077B5' : 'transparent',
             color: activeView === 'companies' ? '#FFFFFF' : '#6e6e73',
             border: activeView === 'companies' ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
             borderRadius: '8px',
-            fontSize: '14px',
+            fontSize,
             fontWeight: '600',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px',
+            gap: '6px',
             transition: 'all 150ms',
           }}
           onMouseEnter={(e) => {
@@ -602,7 +617,7 @@ function TabSwitcher({ activeView, onViewChange, pathCount, peopleCount, company
             }
           }}
         >
-          <Building2 size={16} strokeWidth={2} />
+          {showIcons && <Building2 size={iconSize} strokeWidth={2} />}
           Companies
           {companyCount > 0 && (
             <span

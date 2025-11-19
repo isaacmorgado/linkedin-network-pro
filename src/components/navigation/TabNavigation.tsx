@@ -14,8 +14,13 @@ import { ProfileTab } from '../tabs/ProfileTab';
 import { CompanyTab } from '../tabs/CompanyTab';
 import { WatchlistTab } from '../tabs/WatchlistTab';
 
+// Tab content props interface
+interface TabContentProps {
+  panelWidth?: number;
+}
+
 // Tab content components
-const TabContent: Record<string, React.ComponentType> = {
+const TabContent: Record<string, React.ComponentType<TabContentProps>> = {
   profile: ProfileTab,
   company: CompanyTab,
   watchlist: WatchlistTab,
@@ -124,7 +129,7 @@ export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabN
       >
         {/* Render actual tab component or placeholder */}
         {TabContent[activeTab] ? (
-          React.createElement(TabContent[activeTab])
+          React.createElement(TabContent[activeTab], { panelWidth })
         ) : (
           <TabPlaceholder title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} />
         )}

@@ -13,7 +13,11 @@ import { Building2, Bell, Briefcase, BookmarkPlus, Loader2, ExternalLink } from 
 import { usePageContext } from '../../hooks/usePageContext';
 import { useWatchlist } from '../../hooks/useWatchlist';
 
-export function CompanyTab() {
+interface CompanyTabProps {
+  panelWidth?: number;
+}
+
+export function CompanyTab({ panelWidth = 400 }: CompanyTabProps) {
   const pageContext = usePageContext();
   const { addCompany } = useWatchlist();
   const [isAddingToWatchlist, setIsAddingToWatchlist] = useState(false);
@@ -154,7 +158,7 @@ export function CompanyTab() {
                 }}
               >
                 {followerCount && `${followerCount} followers`}
-                {followerCount && employeeCount && ' · '}
+                {followerCount && employeeCount && ' ï¿½ '}
                 {employeeCount && `${employeeCount} employees`}
               </p>
             )}
@@ -222,7 +226,7 @@ export function CompanyTab() {
             textAlign: 'center',
           }}
         >
-          =¡ Tip: Enable job alerts to get notified of new openings
+          =ï¿½ Tip: Enable job alerts to get notified of new openings
         </p>
       </div>
     </div>

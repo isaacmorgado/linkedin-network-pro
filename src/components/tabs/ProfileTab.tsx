@@ -13,7 +13,11 @@ import { GitBranch, MessageSquare, BookmarkPlus, User, Briefcase, Loader2 } from
 import { usePageContext } from '../../hooks/usePageContext';
 import { useWatchlist } from '../../hooks/useWatchlist';
 
-export function ProfileTab() {
+interface ProfileTabProps {
+  panelWidth?: number;
+}
+
+export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
   const pageContext = usePageContext();
   const { addPerson } = useWatchlist();
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
