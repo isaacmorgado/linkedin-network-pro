@@ -126,12 +126,20 @@ export function getVisibleTabs(
 ): TabConfig[] {
   console.log('[Uproot] getVisibleTabs called with:', { pageContextType, isFirstRun });
 
+  // If first run, ONLY show onboarding tab
+  if (isFirstRun) {
+    const onboardingTab = TAB_CONFIGS.find((tab) => tab.id === 'onboarding');
+    if (onboardingTab) {
+      console.log('[Uproot] First run - showing ONLY onboarding tab');
+      return [onboardingTab];
+    }
+  }
+
   const visibleTabs = TAB_CONFIGS.filter((tab) => {
-    // Special case: onboarding only on first run
+    // Hide onboarding after first run
     if (tab.id === 'onboarding') {
-      const shouldShow = isFirstRun;
-      console.log(`[Uproot] Tab "${tab.id}": ${shouldShow ? 'VISIBLE' : 'HIDDEN'} (first run: ${isFirstRun})`);
-      return shouldShow;
+      console.log(`[Uproot] Tab "${tab.id}": HIDDEN (not first run)`);
+      return false;
     }
 
     // Always visible tabs

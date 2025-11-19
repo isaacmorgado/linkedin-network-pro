@@ -319,14 +319,24 @@ function WelcomeStep() {
           description="Track companies and get notified of relevant job openings"
         />
         <Feature
+          icon="📝"
+          title="Optimized Resume & Cover Letters"
+          description="Auto-generate tailored resumes and cover letters for every job that bypass ATS"
+        />
+        <Feature
+          icon="🤖"
+          title="Smart Application Assistant"
+          description="Save common questions or let AI fill them out - sounds human, beats ATS every time"
+        />
+        <Feature
+          icon="💾"
+          title="Answer Library"
+          description="Highlight questions in applications, paste your saved answers instantly"
+        />
+        <Feature
           icon="✉️"
           title="AI Messages"
           description="Generate personalized connection messages instantly"
-        />
-        <Feature
-          icon="📊"
-          title="Activity Feed"
-          description="Stay updated on people and companies you're tracking"
         />
       </div>
 

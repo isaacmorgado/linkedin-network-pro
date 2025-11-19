@@ -16,6 +16,18 @@ export function FloatingPanel() {
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const rndRef = useRef<Rnd>(null);
 
+  // Check if first run and set to onboarding tab
+  useEffect(() => {
+    async function checkFirstRun() {
+      const { isOnboardingComplete } = await import('../utils/storage');
+      const completed = await isOnboardingComplete();
+      if (!completed) {
+        setActiveTab('onboarding');
+      }
+    }
+    checkFirstRun();
+  }, []);
+
   const handleClose = () => {
     const container = document.getElementById('linkedin-extension-root');
     if (container) {
