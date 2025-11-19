@@ -320,13 +320,39 @@ interface FeedCardProps {
 function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
   const isNarrow = panelWidth < 360;
 
+  // Responsive sizing based on panel width
+  const getResponsiveSize = () => {
+    if (panelWidth < 320) {
+      return { iconBox: 28, borderRadius: '6px', padding: '10px', gap: '8px', marginBottom: '8px' };
+    } else if (panelWidth < 360) {
+      return { iconBox: 32, borderRadius: '8px', padding: '12px', gap: '10px', marginBottom: '10px' };
+    } else if (panelWidth < 400) {
+      return { iconBox: 36, borderRadius: '10px', padding: '14px', gap: '12px', marginBottom: '12px' };
+    } else {
+      return { iconBox: 40, borderRadius: '12px', padding: '16px', gap: '12px', marginBottom: '12px' };
+    }
+  };
+
+  const sizes = getResponsiveSize();
+
   const handleToggleRead = () => {
     onToggleRead(item.id);
     // TODO: Update in storage
   };
 
   const getTypeIcon = () => {
-    const iconSize = isNarrow ? 14 : 16;
+    // More granular icon sizing based on panel width
+    let iconSize = 16; // Default
+    if (panelWidth < 320) {
+      iconSize = 12;
+    } else if (panelWidth < 360) {
+      iconSize = 14;
+    } else if (panelWidth < 400) {
+      iconSize = 16;
+    } else {
+      iconSize = 18;
+    }
+
     switch (item.type) {
       case 'job_alert':
         return <Briefcase size={iconSize} color="#0077B5" />;
@@ -377,8 +403,8 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
     <div
       style={{
         backgroundColor: '#FFFFFF',
-        borderRadius: isNarrow ? '10px' : '12px',
-        padding: isNarrow ? '12px' : '16px',
+        borderRadius: sizes.borderRadius,
+        padding: sizes.padding,
         border: `2px solid ${item.read ? 'transparent' : '#0077B5'}`,
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
         transition: 'all 150ms',
@@ -386,11 +412,11 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
       }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: isNarrow ? '10px' : '12px', marginBottom: isNarrow ? '10px' : '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: sizes.gap, marginBottom: sizes.marginBottom }}>
         <div
           style={{
-            width: isNarrow ? '32px' : '36px',
-            height: isNarrow ? '32px' : '36px',
+            width: `${sizes.iconBox}px`,
+            height: `${sizes.iconBox}px`,
             borderRadius: '8px',
             backgroundColor: getTypeColor(),
             display: 'flex',
