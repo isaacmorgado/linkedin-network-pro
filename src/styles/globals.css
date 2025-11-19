@@ -123,10 +123,6 @@ body {
    Animation Utilities
    ============================================================================ */
 
-.transition-smooth {
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -152,32 +148,43 @@ body {
 
 .btn {
   @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium
-         transition-smooth focus-visible:outline-none focus-visible:ring-2
-         focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50;
+         transition-all duration-300 focus-visible:outline-none focus-visible:ring-2
+         focus-visible:ring-blue-500 disabled:pointer-events-none disabled:opacity-50;
 }
 
 .btn-primary {
-  @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium
+         transition-all duration-300 focus-visible:outline-none focus-visible:ring-2
+         focus-visible:ring-blue-500 disabled:pointer-events-none disabled:opacity-50
+         bg-blue-600 text-white hover:bg-blue-700;
 }
 
 .btn-secondary {
-  @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium
+         transition-all duration-300 focus-visible:outline-none focus-visible:ring-2
+         focus-visible:ring-blue-500 disabled:pointer-events-none disabled:opacity-50
+         bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600;
 }
 
 .btn-ghost {
-  @apply btn hover:bg-accent hover:text-accent-foreground;
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium
+         transition-all duration-300 focus-visible:outline-none focus-visible:ring-2
+         focus-visible:ring-blue-500 disabled:pointer-events-none disabled:opacity-50
+         hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white;
 }
 
 .input {
-  @apply flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2
-         text-sm ring-offset-background file:border-0 file:bg-transparent
-         file:text-sm file:font-medium placeholder:text-muted-foreground
-         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-         disabled:cursor-not-allowed disabled:opacity-50;
+  @apply flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2
+         text-sm file:border-0 file:bg-transparent
+         file:text-sm file:font-medium placeholder:text-gray-400
+         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+         disabled:cursor-not-allowed disabled:opacity-50
+         dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder:text-gray-500;
 }
 
 .card {
-  @apply rounded-xl border bg-card text-card-foreground shadow-sm;
+  @apply rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm
+         dark:border-gray-800 dark:bg-gray-900 dark:text-white;
 }
 
 /* ============================================================================
@@ -186,17 +193,17 @@ body {
 
 .network-node {
   @apply flex items-center justify-center rounded-full bg-white dark:bg-gray-800
-         shadow-lg border-2 border-primary/20 transition-smooth hover:scale-110;
+         shadow-lg border-2 border-blue-200 dark:border-blue-800 transition-all duration-300 hover:scale-110;
 }
 
 .network-edge {
-  stroke: hsl(var(--muted-foreground));
+  stroke: rgb(107 114 128);
   stroke-width: 2;
   fill: none;
 }
 
 .network-edge.active {
-  stroke: hsl(var(--primary));
+  stroke: rgb(37 99 235);
   stroke-width: 3;
 }
 
