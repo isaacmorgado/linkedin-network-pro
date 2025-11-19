@@ -13,8 +13,8 @@ import type { OnboardingState, JobPreferences } from '../types/onboarding';
 import { ONBOARDING_STORAGE_KEY } from '../types/onboarding';
 import type { FeedItem, FeedStats } from '../types/feed';
 import { FEED_STORAGE_KEY } from '../types/feed';
-import type { Resume, ResumeApplication, ResumeStats, ProfessionalProfile, ProfileStats } from '../types/resume';
-import { RESUMES_STORAGE_KEY, RESUME_APPLICATIONS_STORAGE_KEY, PROFESSIONAL_PROFILE_KEY } from '../types/resume';
+import type { Resume, ResumeApplication, ResumeStats, ProfessionalProfile, ProfileStats, JobDescriptionAnalysis } from '../types/resume';
+import { RESUMES_STORAGE_KEY, RESUME_APPLICATIONS_STORAGE_KEY, PROFESSIONAL_PROFILE_KEY, JOB_DESCRIPTIONS_KEY } from '../types/resume';
 
 // Get watchlist from storage
 export async function getWatchlist(): Promise<WatchlistPerson[]> {
@@ -1522,4 +1522,77 @@ function calculateProfileCompleteness(profile: ProfessionalProfile): number {
   if (profile.certifications.length > 0) score += 5;
 
   return Math.round((score / maxScore) * 100);
+}
+
+// ============================================================================
+// JOB DESCRIPTION ANALYSIS FUNCTIONS
+// ============================================================================
+
+/**
+ * Get all job description analyses from storage
+ */
+export async function getJobDescriptionAnalyses(): Promise<JobDescriptionAnalysis[]> {
+  try {
+    const result = await chrome.storage.local.get(JOB_DESCRIPTIONS_KEY);
+    const analyses = result[JOB_DESCRIPTIONS_KEY] || [];
+    // Sort by analyzed date, newest first
+    return analyses.sort((a: JobDescriptionAnalysis, b: JobDescriptionAnalysis) => b.analyzedAt - a.analyzedAt);
+  } catch (error) {
+    console.error('[Uproot] Error getting job description analyses:', error);
+    return [];
+  }
+}
+
+/**
+ * Save job description analysis to storage
+ */
+export async function saveJobDescriptionAnalysis(analysis: JobDescriptionAnalysis): Promise<void> {
+  try {
+    const analyses = await getJobDescriptionAnalyses();
+
+    // Check if analysis with same ID exists
+    const existingIndex = analyses.findIndex((a) => a.id === analysis.id);
+
+    if (existingIndex !== -1) {
+      // Update existing
+      analyses[existingIndex] = analysis;
+    } else {
+      // Add new
+      analyses.push(analysis);
+    }
+
+    await chrome.storage.local.set({ [JOB_DESCRIPTIONS_KEY]: analyses });
+    console.log('[Uproot] Job description analysis saved:', analysis.jobTitle);
+  } catch (error) {
+    console.error('[Uproot] Error saving job description analysis:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete job description analysis
+ */
+export async function deleteJobDescriptionAnalysis(id: string): Promise<void> {
+  try {
+    const analyses = await getJobDescriptionAnalyses();
+    const filtered = analyses.filter((a) => a.id !== id);
+    await chrome.storage.local.set({ [JOB_DESCRIPTIONS_KEY]: filtered });
+    console.log('[Uproot] Job description analysis deleted:', id);
+  } catch (error) {
+    console.error('[Uproot] Error deleting job description analysis:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get job description analysis by ID
+ */
+export async function getJobDescriptionAnalysis(id: string): Promise<JobDescriptionAnalysis | null> {
+  try {
+    const analyses = await getJobDescriptionAnalyses();
+    return analyses.find((a) => a.id === id) || null;
+  } catch (error) {
+    console.error('[Uproot] Error getting job description analysis:', error);
+    return null;
+  }
 }
