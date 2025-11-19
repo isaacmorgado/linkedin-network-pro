@@ -11,10 +11,12 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useBadgeCounts } from '../../hooks/useBadgeCounts';
 import { TAB_CONFIGS, getVisibleTabs } from '../../config/tabs';
 import { ProfileTab } from '../tabs/ProfileTab';
+import { WatchlistTab } from '../tabs/WatchlistTab';
 
 // Tab content components
 const TabContent: Record<string, React.ComponentType> = {
   profile: ProfileTab,
+  watchlist: WatchlistTab,
   // Other tabs will use placeholder for now
 };
 
@@ -135,7 +137,7 @@ export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabN
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
-          gap: isCompact ? '2px' : '4px',
+          gap: isCompact ? '2px' : tabsWithBadges.length >= 7 ? '2px' : '4px',
           padding: '8px',
           borderTop: '1px solid rgba(0, 0, 0, 0.08)',
           backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -153,6 +155,7 @@ export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabN
             onClick={() => onTabChange(tab.id)}
             badgeCount={tab.badgeCount}
             compact={isCompact}
+            totalVisibleTabs={tabsWithBadges.length}
           />
         ))}
       </div>

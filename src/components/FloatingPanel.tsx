@@ -13,6 +13,7 @@ export function FloatingPanel() {
   const [panelSize, setPanelSize] = useState({ width: 400, height: 500 });
   const [isMinimized, setIsMinimized] = useState(false);
   const [panelPosition, setPanelPosition] = useState({ x: 100, y: 100 });
+  const [shouldAnimate, setShouldAnimate] = useState(false);
   const rndRef = useRef<Rnd>(null);
 
   const handleClose = () => {
@@ -38,11 +39,15 @@ export function FloatingPanel() {
         // Reposition so bottom of panel is 40px from bottom
         const newY = Math.max(20, viewportHeight - fullPanelHeight - 40);
 
-        // Smooth bounce animation
+        // Enable animation, reposition, then disable after animation completes
+        setShouldAnimate(true);
         setTimeout(() => {
           rndRef.current?.updatePosition({ x: panelPosition.x, y: newY });
           setPanelPosition({ x: panelPosition.x, y: newY });
           console.log('[Uproot] Repositioned on maximize:', { from: currentY, to: newY });
+
+          // Disable animation after it completes
+          setTimeout(() => setShouldAnimate(false), 600);
         }, 50); // Small delay to let minimize animation start
       }
     }
@@ -65,11 +70,15 @@ export function FloatingPanel() {
       if (currentY > maxAllowedY) {
         const newY = Math.max(20, maxAllowedY); // At least 20px from top
 
-        // Smooth animation using updatePosition
+        // Enable animation, reposition, then disable
+        setShouldAnimate(true);
         rndRef.current?.updatePosition({ x: panelPosition.x, y: newY });
         setPanelPosition({ x: panelPosition.x, y: newY });
 
         console.log('[Uproot] Auto-repositioned minimized panel:', { from: currentY, to: newY });
+
+        // Disable animation after it completes
+        setTimeout(() => setShouldAnimate(false), 600);
       }
     };
 
@@ -119,8 +128,10 @@ export function FloatingPanel() {
       }}
       style={{
         zIndex: 999999,
-        // Bouncy spring animation - overshoots then settles
-        transition: 'all 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+        // Bouncy spring animation - only when programmatically repositioning, not during drag
+        transition: shouldAnimate
+          ? 'all 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+          : 'none',
       }}
     >
       <div

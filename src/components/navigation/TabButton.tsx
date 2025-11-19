@@ -7,11 +7,16 @@ import React, { useRef, useState } from 'react';
 import type { TabButtonProps } from '../../types/navigation';
 import { TabBadge } from './TabBadge';
 
-export function TabButton({ tab, isActive, onClick, badgeCount, compact = false }: TabButtonProps) {
+export function TabButton({ tab, isActive, onClick, badgeCount, compact = false, totalVisibleTabs = 6 }: TabButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const Icon = tab.icon;
+
+  // Smart sizing: reduce minWidth when there are 7+ tabs to ensure all fit
+  const shouldShrink = totalVisibleTabs >= 7;
+  const minWidth = compact ? '50px' : shouldShrink ? '48px' : '60px';
+  const padding = compact ? '6px 8px' : shouldShrink ? '8px 8px' : '8px 12px';
 
   const baseStyles: React.CSSProperties = {
     position: 'relative',
@@ -20,8 +25,8 @@ export function TabButton({ tab, isActive, onClick, badgeCount, compact = false 
     alignItems: 'center',
     justifyContent: 'center',
     gap: compact ? '2px' : '4px',
-    padding: compact ? '6px 8px' : '8px 12px',
-    minWidth: compact ? '50px' : '60px',
+    padding,
+    minWidth,
     background: isActive ? 'rgba(0, 119, 181, 0.1)' : 'transparent',
     border: 'none',
     borderRadius: '12px',

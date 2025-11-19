@@ -79,6 +79,7 @@ export interface TabButtonProps {
   onClick: () => void;
   badgeCount?: number;
   compact?: boolean; // For small panel widths
+  totalVisibleTabs?: number; // Total number of visible tabs (for sizing)
 }
 
 export interface TabBadgeProps {

@@ -11,9 +11,11 @@
 import React, { useState } from 'react';
 import { GitBranch, MessageSquare, BookmarkPlus, User, Briefcase, Loader2 } from 'lucide-react';
 import { usePageContext } from '../../hooks/usePageContext';
+import { useWatchlist } from '../../hooks/useWatchlist';
 
 export function ProfileTab() {
   const pageContext = usePageContext();
+  const { addPerson } = useWatchlist();
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
   const [isAddingToWatchlist, setIsAddingToWatchlist] = useState(false);
@@ -43,12 +45,29 @@ export function ProfileTab() {
   };
 
   const handleAddToWatchlist = async () => {
+    if (!profileData) {
+      alert('No profile data available');
+      return;
+    }
+
     setIsAddingToWatchlist(true);
-    // TODO: Implement watchlist storage
-    setTimeout(() => {
+    try {
+      await addPerson({
+        name,
+        headline,
+        profileUrl: profileData.profileUrl,
+        profileImage,
+      });
+
+      // Show success message
+      alert(`Added ${name} to your watchlist!`);
+      console.log('[Uproot] Added to watchlist:', name);
+    } catch (error) {
+      console.error('[Uproot] Failed to add to watchlist:', error);
+      alert('Failed to add to watchlist. Please try again.');
+    } finally {
       setIsAddingToWatchlist(false);
-      console.log('Added to watchlist:', name);
-    }, 1000);
+    }
   };
 
   return (
