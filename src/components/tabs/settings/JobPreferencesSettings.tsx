@@ -141,6 +141,7 @@ export function JobPreferencesSettings({ panelWidth = 400 }: JobPreferencesSetti
   }, []);
 
   const experienceLevels: { value: ExperienceLevel; label: string }[] = [
+    { value: 'internship', label: 'Internship' },
     { value: 'entry', label: 'Entry Level' },
     { value: 'mid', label: 'Mid Level' },
     { value: 'senior', label: 'Senior' },

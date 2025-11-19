@@ -28,6 +28,7 @@ export interface JobPreferences {
 }
 
 export type ExperienceLevel =
+  | 'internship'
   | 'entry'
   | 'mid'
   | 'senior'

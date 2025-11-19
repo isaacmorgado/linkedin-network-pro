@@ -260,11 +260,9 @@ function FeedFilters({ activeFilter, onFilterChange, unreadCount, panelWidth = 4
         padding: isVeryNarrow ? '8px 12px' : '12px 16px',
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
         backgroundColor: '#FFFFFF',
-        overflowX: 'auto',
-        overflowY: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', gap, flexWrap: 'nowrap' }}>
+      <div style={{ display: 'flex', gap, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
         {filters.map(({ value, label, shortLabel, icon }) => {
           const displayLabel = showLabels ? label : (shortLabel || '');
 
