@@ -93,20 +93,20 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
       {/* Header */}
       <div
         style={{
-          padding: '20px 20px 16px 20px',
+          padding: panelWidth < 360 ? '16px 16px 12px 16px' : '20px 20px 16px 20px',
           borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
           <h2
             style={{
-              fontSize: '20px',
+              fontSize: panelWidth < 360 ? '18px' : '20px',
               fontWeight: '700',
               margin: 0,
               color: '#1d1d1f',
             }}
           >
-            Activity Feed
+            {panelWidth < 360 ? 'Feed' : 'Activity Feed'}
           </h2>
           {unreadCount > 0 && (
             <div
@@ -114,24 +114,27 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
                 padding: '4px 10px',
                 backgroundColor: 'rgba(255, 149, 0, 0.1)',
                 borderRadius: '12px',
-                fontSize: '12px',
+                fontSize: panelWidth < 360 ? '11px' : '12px',
                 fontWeight: '600',
                 color: '#FF9500',
+                whiteSpace: 'nowrap',
               }}
             >
               {unreadCount} new
             </div>
           )}
         </div>
-        <p
-          style={{
-            fontSize: '13px',
-            color: '#6e6e73',
-            margin: 0,
-          }}
-        >
-          Job alerts, updates, and activity from your watchlist
-        </p>
+        {panelWidth >= 360 && (
+          <p
+            style={{
+              fontSize: '13px',
+              color: '#6e6e73',
+              margin: 0,
+            }}
+          >
+            Job alerts, updates, and activity from your watchlist
+          </p>
+        )}
       </div>
 
       {/* Filters */}
@@ -157,9 +160,9 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
         ) : filteredItems.length === 0 ? (
           <EmptyFilterState filter={activeFilter} />
         ) : (
-          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ padding: panelWidth < 360 ? '12px' : '16px', display: 'flex', flexDirection: 'column', gap: panelWidth < 360 ? '10px' : '12px' }}>
             {filteredItems.map((item) => (
-              <FeedCard key={item.id} item={item} />
+              <FeedCard key={item.id} item={item} panelWidth={panelWidth} />
             ))}
           </div>
         )}
@@ -177,62 +180,75 @@ interface FeedFiltersProps {
 }
 
 function FeedFilters({ activeFilter, onFilterChange, unreadCount, panelWidth = 400 }: FeedFiltersProps) {
-  const isNarrow = panelWidth < 360;
-  const fontSize = isNarrow ? '11px' : '12px';
-  const padding = isNarrow ? '6px 10px' : '8px 12px';
+  const isVeryNarrow = panelWidth < 360;
+  const isNarrow = panelWidth < 400;
+  const fontSize = isVeryNarrow ? '10px' : isNarrow ? '11px' : '12px';
+  const padding = isVeryNarrow ? '6px 8px' : isNarrow ? '6px 10px' : '8px 12px';
+  const gap = isVeryNarrow ? '4px' : '6px';
+  const iconSize = isVeryNarrow ? 10 : 12;
+  const showLabels = panelWidth >= 360; // Hide labels on very narrow widths
 
-  const filters: { value: FeedFilter; label: string; icon?: React.ReactNode }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'unread', label: `Unread${unreadCount > 0 ? ` (${unreadCount})` : ''}` },
-    { value: 'jobs', label: 'Jobs', icon: <Briefcase size={12} /> },
-    { value: 'companies', label: 'Companies', icon: <Building2 size={12} /> },
-    { value: 'people', label: 'People', icon: <User size={12} /> },
+  const filters: { value: FeedFilter; label: string; shortLabel?: string; icon?: React.ReactNode }[] = [
+    { value: 'all', label: 'All', icon: <Filter size={iconSize} /> },
+    { value: 'unread', label: `Unread${unreadCount > 0 ? ` (${unreadCount})` : ''}`, shortLabel: 'New', icon: <Circle size={iconSize} /> },
+    { value: 'jobs', label: 'Jobs', icon: <Briefcase size={iconSize} /> },
+    { value: 'companies', label: 'Companies', shortLabel: 'Co.', icon: <Building2 size={iconSize} /> },
+    { value: 'people', label: 'People', icon: <User size={iconSize} /> },
   ];
 
   return (
     <div
       style={{
-        padding: '12px 16px',
+        padding: isVeryNarrow ? '8px 12px' : '12px 16px',
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
         backgroundColor: '#FFFFFF',
         overflowX: 'auto',
-        whiteSpace: 'nowrap',
+        overflowY: 'hidden',
       }}
     >
-      <div style={{ display: 'inline-flex', gap: '6px' }}>
-        {filters.map(({ value, label, icon }) => (
-          <button
-            key={value}
-            onClick={() => onFilterChange(value)}
-            style={{
-              padding,
-              backgroundColor: activeFilter === value ? '#0077B5' : 'rgba(0, 0, 0, 0.05)',
-              color: activeFilter === value ? '#FFFFFF' : '#1d1d1f',
-              border: 'none',
-              borderRadius: '16px',
-              fontSize,
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 150ms',
-            }}
-            onMouseEnter={(e) => {
-              if (activeFilter !== value) {
-                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.08)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeFilter !== value) {
-                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-              }
-            }}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap, flexWrap: 'nowrap' }}>
+        {filters.map(({ value, label, shortLabel, icon }) => {
+          const displayLabel = showLabels ? label : (shortLabel || '');
+
+          return (
+            <button
+              key={value}
+              onClick={() => onFilterChange(value)}
+              style={{
+                padding,
+                backgroundColor: activeFilter === value ? '#0077B5' : 'rgba(0, 0, 0, 0.05)',
+                color: activeFilter === value ? '#FFFFFF' : '#1d1d1f',
+                border: 'none',
+                borderRadius: '16px',
+                fontSize,
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: showLabels ? '4px' : '0',
+                transition: 'all 150ms',
+                whiteSpace: 'nowrap',
+                minWidth: showLabels ? 'auto' : '32px',
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                if (activeFilter !== value) {
+                  e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.08)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeFilter !== value) {
+                  e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                }
+              }}
+              title={!showLabels ? label : undefined}
+            >
+              {icon}
+              {showLabels && displayLabel}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -241,10 +257,12 @@ function FeedFilters({ activeFilter, onFilterChange, unreadCount, panelWidth = 4
 // Feed Card Component
 interface FeedCardProps {
   item: FeedItem;
+  panelWidth?: number;
 }
 
-function FeedCard({ item }: FeedCardProps) {
+function FeedCard({ item, panelWidth = 400 }: FeedCardProps) {
   const [isRead, setIsRead] = useState(item.read);
+  const isNarrow = panelWidth < 360;
 
   const handleMarkRead = () => {
     setIsRead(true);
@@ -298,8 +316,8 @@ function FeedCard({ item }: FeedCardProps) {
     <div
       style={{
         backgroundColor: '#FFFFFF',
-        borderRadius: '12px',
-        padding: '16px',
+        borderRadius: isNarrow ? '10px' : '12px',
+        padding: isNarrow ? '12px' : '16px',
         border: `2px solid ${isRead ? 'transparent' : '#0077B5'}`,
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
         transition: 'all 150ms',
@@ -307,11 +325,11 @@ function FeedCard({ item }: FeedCardProps) {
       }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: isNarrow ? '10px' : '12px', marginBottom: isNarrow ? '10px' : '12px' }}>
         <div
           style={{
-            width: '36px',
-            height: '36px',
+            width: isNarrow ? '32px' : '36px',
+            height: isNarrow ? '32px' : '36px',
             borderRadius: '8px',
             backgroundColor: getTypeColor(),
             display: 'flex',
@@ -324,10 +342,10 @@ function FeedCard({ item }: FeedCardProps) {
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
             <h3
               style={{
-                fontSize: '14px',
+                fontSize: isNarrow ? '13px' : '14px',
                 fontWeight: '600',
                 margin: 0,
                 color: '#1d1d1f',
@@ -341,19 +359,19 @@ function FeedCard({ item }: FeedCardProps) {
                   padding: '2px 6px',
                   backgroundColor: 'rgba(52, 199, 89, 0.1)',
                   borderRadius: '4px',
-                  fontSize: '11px',
+                  fontSize: isNarrow ? '10px' : '11px',
                   fontWeight: '600',
                   color: '#34C759',
                 }}
               >
-                {item.matchScore}% match
+                {item.matchScore}%
               </span>
             )}
           </div>
 
           <p
             style={{
-              fontSize: '13px',
+              fontSize: isNarrow ? '12px' : '13px',
               color: '#1d1d1f',
               margin: '0 0 8px 0',
               fontWeight: '500',
@@ -365,50 +383,52 @@ function FeedCard({ item }: FeedCardProps) {
           {(item.company || item.location) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {item.company && (
-                <span style={{ fontSize: '12px', color: '#6e6e73' }}>
-                  <Building2 size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+                <span style={{ fontSize: isNarrow ? '11px' : '12px', color: '#6e6e73' }}>
+                  <Building2 size={isNarrow ? 10 : 12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
                   {item.company}
                 </span>
               )}
               {item.location && (
-                <span style={{ fontSize: '12px', color: '#6e6e73' }}>{item.location}</span>
+                <span style={{ fontSize: isNarrow ? '11px' : '12px', color: '#6e6e73' }}>{item.location}</span>
               )}
             </div>
           )}
         </div>
 
-        <button
-          onClick={handleMarkRead}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            borderRadius: '50%',
-            transition: 'background-color 150ms',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-          title={isRead ? 'Read' : 'Mark as read'}
-        >
-          {isRead ? (
-            <CheckCircle2 size={16} color="#34C759" />
-          ) : (
-            <Circle size={16} color="#6e6e73" />
-          )}
-        </button>
+        {!isNarrow && (
+          <button
+            onClick={handleMarkRead}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: '50%',
+              transition: 'background-color 150ms',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+            title={isRead ? 'Read' : 'Mark as read'}
+          >
+            {isRead ? (
+              <CheckCircle2 size={16} color="#34C759" />
+            ) : (
+              <Circle size={16} color="#6e6e73" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Footer */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#86868b' }}>
-          <Clock size={12} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: isNarrow ? '11px' : '12px', color: '#86868b' }}>
+          <Clock size={isNarrow ? 10 : 12} />
           {formatTimestamp(item.timestamp)}
         </div>
 
@@ -418,7 +438,7 @@ function FeedCard({ item }: FeedCardProps) {
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              fontSize: '13px',
+              fontSize: isNarrow ? '12px' : '13px',
               fontWeight: '600',
               color: '#0077B5',
               textDecoration: 'none',
@@ -426,6 +446,7 @@ function FeedCard({ item }: FeedCardProps) {
               alignItems: 'center',
               gap: '4px',
               transition: 'color 150ms',
+              whiteSpace: 'nowrap',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = '#005885';
@@ -435,7 +456,7 @@ function FeedCard({ item }: FeedCardProps) {
             }}
           >
             {item.actionLabel || 'View'}
-            <ExternalLink size={12} />
+            <ExternalLink size={isNarrow ? 10 : 12} />
           </a>
         )}
       </div>
