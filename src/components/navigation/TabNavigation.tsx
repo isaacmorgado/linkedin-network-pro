@@ -15,6 +15,7 @@ import { CompanyTab } from '../tabs/CompanyTab';
 import { WatchlistTab } from '../tabs/WatchlistTab';
 import { OnboardingTab } from '../tabs/OnboardingTab';
 import { SettingsTab } from '../tabs/SettingsTab';
+import { FeedTab } from '../tabs/FeedTab';
 
 // Tab content props interface
 interface TabContentProps {
@@ -23,6 +24,7 @@ interface TabContentProps {
 
 // Tab content components
 const TabContent: Record<string, React.ComponentType<TabContentProps>> = {
+  feed: FeedTab,
   profile: ProfileTab,
   company: CompanyTab,
   watchlist: WatchlistTab,
