@@ -10,8 +10,14 @@ import { usePageContext } from '../../hooks/usePageContext';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useBadgeCounts } from '../../hooks/useBadgeCounts';
 import { TAB_CONFIGS, getVisibleTabs } from '../../config/tabs';
+import { ProfileTab } from '../tabs/ProfileTab';
 
-// Tab content components (stubs for now - will be built next)
+// Tab content components
+const TabContent: Record<string, React.ComponentType> = {
+  profile: ProfileTab,
+  // Other tabs will use placeholder for now
+};
+
 const TabPlaceholder = ({ title }: { title: string }) => (
   <div style={{
     padding: '24px',
@@ -106,8 +112,12 @@ export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabN
           backgroundColor: '#FFFFFF',
         }}
       >
-        {/* Render placeholder for now - actual tab components coming next */}
-        <TabPlaceholder title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} />
+        {/* Render actual tab component or placeholder */}
+        {TabContent[activeTab] ? (
+          React.createElement(TabContent[activeTab])
+        ) : (
+          <TabPlaceholder title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} />
+        )}
       </div>
 
       {/* Bottom Tab Bar - Apple Style */}
