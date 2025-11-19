@@ -601,27 +601,6 @@ function CompanyCard({ company, onRemove, onViewCompany, onToggleJobAlerts, isRe
             </p>
           )}
 
-          {/* Job Alert Status */}
-          {company.jobAlertEnabled && (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                backgroundColor: 'rgba(48, 209, 88, 0.1)',
-                borderRadius: '6px',
-                fontSize: '12px',
-                color: '#30D158',
-                fontWeight: '600',
-                marginBottom: '8px',
-              }}
-            >
-              <Bell size={12} />
-              Job Alerts Active
-            </div>
-          )}
-
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
             <button
@@ -678,8 +657,8 @@ function CompanyCard({ company, onRemove, onViewCompany, onToggleJobAlerts, isRe
                   : 'rgba(0, 119, 181, 0.1)';
               }}
             >
-              {company.jobAlertEnabled ? <BellOff size={12} /> : <Bell size={12} />}
-              {company.jobAlertEnabled ? 'Disable Alerts' : 'Enable Alerts'}
+              {company.jobAlertEnabled ? <Bell size={12} /> : <Bell size={12} />}
+              {company.jobAlertEnabled ? 'Alerts Active' : 'Enable Alerts'}
             </button>
 
             <button
