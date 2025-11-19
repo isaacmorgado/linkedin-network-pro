@@ -317,18 +317,19 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
   };
 
   const getTypeIcon = () => {
+    const iconSize = isNarrow ? 14 : 16;
     switch (item.type) {
       case 'job_alert':
-        return <Briefcase size={16} color="#0077B5" />;
+        return <Briefcase size={iconSize} color="#0077B5" />;
       case 'company_update':
-        return <Building2 size={16} color="#FF9500" />;
+        return <Building2 size={iconSize} color="#FF9500" />;
       case 'connection_update':
       case 'person_update':
-        return <User size={16} color="#34C759" />;
+        return <User size={iconSize} color="#34C759" />;
       case 'recommendation':
-        return <Sparkles size={16} color="#AF52DE" />;
+        return <Sparkles size={iconSize} color="#AF52DE" />;
       default:
-        return <TrendingUp size={16} color="#6e6e73" />;
+        return <TrendingUp size={iconSize} color="#6e6e73" />;
     }
   };
 
@@ -464,9 +465,9 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
             title={item.read ? 'Mark as unread' : 'Mark as read'}
           >
             {item.read ? (
-              <CheckCircle2 size={16} color="#34C759" />
+              <CheckCircle2 size={14} color="#34C759" />
             ) : (
-              <Circle size={16} color="#6e6e73" />
+              <Circle size={14} color="#6e6e73" />
             )}
           </button>
         )}
