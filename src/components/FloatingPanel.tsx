@@ -2,14 +2,17 @@
  * Main Floating Panel Component - SIMPLIFIED VERSION THAT ACTUALLY WORKS
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Rnd } from 'react-rnd';
 import { X } from 'lucide-react';
 
 export function FloatingPanel() {
-  const [isVisible, setIsVisible] = useState(true);
-
-  if (!isVisible) return null;
+  const handleClose = () => {
+    const container = document.getElementById('linkedin-extension-root');
+    if (container) {
+      container.style.display = 'none';
+    }
+  };
 
   return (
     <Rnd
@@ -57,7 +60,7 @@ export function FloatingPanel() {
           </h2>
 
           <button
-            onClick={() => setIsVisible(false)}
+            onClick={handleClose}
             style={{
               background: 'none',
               border: 'none',

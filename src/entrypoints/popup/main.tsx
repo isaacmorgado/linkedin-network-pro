@@ -1,43 +1,85 @@
 /**
- * Popup Entry Point (Optional)
+ * Popup Entry Point
  * Small popup shown when clicking extension icon
  */
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import '@/styles/globals.css';
 
 function Popup() {
-  const openPanel = () => {
-    // Send message to content script to open panel
+  const togglePanel = () => {
+    // Send message to content script to toggle panel
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.id) {
-        chrome.tabs.sendMessage(tabs[0].id, { type: 'TOGGLE_PANEL' });
-        window.close();
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'TOGGLE_PANEL' }, (response) => {
+          console.log('Toggle response:', response);
+          window.close();
+        });
       }
     });
   };
 
   return (
-    <div className="w-64 p-4 bg-white dark:bg-gray-900">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
+    <div style={{
+      width: '280px',
+      padding: '16px',
+      backgroundColor: 'white',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        marginBottom: '16px',
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: '14px',
+        }}>
           LN
         </div>
         <div>
-          <h1 className="font-semibold text-sm">LinkedIn Network Pro</h1>
-          <p className="text-xs text-gray-500">AI-powered networking</p>
+          <h1 style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>
+            LinkedIn Network Pro
+          </h1>
+          <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>
+            AI-powered networking
+          </p>
         </div>
       </div>
 
       <button
-        onClick={openPanel}
-        className="btn-primary w-full mb-2"
+        onClick={togglePanel}
+        style={{
+          width: '100%',
+          padding: '10px 16px',
+          backgroundColor: '#0077B5',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          marginBottom: '8px',
+        }}
       >
-        Open Panel
+        Toggle Panel
       </button>
 
-      <div className="text-xs text-gray-500 text-center mt-4">
+      <div style={{
+        fontSize: '11px',
+        color: '#999',
+        textAlign: 'center',
+        marginTop: '12px',
+      }}>
         Navigate to LinkedIn to use all features
       </div>
     </div>
