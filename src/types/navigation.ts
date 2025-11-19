@@ -38,6 +38,7 @@ export interface PageContext {
     name: string;
     headline: string;
     profileUrl: string;
+    profileImage?: string | null;
   } | null;
   jobData?: {
     title: string;

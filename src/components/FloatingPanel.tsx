@@ -34,7 +34,17 @@ export function FloatingPanel() {
       }}
       minWidth={350}
       minHeight={400}
-      bounds="window"
+      bounds="body"
+      enableResizing={{
+        top: false,
+        right: true,
+        bottom: true,
+        left: true,
+        topRight: false,
+        bottomRight: true,
+        bottomLeft: true,
+        topLeft: false,
+      }}
       onResize={(e, direction, ref, delta, position) => {
         setPanelSize({
           width: parseInt(ref.style.width),

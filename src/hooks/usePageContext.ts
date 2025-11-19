@@ -22,17 +22,60 @@ export function usePageContext(): PageContext {
 
       // Profile page detection
       if (url.includes('/in/') || pathname.match(/^\/in\/[^/]+\/?$/)) {
-        const nameElement = document.querySelector('h1.text-heading-xlarge');
-        const headlineElement = document.querySelector('.text-body-medium');
+        // Try multiple selectors for name (LinkedIn changes DOM frequently)
+        const nameElement =
+          document.querySelector('h1.text-heading-xlarge') ||
+          document.querySelector('h1[class*="text-heading"]') ||
+          document.querySelector('[data-anonymize="person-name"]') ||
+          document.querySelector('h1');
+
+        // Try multiple selectors for headline
+        const headlineElement =
+          document.querySelector('div.text-body-medium.break-words') ||
+          document.querySelector('div.text-body-medium') ||
+          document.querySelector('[data-generated-suggestion-target]') ||
+          document.querySelector('.pv-text-details__left-panel .text-body-medium');
+
+        // Try to get profile image
+        const imageElement =
+          document.querySelector('img.pv-top-card-profile-picture__image') ||
+          document.querySelector('img[class*="profile"][class*="photo"]') ||
+          document.querySelector('button[aria-label*="profile"] img') ||
+          document.querySelector('.pv-top-card img');
+
+        // Extract from JSON-LD as fallback for better reliability
+        let jsonLdData: any = null;
+        try {
+          const jsonLdScript = document.querySelector('script[type="application/ld+json"]');
+          if (jsonLdScript?.textContent) {
+            jsonLdData = JSON.parse(jsonLdScript.textContent);
+          }
+        } catch (e) {
+          // JSON-LD parsing failed, use DOM selectors
+        }
+
+        const name = nameElement?.textContent?.trim() ||
+                     jsonLdData?.name ||
+                     'Unknown Person';
+
+        const headline = headlineElement?.textContent?.trim() ||
+                        jsonLdData?.headline ||
+                        '';
+
+        const profileImage = (imageElement as HTMLImageElement)?.src ||
+                            jsonLdData?.image?.url ||
+                            jsonLdData?.image ||
+                            null;
 
         return {
           type: 'profile',
           isProfilePage: true,
           isJobPage: false,
           profileData: {
-            name: nameElement?.textContent?.trim() || 'Unknown',
-            headline: headlineElement?.textContent?.trim() || '',
+            name,
+            headline,
             profileUrl: url,
+            profileImage,
           },
           jobData: null,
         };
