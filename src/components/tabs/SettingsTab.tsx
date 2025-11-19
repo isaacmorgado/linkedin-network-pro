@@ -85,12 +85,12 @@ function SettingsNavigation({ activeView, onViewChange, panelWidth = 400 }: Sett
   // Responsive sizing based on panel width
   const isNarrow = panelWidth < 360;
   const isCompact = panelWidth < 400;
-  const showIcons = !isNarrow;
-  const fontSize = isNarrow ? '12px' : '14px';
-  const padding = isNarrow ? '8px 10px' : isCompact ? '9px 12px' : '10px 14px';
+  const showIcons = true; // Always show icons for clarity
+  const fontSize = isNarrow ? '11px' : isCompact ? '13px' : '14px';
+  const padding = isNarrow ? '8px 6px' : isCompact ? '9px 12px' : '10px 14px';
   const gap = isNarrow ? '4px' : '8px';
   const iconSize = isNarrow ? 14 : 16;
-  const showLabels = panelWidth >= 360; // Hide labels on very small widths
+  const showLabels = panelWidth >= 360; // Hide labels on very narrow widths
 
   return (
     <div
