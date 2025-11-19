@@ -13,8 +13,8 @@ import type { OnboardingState, JobPreferences } from '../types/onboarding';
 import { ONBOARDING_STORAGE_KEY } from '../types/onboarding';
 import type { FeedItem, FeedStats } from '../types/feed';
 import { FEED_STORAGE_KEY } from '../types/feed';
-import type { Resume, ResumeApplication, ResumeStats } from '../types/resume';
-import { RESUMES_STORAGE_KEY, RESUME_APPLICATIONS_STORAGE_KEY } from '../types/resume';
+import type { Resume, ResumeApplication, ResumeStats, ProfessionalProfile, ProfileStats } from '../types/resume';
+import { RESUMES_STORAGE_KEY, RESUME_APPLICATIONS_STORAGE_KEY, PROFESSIONAL_PROFILE_KEY } from '../types/resume';
 
 // Get watchlist from storage
 export async function getWatchlist(): Promise<WatchlistPerson[]> {
@@ -1320,4 +1320,206 @@ export async function getResumeStats(): Promise<ResumeStats> {
     interviewRate: Math.round(interviewRate),
     offerRate: Math.round(offerRate),
   };
+}
+
+// ============================================================================
+// PROFESSIONAL PROFILE FUNCTIONS
+// ============================================================================
+
+/**
+ * Get professional profile from storage
+ */
+export async function getProfessionalProfile(): Promise<ProfessionalProfile | null> {
+  try {
+    const result = await chrome.storage.local.get(PROFESSIONAL_PROFILE_KEY);
+    return result[PROFESSIONAL_PROFILE_KEY] || null;
+  } catch (error) {
+    console.error('[Uproot] Error getting professional profile:', error);
+    return null;
+  }
+}
+
+/**
+ * Save professional profile to storage
+ */
+export async function saveProfessionalProfile(profile: ProfessionalProfile): Promise<void> {
+  try {
+    const updatedProfile = {
+      ...profile,
+      updatedAt: Date.now(),
+    };
+    await chrome.storage.local.set({ [PROFESSIONAL_PROFILE_KEY]: updatedProfile });
+    console.log('[Uproot] Professional profile saved');
+  } catch (error) {
+    console.error('[Uproot] Error saving professional profile:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new professional profile
+ */
+export async function createProfessionalProfile(
+  personalInfo: ProfessionalProfile['personalInfo']
+): Promise<ProfessionalProfile> {
+  const now = Date.now();
+  const profile: ProfessionalProfile = {
+    personalInfo,
+    jobs: [],
+    internships: [],
+    volunteerWork: [],
+    technicalSkills: [],
+    softSkills: [],
+    tools: [],
+    certifications: [],
+    languages: [],
+    education: [],
+    projects: [],
+    publications: [],
+    achievements: [],
+    awards: [],
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+  };
+
+  await saveProfessionalProfile(profile);
+  return profile;
+}
+
+/**
+ * Get profile statistics
+ */
+export async function getProfileStats(): Promise<ProfileStats> {
+  try {
+    const profile = await getProfessionalProfile();
+
+    if (!profile) {
+      return {
+        totalJobs: 0,
+        totalInternships: 0,
+        totalVolunteerWork: 0,
+        totalProjects: 0,
+        totalSkills: 0,
+        totalCertifications: 0,
+        yearsOfExperience: 0,
+        profileCompleteness: 0,
+      };
+    }
+
+    // Calculate years of experience from jobs
+    const yearsOfExperience = calculateYearsOfExperience(profile);
+
+    // Calculate profile completeness (0-100)
+    const completeness = calculateProfileCompleteness(profile);
+
+    return {
+      totalJobs: profile.jobs.length,
+      totalInternships: profile.internships.length,
+      totalVolunteerWork: profile.volunteerWork.length,
+      totalProjects: profile.projects.length,
+      totalSkills: profile.technicalSkills.length + profile.softSkills.length,
+      totalCertifications: profile.certifications.length,
+      yearsOfExperience,
+      profileCompleteness: completeness,
+    };
+  } catch (error) {
+    console.error('[Uproot] Error getting profile stats:', error);
+    return {
+      totalJobs: 0,
+      totalInternships: 0,
+      totalVolunteerWork: 0,
+      totalProjects: 0,
+      totalSkills: 0,
+      totalCertifications: 0,
+      yearsOfExperience: 0,
+      profileCompleteness: 0,
+    };
+  }
+}
+
+/**
+ * Calculate years of experience from job history
+ */
+function calculateYearsOfExperience(profile: ProfessionalProfile): number {
+  if (profile.jobs.length === 0) return 0;
+
+  let totalMonths = 0;
+
+  for (const job of profile.jobs) {
+    const startDate = parseDate(job.startDate);
+    const endDate = job.endDate ? parseDate(job.endDate) : new Date();
+
+    if (startDate && endDate) {
+      const months = Math.max(
+        0,
+        (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+          (endDate.getMonth() - startDate.getMonth())
+      );
+      totalMonths += months;
+    }
+  }
+
+  return Math.round((totalMonths / 12) * 10) / 10;
+}
+
+/**
+ * Parse date string in "YYYY-MM" format
+ */
+function parseDate(dateStr: string): Date | null {
+  const match = dateStr.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = parseInt(match[1]);
+  const month = parseInt(match[2]) - 1; // JS months are 0-indexed
+
+  return new Date(year, month, 1);
+}
+
+/**
+ * Calculate profile completeness percentage
+ */
+function calculateProfileCompleteness(profile: ProfessionalProfile): number {
+  let score = 0;
+  let maxScore = 0;
+
+  // Personal info (30 points)
+  maxScore += 30;
+  if (profile.personalInfo.fullName) score += 5;
+  if (profile.personalInfo.email) score += 5;
+  if (profile.personalInfo.phone) score += 3;
+  if (profile.personalInfo.location) score += 3;
+  if (profile.personalInfo.linkedinUrl) score += 3;
+  if (profile.personalInfo.githubUrl) score += 3;
+  if (profile.personalInfo.portfolioUrl) score += 3;
+  if (profile.personalInfo.professionalSummary) score += 5;
+
+  // Work experience (35 points)
+  maxScore += 35;
+  if (profile.jobs.length > 0) {
+    score += 15;
+    const hasDetailedBullets = profile.jobs.some((j) => j.bullets.length >= 3);
+    if (hasDetailedBullets) score += 10;
+    if (profile.jobs.length >= 2) score += 10;
+  }
+
+  // Skills (15 points)
+  maxScore += 15;
+  if (profile.technicalSkills.length >= 5) score += 8;
+  if (profile.softSkills.length >= 3) score += 4;
+  if (profile.tools.length >= 5) score += 3;
+
+  // Education (10 points)
+  maxScore += 10;
+  if (profile.education.length > 0) score += 10;
+
+  // Projects (5 points)
+  maxScore += 5;
+  if (profile.projects.length > 0) score += 5;
+
+  // Certifications (5 points)
+  maxScore += 5;
+  if (profile.certifications.length > 0) score += 5;
+
+  return Math.round((score / maxScore) * 100);
 }

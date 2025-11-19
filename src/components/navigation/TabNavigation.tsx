@@ -17,6 +17,7 @@ import { OnboardingTab } from '../tabs/OnboardingTab';
 import { SettingsTab } from '../tabs/SettingsTab';
 import { FeedTab } from '../tabs/FeedTab';
 import { ResumeTab } from '../tabs/ResumeTab';
+import { ProfileBuilderTab } from '../tabs/ProfileBuilderTab';
 
 // Tab content props interface
 interface TabContentProps {
@@ -30,6 +31,7 @@ const TabContent: Record<string, React.ComponentType<TabContentProps>> = {
   company: CompanyTab,
   watchlist: WatchlistTab,
   resume: ResumeTab,
+  'profile-builder': ProfileBuilderTab,
   onboarding: OnboardingTab,
   settings: SettingsTab,
   // Other tabs will use placeholder for now
