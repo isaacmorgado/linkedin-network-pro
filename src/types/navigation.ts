@@ -8,10 +8,9 @@ import type { LucideIcon } from 'lucide-react';
 
 // Simplified Tab IDs
 export type TabId =
-  // Always visible (6 core tabs)
+  // Always visible (5 core tabs)
   | 'feed'          // Activity feed
-  | 'watchlist'     // Saved people/companies
-  | 'network'       // Path finder (was networkPath)
+  | 'watchlist'     // Saved people/companies/paths
   | 'resume'        // Resume editor
   | 'notifications' // Alerts
   | 'settings'      // Preferences

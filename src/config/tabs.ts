@@ -1,5 +1,5 @@
 /**
- * Tab Configuration - Simplified 6+2+1 Structure
+ * Tab Configuration - Simplified 5+3+1 Structure
  *
  * Defines all tabs, their properties, and visibility rules
  */
@@ -20,7 +20,7 @@ import type { TabConfig } from '../types/navigation';
 
 export const TAB_CONFIGS: TabConfig[] = [
   // ========================================
-  // ALWAYS VISIBLE (6 core tabs)
+  // ALWAYS VISIBLE (5 core tabs)
   // ========================================
 
   {
@@ -44,19 +44,10 @@ export const TAB_CONFIGS: TabConfig[] = [
   },
 
   {
-    id: 'network',
-    label: 'Network',
-    icon: GitBranch,
-    shortcut: 3,
-    alwaysVisible: true,
-    badge: false,
-  },
-
-  {
     id: 'resume',
     label: 'Resume',
     icon: FileText,
-    shortcut: 4,
+    shortcut: 3,
     alwaysVisible: true,
     badge: false,
   },
@@ -65,7 +56,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'notifications',
     label: 'Alerts',
     icon: Bell,
-    shortcut: 5,
+    shortcut: 4,
     alwaysVisible: true,
     badge: true,
     badgeColor: 'red',
@@ -75,7 +66,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'settings',
     label: 'Settings',
     icon: Settings2,
-    shortcut: 6,
+    shortcut: 5,
     alwaysVisible: true,
     badge: false,
   },
@@ -88,7 +79,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'profile',
     label: 'Profile',
     icon: UserCircle,
-    shortcut: 7,
+    shortcut: 6,
     alwaysVisible: false,
     visibleOn: ['profile'], // Only on person pages
     badge: false,
@@ -98,7 +89,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'company',
     label: 'Company',
     icon: Building2,
-    shortcut: 8,
+    shortcut: 7,
     alwaysVisible: false,
     visibleOn: ['company'], // Only on company pages
     badge: false,
@@ -108,7 +99,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'jobs',
     label: 'Jobs',
     icon: Briefcase,
-    shortcut: 9,
+    shortcut: 8,
     alwaysVisible: false,
     visibleOn: ['job'], // Only on job pages
     badge: false,
@@ -122,7 +113,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'onboarding',
     label: 'Get Started',
     icon: Rocket,
-    shortcut: 10,
+    shortcut: 9,
     alwaysVisible: false, // Only shown on first run
     badge: false,
   },
