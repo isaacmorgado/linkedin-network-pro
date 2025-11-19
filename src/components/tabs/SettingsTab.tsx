@@ -53,34 +53,11 @@ export function SettingsTab({ panelWidth = 400 }: SettingsTabProps) {
       </div>
 
       {/* Settings Navigation */}
-      <div
-        style={{
-          padding: '16px',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-          backgroundColor: 'rgba(0, 119, 181, 0.03)',
-        }}
-      >
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <SettingsNavButton
-            icon={<Briefcase size={16} strokeWidth={2} />}
-            label="Job Preferences"
-            isActive={activeView === 'preferences'}
-            onClick={() => setActiveView('preferences')}
-          />
-          <SettingsNavButton
-            icon={<User size={16} strokeWidth={2} />}
-            label="Account"
-            isActive={activeView === 'account'}
-            onClick={() => setActiveView('account')}
-          />
-          <SettingsNavButton
-            icon={<CreditCard size={16} strokeWidth={2} />}
-            label="Subscription"
-            isActive={activeView === 'subscription'}
-            onClick={() => setActiveView('subscription')}
-          />
-        </div>
-      </div>
+      <SettingsNavigation
+        activeView={activeView}
+        onViewChange={setActiveView}
+        panelWidth={panelWidth}
+      />
 
       {/* Settings Content */}
       <div
@@ -97,26 +74,108 @@ export function SettingsTab({ panelWidth = 400 }: SettingsTabProps) {
   );
 }
 
+// Settings Navigation Component
+interface SettingsNavigationProps {
+  activeView: SettingsView;
+  onViewChange: (view: SettingsView) => void;
+  panelWidth?: number;
+}
+
+function SettingsNavigation({ activeView, onViewChange, panelWidth = 400 }: SettingsNavigationProps) {
+  // Responsive sizing based on panel width
+  const isNarrow = panelWidth < 360;
+  const isCompact = panelWidth < 400;
+  const showIcons = !isNarrow;
+  const fontSize = isNarrow ? '12px' : '14px';
+  const padding = isNarrow ? '8px 10px' : isCompact ? '9px 12px' : '10px 14px';
+  const gap = isNarrow ? '4px' : '8px';
+  const iconSize = isNarrow ? 14 : 16;
+  const showLabels = panelWidth >= 360; // Hide labels on very small widths
+
+  return (
+    <div
+      style={{
+        padding: '16px',
+        borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+        backgroundColor: 'rgba(0, 119, 181, 0.03)',
+      }}
+    >
+      <div style={{ display: 'flex', gap }}>
+        <SettingsNavButton
+          icon={<Briefcase size={iconSize} strokeWidth={2} />}
+          label="Job Preferences"
+          shortLabel="Jobs"
+          isActive={activeView === 'preferences'}
+          onClick={() => onViewChange('preferences')}
+          showIcon={showIcons}
+          showLabel={showLabels}
+          fontSize={fontSize}
+          padding={padding}
+        />
+        <SettingsNavButton
+          icon={<User size={iconSize} strokeWidth={2} />}
+          label="Account"
+          shortLabel="Account"
+          isActive={activeView === 'account'}
+          onClick={() => onViewChange('account')}
+          showIcon={showIcons}
+          showLabel={showLabels}
+          fontSize={fontSize}
+          padding={padding}
+        />
+        <SettingsNavButton
+          icon={<CreditCard size={iconSize} strokeWidth={2} />}
+          label="Subscription"
+          shortLabel="Plan"
+          isActive={activeView === 'subscription'}
+          onClick={() => onViewChange('subscription')}
+          showIcon={showIcons}
+          showLabel={showLabels}
+          fontSize={fontSize}
+          padding={padding}
+        />
+      </div>
+    </div>
+  );
+}
+
 // Settings Nav Button Component
 interface SettingsNavButtonProps {
   icon: React.ReactNode;
   label: string;
+  shortLabel?: string;
   isActive: boolean;
   onClick: () => void;
+  showIcon: boolean;
+  showLabel: boolean;
+  fontSize: string;
+  padding: string;
 }
 
-function SettingsNavButton({ icon, label, isActive, onClick }: SettingsNavButtonProps) {
+function SettingsNavButton({
+  icon,
+  label,
+  shortLabel,
+  isActive,
+  onClick,
+  showIcon,
+  showLabel,
+  fontSize,
+  padding,
+}: SettingsNavButtonProps) {
+  const displayLabel = shortLabel || label;
+
   return (
     <button
       onClick={onClick}
       style={{
         flex: 1,
-        padding: '10px 14px',
+        padding,
         backgroundColor: isActive ? '#0077B5' : 'transparent',
         color: isActive ? '#FFFFFF' : '#6e6e73',
         border: isActive ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
         borderRadius: '8px',
-        fontSize: '14px',
+        fontSize,
         fontWeight: '600',
         cursor: 'pointer',
         display: 'flex',
@@ -124,6 +183,7 @@ function SettingsNavButton({ icon, label, isActive, onClick }: SettingsNavButton
         justifyContent: 'center',
         gap: '6px',
         transition: 'all 150ms',
+        minWidth: 0, // Allow flex shrinking
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
@@ -136,10 +196,12 @@ function SettingsNavButton({ icon, label, isActive, onClick }: SettingsNavButton
         }
       }}
     >
-      {icon}
-      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {label}
-      </span>
+      {showIcon && icon}
+      {showLabel && (
+        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {displayLabel}
+        </span>
+      )}
     </button>
   );
 }
