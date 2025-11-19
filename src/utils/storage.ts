@@ -3,8 +3,12 @@
  * Wrapper around chrome.storage.local for type-safe operations
  */
 
-import type { WatchlistPerson, WatchlistCompany } from '../types/watchlist';
-import { WATCHLIST_PEOPLE_STORAGE_KEY, WATCHLIST_COMPANIES_STORAGE_KEY } from '../types/watchlist';
+import type { WatchlistPerson, WatchlistCompany, ConnectionPath } from '../types/watchlist';
+import {
+  CONNECTION_PATHS_STORAGE_KEY,
+  WATCHLIST_PEOPLE_STORAGE_KEY,
+  WATCHLIST_COMPANIES_STORAGE_KEY
+} from '../types/watchlist';
 
 // Get watchlist from storage
 export async function getWatchlist(): Promise<WatchlistPerson[]> {
@@ -184,4 +188,129 @@ export async function updateWatchlistCompany(
 export async function isCompanyInWatchlist(companyUrl: string): Promise<boolean> {
   const companies = await getCompanyWatchlist();
   return companies.some((c) => c.id === companyUrl);
+}
+
+// ============================================================================
+// CONNECTION PATH FUNCTIONS
+// ============================================================================
+
+// Get connection paths from storage
+export async function getConnectionPaths(): Promise<ConnectionPath[]> {
+  try {
+    const result = await chrome.storage.local.get(CONNECTION_PATHS_STORAGE_KEY);
+    return result[CONNECTION_PATHS_STORAGE_KEY] || [];
+  } catch (error) {
+    console.error('[Uproot] Error getting connection paths:', error);
+    return [];
+  }
+}
+
+// Save connection paths to storage
+export async function saveConnectionPaths(paths: ConnectionPath[]): Promise<void> {
+  try {
+    await chrome.storage.local.set({ [CONNECTION_PATHS_STORAGE_KEY]: paths });
+    console.log('[Uproot] Connection paths saved:', paths.length, 'paths');
+  } catch (error) {
+    console.error('[Uproot] Error saving connection paths:', error);
+    throw error;
+  }
+}
+
+// Add connection path
+export async function addConnectionPath(
+  path: Omit<ConnectionPath, 'id' | 'addedAt' | 'lastUpdated'>
+): Promise<ConnectionPath> {
+  const paths = await getConnectionPaths();
+
+  // Generate ID from target profile URL
+  const id = path.targetProfileUrl;
+
+  // Check if already exists
+  const existingIndex = paths.findIndex((p) => p.id === id);
+  if (existingIndex !== -1) {
+    console.log('[Uproot] Connection path already exists:', path.targetName);
+    return paths[existingIndex];
+  }
+
+  // Create new connection path
+  const newPath: ConnectionPath = {
+    ...path,
+    id,
+    addedAt: Date.now(),
+    lastUpdated: Date.now(),
+  };
+
+  // Add to beginning of list
+  paths.unshift(newPath);
+
+  await saveConnectionPaths(paths);
+  console.log('[Uproot] Added connection path:', path.targetName);
+
+  return newPath;
+}
+
+// Remove connection path
+export async function removeConnectionPath(id: string): Promise<void> {
+  const paths = await getConnectionPaths();
+  const filteredPaths = paths.filter((p) => p.id !== id);
+
+  await saveConnectionPaths(filteredPaths);
+  console.log('[Uproot] Removed connection path:', id);
+}
+
+// Update connection path
+export async function updateConnectionPath(
+  id: string,
+  updates: Partial<ConnectionPath>
+): Promise<void> {
+  const paths = await getConnectionPaths();
+  const index = paths.findIndex((p) => p.id === id);
+
+  if (index === -1) {
+    throw new Error('Connection path not found');
+  }
+
+  paths[index] = {
+    ...paths[index],
+    ...updates,
+    lastUpdated: Date.now(),
+  };
+
+  await saveConnectionPaths(paths);
+  console.log('[Uproot] Updated connection path:', id);
+}
+
+// Mark step as connected in a path
+export async function markStepConnected(pathId: string, stepIndex: number): Promise<void> {
+  const paths = await getConnectionPaths();
+  const pathIndex = paths.findIndex((p) => p.id === pathId);
+
+  if (pathIndex === -1) {
+    throw new Error('Connection path not found');
+  }
+
+  const path = paths[pathIndex];
+  
+  if (stepIndex < 0 || stepIndex >= path.path.length) {
+    throw new Error('Invalid step index');
+  }
+
+  // Mark step as connected
+  path.path[stepIndex].connected = true;
+
+  // Update completed steps count
+  path.completedSteps = path.path.filter((step) => step.connected).length;
+
+  // Check if path is complete
+  path.isComplete = path.completedSteps === path.totalSteps;
+  path.lastUpdated = Date.now();
+
+  await saveConnectionPaths(paths);
+  console.log('[Uproot] Marked step as connected:', pathId, stepIndex);
+}
+
+// Check if connection path exists
+export async function isConnectionPathSaved(targetProfileUrl: string): Promise<boolean> {
+  const paths = await getConnectionPaths();
+  return paths.some((p) => p.id === targetProfileUrl);
 }

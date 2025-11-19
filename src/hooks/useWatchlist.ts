@@ -1,10 +1,10 @@
 /**
  * Watchlist Hook
- * Manages watchlist state and operations for both people and companies
+ * Manages watchlist state and operations for people, companies, and connection paths
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { WatchlistPerson, WatchlistCompany } from '../types/watchlist';
+import type { WatchlistPerson, WatchlistCompany, ConnectionPath } from '../types/watchlist';
 import {
   getWatchlist,
   addToWatchlist as addToWatchlistStorage,
@@ -16,21 +16,30 @@ import {
   removeCompanyFromWatchlist as removeCompanyFromWatchlistStorage,
   updateWatchlistCompany as updateWatchlistCompanyStorage,
   isCompanyInWatchlist as isCompanyInWatchlistStorage,
+  getConnectionPaths,
+  addConnectionPath as addConnectionPathStorage,
+  removeConnectionPath as removeConnectionPathStorage,
+  updateConnectionPath as updateConnectionPathStorage,
+  markStepConnected as markStepConnectedStorage,
+  isConnectionPathSaved as isConnectionPathSavedStorage,
 } from '../utils/storage';
 
 export function useWatchlist() {
   const [watchlist, setWatchlist] = useState<WatchlistPerson[]>([]);
   const [companyWatchlist, setCompanyWatchlist] = useState<WatchlistCompany[]>([]);
+  const [connectionPaths, setConnectionPaths] = useState<ConnectionPath[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load watchlists from storage
   const loadWatchlist = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [people, companies] = await Promise.all([
+      const [paths, people, companies] = await Promise.all([
+        getConnectionPaths(),
         getWatchlist(),
         getCompanyWatchlist(),
       ]);
+      setConnectionPaths(paths);
       setWatchlist(people);
       setCompanyWatchlist(companies);
     } catch (error) {
@@ -122,6 +131,59 @@ export function useWatchlist() {
     return isCompanyInWatchlistStorage(companyUrl);
   }, []);
 
+  // Add connection path
+  const addPath = useCallback(async (path: Omit<ConnectionPath, 'id' | 'addedAt' | 'lastUpdated'>) => {
+    try {
+      const newPath = await addConnectionPathStorage(path);
+      setConnectionPaths((prev) => [newPath, ...prev.filter((p) => p.id !== newPath.id)]);
+      return newPath;
+    } catch (error) {
+      console.error('[Uproot] Error adding connection path:', error);
+      throw error;
+    }
+  }, []);
+
+  // Remove connection path
+  const removePath = useCallback(async (id: string) => {
+    try {
+      await removeConnectionPathStorage(id);
+      setConnectionPaths((prev) => prev.filter((p) => p.id !== id));
+    } catch (error) {
+      console.error('[Uproot] Error removing connection path:', error);
+      throw error;
+    }
+  }, []);
+
+  // Update connection path
+  const updatePath = useCallback(async (id: string, updates: Partial<ConnectionPath>) => {
+    try {
+      await updateConnectionPathStorage(id, updates);
+      setConnectionPaths((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, ...updates, lastUpdated: Date.now() } : p))
+      );
+    } catch (error) {
+      console.error('[Uproot] Error updating connection path:', error);
+      throw error;
+    }
+  }, []);
+
+  // Mark step as connected
+  const markStepConnected = useCallback(async (pathId: string, stepIndex: number) => {
+    try {
+      await markStepConnectedStorage(pathId, stepIndex);
+      // Reload to get updated path
+      await loadWatchlist();
+    } catch (error) {
+      console.error('[Uproot] Error marking step as connected:', error);
+      throw error;
+    }
+  }, [loadWatchlist]);
+
+  // Check if connection path is saved
+  const isPathSaved = useCallback(async (targetProfileUrl: string) => {
+    return isConnectionPathSavedStorage(targetProfileUrl);
+  }, []);
+
   // Load watchlist on mount
   useEffect(() => {
     loadWatchlist();
@@ -131,6 +193,9 @@ export function useWatchlist() {
   useEffect(() => {
     const handleStorageChange = (changes: any, areaName: string) => {
       if (areaName === 'local') {
+        if (changes.uproot_connection_paths) {
+          setConnectionPaths(changes.uproot_connection_paths.newValue || []);
+        }
         if (changes.uproot_watchlist) {
           setWatchlist(changes.uproot_watchlist.newValue || []);
         }
@@ -145,6 +210,13 @@ export function useWatchlist() {
   }, []);
 
   return {
+    // Connection paths
+    connectionPaths,
+    addPath,
+    removePath,
+    updatePath,
+    markStepConnected,
+    isPathSaved,
     // People watchlist
     watchlist,
     isLoading,

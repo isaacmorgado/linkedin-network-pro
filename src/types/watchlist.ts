@@ -1,7 +1,28 @@
 /**
  * Watchlist Type Definitions
- * For saving and tracking LinkedIn profiles and companies
+ * For saving and tracking LinkedIn profiles, companies, and connection paths
  */
+
+export interface ConnectionPath {
+  id: string; // Unique identifier (target profile URL)
+  targetName: string;
+  targetProfileUrl: string;
+  targetProfileImage?: string | null;
+  targetHeadline?: string;
+  path: Array<{
+    name: string;
+    profileUrl: string;
+    profileImage?: string | null;
+    degree: number; // 1st, 2nd, 3rd degree
+    connected: boolean; // Whether connection has been made
+  }>;
+  totalSteps: number; // Total connections needed
+  completedSteps: number; // How many connections made so far
+  isComplete: boolean; // All connections made
+  addedAt: number; // Timestamp when saved
+  lastUpdated: number; // Last time path was updated
+  notes?: string;
+}
 
 export interface WatchlistPerson {
   id: string; // Unique identifier (LinkedIn profile URL or hash)
@@ -37,6 +58,7 @@ export interface WatchlistCompany {
 }
 
 export interface WatchlistStats {
+  totalPaths: number;
   totalPeople: number;
   totalCompanies: number;
   addedThisWeek: number;
@@ -44,5 +66,6 @@ export interface WatchlistStats {
 }
 
 // Storage keys for chrome.storage
+export const CONNECTION_PATHS_STORAGE_KEY = 'uproot_connection_paths';
 export const WATCHLIST_PEOPLE_STORAGE_KEY = 'uproot_watchlist'; // Keep old key for backward compatibility
 export const WATCHLIST_COMPANIES_STORAGE_KEY = 'uproot_watchlist_companies';
