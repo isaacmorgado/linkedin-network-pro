@@ -38,10 +38,19 @@ export function usePageContext(): PageContext {
         };
       }
 
-      // Job page detection
-      if (url.includes('/jobs/view/') || pathname.startsWith('/jobs/view/')) {
-        const titleElement = document.querySelector('.job-details-jobs-unified-top-card__job-title');
-        const companyElement = document.querySelector('.job-details-jobs-unified-top-card__company-name');
+      // Job page detection - expanded to catch all job URL patterns
+      if (
+        url.includes('/jobs/view/') ||
+        pathname.startsWith('/jobs/view/') ||
+        pathname.includes('/jobs/collections/') ||
+        (pathname.startsWith('/jobs/') && (url.includes('currentJobId=') || url.includes('jobId=')))
+      ) {
+        const titleElement = document.querySelector('.job-details-jobs-unified-top-card__job-title') ||
+                            document.querySelector('.jobs-unified-top-card__job-title') ||
+                            document.querySelector('[data-job-title]');
+        const companyElement = document.querySelector('.job-details-jobs-unified-top-card__company-name') ||
+                              document.querySelector('.jobs-unified-top-card__company-name') ||
+                              document.querySelector('[data-company-name]');
 
         return {
           type: 'job',
