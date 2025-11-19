@@ -5,67 +5,71 @@
 
 import { useState, useEffect } from 'react';
 import type { TabId } from '../types/navigation';
+import { getFeedStats, getWatchlist } from '../utils/storage';
+import { FEED_STORAGE_KEY } from '../types/feed';
+import { WATCHLIST_PEOPLE_STORAGE_KEY } from '../types/watchlist';
 
 interface BadgeCounts {
-  notifications: number;
   watchlist: number;
   feed: number;
 }
 
 export function useBadgeCounts() {
   const [counts, setCounts] = useState<BadgeCounts>({
-    notifications: 0,
     watchlist: 0,
     feed: 0,
   });
 
   useEffect(() => {
-    // TODO: Connect to actual data sources (Supabase, IndexedDB, etc.)
-    // For now, simulate with mock data
-
+    // Fetch actual counts from Chrome storage
     const fetchCounts = async () => {
       try {
-        // Mock implementation - replace with actual API calls
-        const mockCounts: BadgeCounts = {
-          notifications: 3,  // Unread notifications
-          watchlist: 12,     // Total watchlist items
-          feed: 5,           // Unread feed items
-        };
+        // Get feed unread count
+        const feedStats = await getFeedStats();
 
-        setCounts(mockCounts);
+        // Get watchlist total count
+        const watchlistPeople = await getWatchlist();
+
+        setCounts({
+          feed: feedStats.unreadCount,
+          watchlist: watchlistPeople.length,
+        });
+
+        console.log('[Uproot] Badge counts updated:', {
+          feed: feedStats.unreadCount,
+          watchlist: watchlistPeople.length,
+        });
       } catch (error) {
-        console.error('Failed to fetch badge counts:', error);
+        console.error('[Uproot] Failed to fetch badge counts:', error);
       }
     };
 
     // Initial fetch
     fetchCounts();
 
-    // Refresh every 30 seconds
-    const intervalId = setInterval(fetchCounts, 30000);
-
-    // Listen for custom events that might update counts
-    const handleCountUpdate = (event: CustomEvent) => {
-      const { tabId, count } = event.detail;
-      setCounts((prev) => ({
-        ...prev,
-        [tabId]: count,
-      }));
+    // Listen for Chrome storage changes
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName === 'local') {
+        // Check if feed or watchlist changed
+        if (changes[FEED_STORAGE_KEY] || changes[WATCHLIST_PEOPLE_STORAGE_KEY]) {
+          fetchCounts();
+        }
+      }
     };
 
-    window.addEventListener('linkedin-extension:badge-update', handleCountUpdate as EventListener);
+    chrome.storage.onChanged.addListener(handleStorageChange);
 
     return () => {
-      clearInterval(intervalId);
-      window.removeEventListener('linkedin-extension:badge-update', handleCountUpdate as EventListener);
+      chrome.storage.onChanged.removeListener(handleStorageChange);
     };
   }, []);
 
   // Helper to get count for a specific tab
   const getCountForTab = (tabId: TabId): number => {
     switch (tabId) {
-      case 'notifications':
-        return counts.notifications;
       case 'watchlist':
         return counts.watchlist;
       case 'feed':

@@ -1,10 +1,12 @@
 /**
- * Content Script - SIMPLIFIED - NO STORAGE, NO IMPORTS, JUST INJECT THE PANEL
+ * Content Script - Panel Injection + Watchlist Monitoring
  */
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { FloatingPanel } from '@/components/FloatingPanel';
+import { monitorCurrentPage } from '@/services/watchlist-monitor';
+import { getCompanyWatchlist, getWatchlist, getOnboardingState } from '@/utils/storage';
 
 export default defineContentScript({
   matches: ['https://www.linkedin.com/*'],
@@ -23,7 +25,72 @@ export default defineContentScript({
       // Wait a bit for LinkedIn to finish loading
       setTimeout(() => {
         injectPanel();
+        startMonitoring();
       }, 1000);
+
+      // Listen for URL changes (LinkedIn is an SPA)
+      observeUrlChanges();
+    }
+
+    /**
+     * Start monitoring watchlist items on current page
+     */
+    async function startMonitoring() {
+      try {
+        console.log('[Uproot] Starting watchlist monitoring...');
+
+        // Get watchlist data and preferences
+        const [companies, people, onboardingState] = await Promise.all([
+          getCompanyWatchlist(),
+          getWatchlist(),
+          getOnboardingState(),
+        ]);
+
+        if (!onboardingState.preferences) {
+          console.log('[Uproot] No preferences set, skipping monitoring');
+          return;
+        }
+
+        console.log('[Uproot] Monitoring:', {
+          companies: companies.length,
+          people: people.length,
+          preferences: onboardingState.preferences,
+        });
+
+        // Monitor current page
+        await monitorCurrentPage(companies, people, onboardingState.preferences);
+      } catch (error) {
+        console.error('[Uproot] Error in monitoring:', error);
+      }
+    }
+
+    /**
+     * Detect URL changes in LinkedIn SPA
+     */
+    function observeUrlChanges() {
+      let lastUrl = window.location.href;
+
+      // Use MutationObserver to detect navigation
+      const observer = new MutationObserver(() => {
+        const currentUrl = window.location.href;
+        if (currentUrl !== lastUrl) {
+          console.log('[Uproot] URL changed:', currentUrl);
+          lastUrl = currentUrl;
+
+          // Wait for page to settle, then monitor
+          setTimeout(() => {
+            startMonitoring();
+          }, 2000);
+        }
+      });
+
+      // Observe changes to the body
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+
+      console.log('[Uproot] URL observer started');
     }
 
     function injectPanel() {

@@ -16,8 +16,10 @@ import {
   Circle,
   Filter,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import type { FeedItem, FeedItemType } from '../../types/feed';
+import { useFeed } from '../../hooks/useFeed';
 
 type FeedFilter = 'all' | 'jobs' | 'companies' | 'people' | 'unread';
 
@@ -28,70 +30,10 @@ interface FeedTabProps {
 export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
   const [activeFilter, setActiveFilter] = useState<FeedFilter>('all');
 
-  // Mock feed data - will be replaced with actual hook
-  const [feedItems, setFeedItems] = useState<FeedItem[]>([
-    {
-      id: '1',
-      type: 'job_alert',
-      timestamp: Date.now() - 1000 * 60 * 30, // 30 min ago
-      read: false,
-      title: 'New Job Match',
-      description: 'Senior Product Manager',
-      company: 'Google',
-      location: 'Mountain View, CA',
-      jobUrl: 'https://linkedin.com',
-      matchScore: 95,
-      actionLabel: 'View Job',
-    },
-    {
-      id: '2',
-      type: 'application_status',
-      timestamp: Date.now() - 1000 * 60 * 60, // 1 hour ago
-      read: false,
-      title: 'Application Update',
-      description: 'Your application for Product Designer at Airbnb was viewed by the hiring team',
-      company: 'Airbnb',
-      actionLabel: 'View Application',
-    },
-    {
-      id: '3',
-      type: 'company_update',
-      timestamp: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
-      read: false,
-      title: 'Company Update',
-      description: 'Microsoft posted about their new AI initiative',
-      company: 'Microsoft',
-      actionLabel: 'See Post',
-    },
-    {
-      id: '4',
-      type: 'connection_update',
-      timestamp: Date.now() - 1000 * 60 * 60 * 5, // 5 hours ago
-      read: true,
-      title: 'Connection Update',
-      description: 'Sarah Chen started a new position as VP of Engineering at Stripe',
-      connectionName: 'Sarah Chen',
-      actionLabel: 'View Profile',
-    },
-  ]);
+  // Use the useFeed hook for data management
+  const { feedItems, stats, isLoading, toggleRead, markAllAsRead } = useFeed();
 
   const hasItems = feedItems.length > 0;
-
-  // Toggle read status for a single item
-  const toggleReadStatus = (itemId: string) => {
-    setFeedItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === itemId ? { ...item, read: !item.read } : item
-      )
-    );
-  };
-
-  // Mark all items as read
-  const markAllAsRead = () => {
-    setFeedItems((prevItems) =>
-      prevItems.map((item) => ({ ...item, read: true }))
-    );
-  };
 
   // Filter logic
   const filteredItems = feedItems.filter((item) => {
@@ -104,7 +46,27 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
     return true;
   });
 
-  const unreadCount = feedItems.filter((item) => !item.read).length;
+  const unreadCount = stats.unreadCount;
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          color: '#6e6e73',
+          flexDirection: 'column',
+          gap: '12px',
+        }}
+      >
+        <RefreshCw size={32} className="animate-spin" strokeWidth={2} />
+        <span style={{ fontSize: '14px', fontWeight: '500' }}>Loading feed...</span>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -220,7 +182,7 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
         ) : (
           <div style={{ padding: panelWidth < 360 ? '12px' : '16px', display: 'flex', flexDirection: 'column', gap: panelWidth < 360 ? '10px' : '12px' }}>
             {filteredItems.map((item) => (
-              <FeedCard key={item.id} item={item} panelWidth={panelWidth} onToggleRead={toggleReadStatus} />
+              <FeedCard key={item.id} item={item} panelWidth={panelWidth} onToggleRead={toggleRead} />
             ))}
           </div>
         )}
@@ -337,7 +299,6 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
 
   const handleToggleRead = () => {
     onToggleRead(item.id);
-    // TODO: Update in storage
   };
 
   const getTypeIcon = () => {
