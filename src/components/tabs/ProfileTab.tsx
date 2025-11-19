@@ -221,7 +221,7 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
             textAlign: 'center',
           }}
         >
-          💡 Tip: Use Alt+7 to quickly access Profile Actions
+          💡 Tip: Use Alt+6 to quickly access Profile Actions
         </p>
       </div>
     </div>

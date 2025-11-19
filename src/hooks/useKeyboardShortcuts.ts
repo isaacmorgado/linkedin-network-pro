@@ -13,11 +13,11 @@ interface KeyboardShortcutConfig {
 const SHORTCUTS: KeyboardShortcutConfig = {
   'alt+1': 'feed',
   'alt+2': 'watchlist',
-  'alt+3': 'network',
-  'alt+4': 'resume',
-  'alt+5': 'notifications',
-  'alt+6': 'settings',
-  'alt+7': 'profile',      // Context-sensitive
+  'alt+3': 'resume',
+  'alt+4': 'notifications',
+  'alt+5': 'settings',
+  'alt+6': 'profile',      // Context-sensitive
+  'alt+7': 'company',      // Context-sensitive
   'alt+8': 'jobs',         // Context-sensitive
   'alt+9': 'onboarding',   // First-run only
 };

@@ -124,6 +124,8 @@ export function FloatingPanel() {
             width: parseInt(ref.style.width),
             height: parseInt(ref.style.height),
           });
+          // Update position when resizing from top or left edges
+          setPanelPosition({ x: position.x, y: position.y });
         }
       }}
       style={{
