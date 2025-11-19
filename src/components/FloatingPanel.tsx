@@ -23,7 +23,31 @@ export function FloatingPanel() {
   };
 
   const handleMinimize = () => {
-    setIsMinimized(!isMinimized);
+    const willBeMinimized = !isMinimized;
+
+    // If we're MAXIMIZING (currently minimized, about to expand)
+    if (!willBeMinimized && rndRef.current) {
+      const viewportHeight = window.innerHeight;
+      const fullPanelHeight = panelSize.height;
+      const currentY = panelPosition.y;
+
+      // Check if full panel would go past the bottom (Windows taskbar)
+      const wouldGoPastBottom = currentY + fullPanelHeight > viewportHeight - 40; // 40px for taskbar
+
+      if (wouldGoPastBottom) {
+        // Reposition so bottom of panel is 40px from bottom
+        const newY = Math.max(20, viewportHeight - fullPanelHeight - 40);
+
+        // Smooth bounce animation
+        setTimeout(() => {
+          rndRef.current?.updatePosition({ x: panelPosition.x, y: newY });
+          setPanelPosition({ x: panelPosition.x, y: newY });
+          console.log('[Uproot] Repositioned on maximize:', { from: currentY, to: newY });
+        }, 50); // Small delay to let minimize animation start
+      }
+    }
+
+    setIsMinimized(willBeMinimized);
   };
 
   // Auto-reposition when minimized and at bottom of viewport
@@ -95,7 +119,8 @@ export function FloatingPanel() {
       }}
       style={{
         zIndex: 999999,
-        transition: isMinimized ? 'all 400ms cubic-bezier(0.4, 0.0, 0.2, 1)' : 'none',
+        // Bouncy spring animation - overshoots then settles
+        transition: 'all 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       }}
     >
       <div
