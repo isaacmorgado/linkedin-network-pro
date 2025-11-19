@@ -56,7 +56,7 @@ export function FloatingPanel() {
           }}
         >
           <h2 style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>
-            LinkedIn Network Pro
+            Uproot
           </h2>
 
           <button
@@ -107,7 +107,7 @@ export function FloatingPanel() {
 
           <div>
             <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' }}>
-              LinkedIn Network Pro
+              Uproot
             </h1>
             <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
               AI-powered networking assistant

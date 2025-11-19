@@ -7,7 +7,7 @@ export default defineConfig({
   outDir: '.output',
 
   manifest: {
-    name: 'LinkedIn Network Pro',
+    name: 'Uproot',
     description: 'AI-powered LinkedIn networking and job application assistant',
     version: '1.0.0',
     permissions: [
@@ -23,7 +23,7 @@ export default defineConfig({
       'https://*.supabase.co/*',
     ],
     action: {
-      default_title: 'LinkedIn Network Pro',
+      default_title: 'Uproot - Toggle Panel',
     },
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
