@@ -105,14 +105,14 @@ export function FloatingPanel() {
       bounds="window"
       disableDragging={false}
       enableResizing={isMinimized ? false : {
-        top: false,
+        top: true,
         right: true,
         bottom: true,
         left: true,
-        topRight: false,
+        topRight: true,
         bottomRight: true,
         bottomLeft: true,
-        topLeft: false,
+        topLeft: true,
       }}
       size={isMinimized ? { width: panelSize.width, height: 60 } : undefined}
       onDragStop={(e, data) => {
