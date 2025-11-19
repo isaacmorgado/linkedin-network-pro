@@ -28,7 +28,7 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
   const [activeFilter, setActiveFilter] = useState<FeedFilter>('all');
 
   // Mock feed data - will be replaced with actual hook
-  const mockFeedItems: FeedItem[] = [
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([
     {
       id: '1',
       type: 'job_alert',
@@ -62,10 +62,25 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
       connectionName: 'Sarah Chen',
       actionLabel: 'View Profile',
     },
-  ];
+  ]);
 
-  const feedItems = mockFeedItems;
   const hasItems = feedItems.length > 0;
+
+  // Toggle read status for a single item
+  const toggleReadStatus = (itemId: string) => {
+    setFeedItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === itemId ? { ...item, read: !item.read } : item
+      )
+    );
+  };
+
+  // Mark all items as read
+  const markAllAsRead = () => {
+    setFeedItems((prevItems) =>
+      prevItems.map((item) => ({ ...item, read: true }))
+    );
+  };
 
   // Filter logic
   const filteredItems = feedItems.filter((item) => {
@@ -108,21 +123,53 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
           >
             {panelWidth < 360 ? 'Feed' : 'Activity Feed'}
           </h2>
-          {unreadCount > 0 && (
-            <div
-              style={{
-                padding: '4px 10px',
-                backgroundColor: 'rgba(255, 149, 0, 0.1)',
-                borderRadius: '12px',
-                fontSize: panelWidth < 360 ? '11px' : '12px',
-                fontWeight: '600',
-                color: '#FF9500',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {unreadCount} new
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {unreadCount > 0 && (
+              <>
+                <div
+                  style={{
+                    padding: '4px 10px',
+                    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+                    borderRadius: '12px',
+                    fontSize: panelWidth < 360 ? '11px' : '12px',
+                    fontWeight: '600',
+                    color: '#FF9500',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {unreadCount} new
+                </div>
+                <button
+                  onClick={markAllAsRead}
+                  style={{
+                    padding: panelWidth < 360 ? '4px 8px' : '6px 10px',
+                    backgroundColor: '#0077B5',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: panelWidth < 360 ? '10px' : '11px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 150ms',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#005885';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0077B5';
+                  }}
+                  title="Mark all as read"
+                >
+                  <CheckCircle2 size={panelWidth < 360 ? 10 : 12} />
+                  {panelWidth >= 360 && 'Mark all read'}
+                </button>
+              </>
+            )}
+          </div>
         </div>
         {panelWidth >= 360 && (
           <p
@@ -162,7 +209,7 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
         ) : (
           <div style={{ padding: panelWidth < 360 ? '12px' : '16px', display: 'flex', flexDirection: 'column', gap: panelWidth < 360 ? '10px' : '12px' }}>
             {filteredItems.map((item) => (
-              <FeedCard key={item.id} item={item} panelWidth={panelWidth} />
+              <FeedCard key={item.id} item={item} panelWidth={panelWidth} onToggleRead={toggleReadStatus} />
             ))}
           </div>
         )}
@@ -258,14 +305,14 @@ function FeedFilters({ activeFilter, onFilterChange, unreadCount, panelWidth = 4
 interface FeedCardProps {
   item: FeedItem;
   panelWidth?: number;
+  onToggleRead: (itemId: string) => void;
 }
 
-function FeedCard({ item, panelWidth = 400 }: FeedCardProps) {
-  const [isRead, setIsRead] = useState(item.read);
+function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
   const isNarrow = panelWidth < 360;
 
-  const handleMarkRead = () => {
-    setIsRead(true);
+  const handleToggleRead = () => {
+    onToggleRead(item.id);
     // TODO: Update in storage
   };
 
@@ -318,7 +365,7 @@ function FeedCard({ item, panelWidth = 400 }: FeedCardProps) {
         backgroundColor: '#FFFFFF',
         borderRadius: isNarrow ? '10px' : '12px',
         padding: isNarrow ? '12px' : '16px',
-        border: `2px solid ${isRead ? 'transparent' : '#0077B5'}`,
+        border: `2px solid ${item.read ? 'transparent' : '#0077B5'}`,
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
         transition: 'all 150ms',
         position: 'relative',
@@ -397,7 +444,7 @@ function FeedCard({ item, panelWidth = 400 }: FeedCardProps) {
 
         {!isNarrow && (
           <button
-            onClick={handleMarkRead}
+            onClick={handleToggleRead}
             style={{
               background: 'none',
               border: 'none',
@@ -414,9 +461,9 @@ function FeedCard({ item, panelWidth = 400 }: FeedCardProps) {
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
-            title={isRead ? 'Read' : 'Mark as read'}
+            title={item.read ? 'Mark as unread' : 'Mark as read'}
           >
-            {isRead ? (
+            {item.read ? (
               <CheckCircle2 size={16} color="#34C759" />
             ) : (
               <Circle size={16} color="#6e6e73" />
