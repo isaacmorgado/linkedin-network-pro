@@ -5,63 +5,108 @@
  */
 
 import type { ExtractedKeyword, KeywordCategory } from '../types/resume';
+import { log, LogCategory } from '../utils/logger';
 
 /**
  * Extract keywords from job description
  * Uses frequency analysis, position weighting, and contextual analysis
  */
 export function extractKeywordsFromJobDescription(jobDescription: string): ExtractedKeyword[] {
-  const keywords: Map<string, ExtractedKeyword> = new Map();
+  const endTrace = log.trace(LogCategory.SERVICE, 'extractKeywordsFromJobDescription', {
+    descriptionLength: jobDescription.length,
+  });
 
-  // Clean and tokenize text
-  const tokens = tokenize(jobDescription);
+  try {
+    log.debug(LogCategory.SERVICE, 'Starting keyword extraction', {
+      textLength: jobDescription.length,
+      wordCount: jobDescription.split(/\s+/).length,
+    });
 
-  // Extract n-grams (1-3 words)
-  const unigrams = extractNGrams(tokens, 1);
-  const bigrams = extractNGrams(tokens, 2);
-  const trigrams = extractNGrams(tokens, 3);
+    const keywords: Map<string, ExtractedKeyword> = new Map();
 
-  // Combine all n-grams
-  const allNGrams = [...unigrams, ...bigrams, ...trigrams];
+    // Clean and tokenize text
+    log.debug(LogCategory.SERVICE, 'Tokenizing text');
+    const tokens = tokenize(jobDescription);
+    log.info(LogCategory.SERVICE, `Tokenized into ${tokens.length} tokens`);
 
-  // Calculate frequency for each n-gram
-  const frequencyMap = calculateFrequency(allNGrams);
+    // Extract n-grams (1-3 words)
+    log.debug(LogCategory.SERVICE, 'Extracting n-grams (1-3 words)');
+    const unigrams = extractNGrams(tokens, 1);
+    const bigrams = extractNGrams(tokens, 2);
+    const trigrams = extractNGrams(tokens, 3);
+    log.info(LogCategory.SERVICE, 'N-grams extracted', {
+      unigrams: unigrams.length,
+      bigrams: bigrams.length,
+      trigrams: trigrams.length,
+    });
 
-  // Filter and score keywords
-  for (const [term, frequency] of frequencyMap.entries()) {
-    // Skip common words and short terms
-    if (isCommonWord(term) || term.length < 2) {
-      continue;
+    // Combine all n-grams
+    const allNGrams = [...unigrams, ...bigrams, ...trigrams];
+    log.debug(LogCategory.SERVICE, `Total n-grams to analyze: ${allNGrams.length}`);
+
+    // Calculate frequency for each n-gram
+    log.debug(LogCategory.SERVICE, 'Calculating term frequency');
+    const frequencyMap = calculateFrequency(allNGrams);
+    log.info(LogCategory.SERVICE, `Found ${frequencyMap.size} unique terms`);
+
+    // Filter and score keywords
+    log.debug(LogCategory.SERVICE, 'Filtering and scoring keywords');
+    let filtered = 0;
+    for (const [term, frequency] of frequencyMap.entries()) {
+      // Skip common words and short terms
+      if (isCommonWord(term) || term.length < 2) {
+        filtered++;
+        continue;
+      }
+
+      // Determine if required or preferred based on context
+      const required = isRequiredSkill(term, jobDescription);
+
+      // Calculate weight (importance score 0-100)
+      const weight = calculateKeywordWeight(term, frequency, jobDescription, required);
+
+      // Only include keywords with sufficient weight
+      if (weight >= 20) {
+        const category = categorizeKeyword(term);
+        const context = findKeywordContext(term, jobDescription);
+
+        keywords.set(term, {
+          term,
+          category,
+          required,
+          frequency,
+          weight,
+          context,
+          synonyms: generateSynonyms(term, category),
+        });
+      }
     }
 
-    // Determine if required or preferred based on context
-    const required = isRequiredSkill(term, jobDescription);
+    log.info(LogCategory.SERVICE, 'Keyword filtering complete', {
+      filtered,
+      remaining: keywords.size,
+    });
 
-    // Calculate weight (importance score 0-100)
-    const weight = calculateKeywordWeight(term, frequency, jobDescription, required);
+    // Sort by weight (most important first)
+    log.debug(LogCategory.SERVICE, 'Sorting keywords by weight');
+    const sortedKeywords = Array.from(keywords.values()).sort((a, b) => b.weight - a.weight);
 
-    // Only include keywords with sufficient weight
-    if (weight >= 20) {
-      const category = categorizeKeyword(term);
-      const context = findKeywordContext(term, jobDescription);
+    // Return top 50 keywords
+    const topKeywords = sortedKeywords.slice(0, 50);
+    log.info(LogCategory.SERVICE, 'Keyword extraction completed', {
+      totalExtracted: topKeywords.length,
+      requiredCount: topKeywords.filter((k) => k.required).length,
+      preferredCount: topKeywords.filter((k) => !k.required).length,
+      topKeywords: topKeywords.slice(0, 10).map((k) => k.term),
+    });
 
-      keywords.set(term, {
-        term,
-        category,
-        required,
-        frequency,
-        weight,
-        context,
-        synonyms: generateSynonyms(term, category),
-      });
-    }
+    endTrace(topKeywords);
+    return topKeywords;
+  } catch (error) {
+    log.error(LogCategory.SERVICE, 'Keyword extraction failed', error as Error);
+    endTrace();
+    throw error;
   }
-
-  // Sort by weight (most important first)
-  const sortedKeywords = Array.from(keywords.values()).sort((a, b) => b.weight - a.weight);
-
-  // Return top 50 keywords
-  return sortedKeywords.slice(0, 50);
 }
 
 /**
@@ -387,15 +432,35 @@ export function categorizeJobRequirements(jobDescription: string): {
   required: string[];
   preferred: string[];
 } {
-  const keywords = extractKeywordsFromJobDescription(jobDescription);
+  const endTrace = log.trace(LogCategory.SERVICE, 'categorizeJobRequirements', {
+    descriptionLength: jobDescription.length,
+  });
 
-  const required = keywords
-    .filter((k) => k.required)
-    .map((k) => k.term);
+  try {
+    log.debug(LogCategory.SERVICE, 'Categorizing job requirements into required vs preferred');
+    const keywords = extractKeywordsFromJobDescription(jobDescription);
 
-  const preferred = keywords
-    .filter((k) => !k.required)
-    .map((k) => k.term);
+    const required = keywords
+      .filter((k) => k.required)
+      .map((k) => k.term);
 
-  return { required, preferred };
+    const preferred = keywords
+      .filter((k) => !k.required)
+      .map((k) => k.term);
+
+    const result = { required, preferred };
+    log.info(LogCategory.SERVICE, 'Job requirements categorized', {
+      requiredCount: required.length,
+      preferredCount: preferred.length,
+      topRequired: required.slice(0, 5),
+      topPreferred: preferred.slice(0, 5),
+    });
+
+    endTrace(result);
+    return result;
+  } catch (error) {
+    log.error(LogCategory.SERVICE, 'Job requirements categorization failed', error as Error);
+    endTrace();
+    throw error;
+  }
 }

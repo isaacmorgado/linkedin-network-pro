@@ -29,6 +29,7 @@ import {
 } from '../utils/linkedin-scraper';
 import { calculateJobMatch, filterMatchingJobs } from './job-matcher';
 import { addFeedItem } from '../utils/storage';
+import { log, LogCategory } from '../utils/logger';
 
 // ============================================================================
 // SNAPSHOT STORAGE
@@ -127,57 +128,88 @@ export async function checkCompanyJobs(
   company: WatchlistCompany,
   preferences: JobPreferences
 ): Promise<LinkedInJob[]> {
-  try {
+  return log.trackAsync(LogCategory.SERVICE, 'checkCompanyJobs', async () => {
     console.log(`[Uproot] Checking jobs for ${company.name}...`);
+    log.debug(LogCategory.SERVICE, 'Starting job check for company', {
+      companyId: company.id,
+      companyName: company.name,
+      jobAlertEnabled: company.jobAlertEnabled,
+    });
 
-    // Get current jobs from page (must be run in content script context)
-    const currentJobs = scrapeCompanyJobs(company.companyUrl);
+    try {
+      // Get current jobs from page (must be run in content script context)
+      log.debug(LogCategory.SERVICE, 'Scraping company jobs from page');
+      const currentJobs = scrapeCompanyJobs(company.companyUrl);
 
-    if (currentJobs.length === 0) {
-      console.log(`[Uproot] No jobs found for ${company.name}`);
+      if (currentJobs.length === 0) {
+        console.log(`[Uproot] No jobs found for ${company.name}`);
+        log.warn(LogCategory.SERVICE, 'No jobs found for company', { companyName: company.name });
+        return [];
+      }
+
+      log.info(LogCategory.SERVICE, `Scraped ${currentJobs.length} current jobs`);
+
+      // Get previous snapshot
+      log.debug(LogCategory.SERVICE, 'Retrieving previous job snapshot');
+      const snapshots = await getJobSnapshots();
+      const previousSnapshot = snapshots.get(company.id);
+
+      // Detect new jobs
+      log.debug(LogCategory.SERVICE, 'Detecting new jobs');
+      const newJobs = detectNewJobs(currentJobs, previousSnapshot);
+
+      console.log(`[Uproot] Found ${newJobs.length} new jobs for ${company.name}`);
+      log.info(LogCategory.SERVICE, `Detected ${newJobs.length} new jobs`, {
+        companyName: company.name,
+        totalJobs: currentJobs.length,
+        newJobs: newJobs.length,
+      });
+
+      // Update snapshot
+      log.debug(LogCategory.SERVICE, 'Updating job snapshot');
+      snapshots.set(company.id, {
+        companyId: company.id,
+        lastChecked: Date.now(),
+        jobs: currentJobs,
+      });
+      await saveJobSnapshots(snapshots);
+
+      // Filter by user preferences
+      log.debug(LogCategory.SERVICE, 'Filtering jobs by user preferences');
+      const matchCriteria: JobMatchCriteria = {
+        jobTitles: preferences.jobTitles,
+        experienceLevel: preferences.experienceLevel,
+        workLocation: preferences.workLocation,
+        locations: preferences.locations,
+        industries: preferences.industries,
+      };
+
+      const matchingJobs = filterMatchingJobs(newJobs, matchCriteria, 50);
+
+      console.log(`[Uproot] ${matchingJobs.length} jobs match user preferences`);
+      log.info(LogCategory.SERVICE, 'Jobs filtered by preferences', {
+        newJobs: newJobs.length,
+        matchingJobs: matchingJobs.length,
+        minScore: 50,
+      });
+
+      // Generate feed items for matching jobs
+      log.debug(LogCategory.SERVICE, 'Generating feed items for matching jobs');
+      for (const { job, match } of matchingJobs) {
+        await generateJobAlertFeedItem(job, company, match.score, match.reasons);
+      }
+      log.info(LogCategory.SERVICE, `Created ${matchingJobs.length} job alert feed items`);
+
+      return matchingJobs.map((m) => m.job);
+    } catch (error) {
+      console.error(`[Uproot] Error checking jobs for ${company.name}:`, error);
+      log.error(LogCategory.SERVICE, 'Job check failed', error as Error, {
+        companyId: company.id,
+        companyName: company.name,
+      });
       return [];
     }
-
-    // Get previous snapshot
-    const snapshots = await getJobSnapshots();
-    const previousSnapshot = snapshots.get(company.id);
-
-    // Detect new jobs
-    const newJobs = detectNewJobs(currentJobs, previousSnapshot);
-
-    console.log(`[Uproot] Found ${newJobs.length} new jobs for ${company.name}`);
-
-    // Update snapshot
-    snapshots.set(company.id, {
-      companyId: company.id,
-      lastChecked: Date.now(),
-      jobs: currentJobs,
-    });
-    await saveJobSnapshots(snapshots);
-
-    // Filter by user preferences
-    const matchCriteria: JobMatchCriteria = {
-      jobTitles: preferences.jobTitles,
-      experienceLevel: preferences.experienceLevel,
-      workLocation: preferences.workLocation,
-      locations: preferences.locations,
-      industries: preferences.industries,
-    };
-
-    const matchingJobs = filterMatchingJobs(newJobs, matchCriteria, 50);
-
-    console.log(`[Uproot] ${matchingJobs.length} jobs match user preferences`);
-
-    // Generate feed items for matching jobs
-    for (const { job, match } of matchingJobs) {
-      await generateJobAlertFeedItem(job, company, match.score, match.reasons);
-    }
-
-    return matchingJobs.map((m) => m.job);
-  } catch (error) {
-    console.error(`[Uproot] Error checking jobs for ${company.name}:`, error);
-    return [];
-  }
+  });
 }
 
 /**
@@ -238,38 +270,62 @@ async function generateJobAlertFeedItem(
  * Check a person for profile updates (job changes, promotions)
  */
 export async function checkPersonProfile(person: WatchlistPerson): Promise<void> {
-  try {
+  return log.trackAsync(LogCategory.SERVICE, 'checkPersonProfile', async () => {
     console.log(`[Uproot] Checking profile for ${person.name}...`);
-
-    // Get current profile from page
-    const currentProfile = scrapePersonProfile();
-
-    if (!currentProfile) {
-      console.log(`[Uproot] Could not scrape profile for ${person.name}`);
-      return;
-    }
-
-    // Get previous snapshot
-    const snapshots = await getPersonSnapshots();
-    const previousSnapshot = snapshots.get(person.id);
-
-    // Detect changes
-    if (previousSnapshot) {
-      await detectProfileChanges(currentProfile, previousSnapshot.profile, person);
-    }
-
-    // Update snapshot
-    snapshots.set(person.id, {
+    log.debug(LogCategory.SERVICE, 'Starting profile check', {
       personId: person.id,
-      lastChecked: Date.now(),
-      profile: currentProfile,
+      personName: person.name,
     });
-    await savePersonSnapshots(snapshots);
 
-    console.log(`[Uproot] Updated profile snapshot for ${person.name}`);
-  } catch (error) {
-    console.error(`[Uproot] Error checking profile for ${person.name}:`, error);
-  }
+    try {
+      // Get current profile from page
+      log.debug(LogCategory.SERVICE, 'Scraping person profile from page');
+      const currentProfile = scrapePersonProfile();
+
+      if (!currentProfile) {
+        console.log(`[Uproot] Could not scrape profile for ${person.name}`);
+        log.warn(LogCategory.SERVICE, 'Failed to scrape profile', { personName: person.name });
+        return;
+      }
+
+      log.info(LogCategory.SERVICE, 'Profile scraped successfully', {
+        personName: currentProfile.name,
+        currentRole: currentProfile.currentRole.title,
+        currentCompany: currentProfile.currentRole.company,
+      });
+
+      // Get previous snapshot
+      log.debug(LogCategory.SERVICE, 'Retrieving previous profile snapshot');
+      const snapshots = await getPersonSnapshots();
+      const previousSnapshot = snapshots.get(person.id);
+
+      // Detect changes
+      if (previousSnapshot) {
+        log.debug(LogCategory.SERVICE, 'Comparing profiles for changes');
+        await detectProfileChanges(currentProfile, previousSnapshot.profile, person);
+      } else {
+        log.info(LogCategory.SERVICE, 'First profile check, no previous snapshot to compare');
+      }
+
+      // Update snapshot
+      log.debug(LogCategory.SERVICE, 'Updating profile snapshot');
+      snapshots.set(person.id, {
+        personId: person.id,
+        lastChecked: Date.now(),
+        profile: currentProfile,
+      });
+      await savePersonSnapshots(snapshots);
+
+      console.log(`[Uproot] Updated profile snapshot for ${person.name}`);
+      log.info(LogCategory.SERVICE, 'Profile check completed', { personName: person.name });
+    } catch (error) {
+      console.error(`[Uproot] Error checking profile for ${person.name}:`, error);
+      log.error(LogCategory.SERVICE, 'Profile check failed', error as Error, {
+        personId: person.id,
+        personName: person.name,
+      });
+    }
+  });
 }
 
 /**
@@ -318,41 +374,66 @@ async function detectProfileChanges(
  * Check a company for new posts/updates
  */
 export async function checkCompanyUpdates(company: WatchlistCompany): Promise<void> {
-  try {
+  return log.trackAsync(LogCategory.SERVICE, 'checkCompanyUpdates', async () => {
     console.log(`[Uproot] Checking updates for ${company.name}...`);
-
-    // Get current updates from page
-    const currentUpdates = scrapeCompanyUpdates(company.companyUrl);
-
-    if (currentUpdates.length === 0) {
-      console.log(`[Uproot] No updates found for ${company.name}`);
-      return;
-    }
-
-    // Get previous snapshot
-    const snapshots = await getCompanySnapshots();
-    const previousSnapshot = snapshots.get(company.id);
-
-    // Detect new updates
-    const newUpdates = detectNewUpdates(currentUpdates, previousSnapshot);
-
-    console.log(`[Uproot] Found ${newUpdates.length} new updates for ${company.name}`);
-
-    // Generate feed items for new updates
-    for (const update of newUpdates) {
-      await generateCompanyUpdateFeedItem(update, company);
-    }
-
-    // Update snapshot
-    snapshots.set(company.id, {
+    log.debug(LogCategory.SERVICE, 'Starting company updates check', {
       companyId: company.id,
-      lastChecked: Date.now(),
-      updates: currentUpdates,
+      companyName: company.name,
     });
-    await saveCompanySnapshots(snapshots);
-  } catch (error) {
-    console.error(`[Uproot] Error checking updates for ${company.name}:`, error);
-  }
+
+    try {
+      // Get current updates from page
+      log.debug(LogCategory.SERVICE, 'Scraping company updates from page');
+      const currentUpdates = scrapeCompanyUpdates(company.companyUrl);
+
+      if (currentUpdates.length === 0) {
+        console.log(`[Uproot] No updates found for ${company.name}`);
+        log.warn(LogCategory.SERVICE, 'No updates found for company', { companyName: company.name });
+        return;
+      }
+
+      log.info(LogCategory.SERVICE, `Scraped ${currentUpdates.length} current updates`);
+
+      // Get previous snapshot
+      log.debug(LogCategory.SERVICE, 'Retrieving previous updates snapshot');
+      const snapshots = await getCompanySnapshots();
+      const previousSnapshot = snapshots.get(company.id);
+
+      // Detect new updates
+      log.debug(LogCategory.SERVICE, 'Detecting new updates');
+      const newUpdates = detectNewUpdates(currentUpdates, previousSnapshot);
+
+      console.log(`[Uproot] Found ${newUpdates.length} new updates for ${company.name}`);
+      log.info(LogCategory.SERVICE, `Detected ${newUpdates.length} new updates`, {
+        companyName: company.name,
+        totalUpdates: currentUpdates.length,
+      });
+
+      // Generate feed items for new updates
+      log.debug(LogCategory.SERVICE, 'Generating feed items for new updates');
+      for (const update of newUpdates) {
+        await generateCompanyUpdateFeedItem(update, company);
+      }
+      log.info(LogCategory.SERVICE, `Created ${newUpdates.length} company update feed items`);
+
+      // Update snapshot
+      log.debug(LogCategory.SERVICE, 'Updating company updates snapshot');
+      snapshots.set(company.id, {
+        companyId: company.id,
+        lastChecked: Date.now(),
+        updates: currentUpdates,
+      });
+      await saveCompanySnapshots(snapshots);
+
+      log.info(LogCategory.SERVICE, 'Company updates check completed', { companyName: company.name });
+    } catch (error) {
+      console.error(`[Uproot] Error checking updates for ${company.name}:`, error);
+      log.error(LogCategory.SERVICE, 'Company updates check failed', error as Error, {
+        companyId: company.id,
+        companyName: company.name,
+      });
+    }
+  });
 }
 
 /**
@@ -410,42 +491,64 @@ export async function monitorCurrentPage(
   watchlistPeople: WatchlistPerson[],
   preferences: JobPreferences
 ): Promise<void> {
-  const currentUrl = window.location.href;
+  return log.trackAsync(LogCategory.SERVICE, 'monitorCurrentPage', async () => {
+    const currentUrl = window.location.href;
 
-  console.log('[Uproot] Monitoring current page:', currentUrl);
+    console.log('[Uproot] Monitoring current page:', currentUrl);
+    log.debug(LogCategory.SERVICE, 'Starting page monitoring', {
+      url: currentUrl,
+      watchlistCompanies: watchlistCompanies.length,
+      watchlistPeople: watchlistPeople.length,
+    });
 
-  // Check if current page is a watchlisted company
-  const companyId = getCompanyIdFromUrl(currentUrl);
-  if (companyId) {
-    const company = watchlistCompanies.find((c) =>
-      c.companyUrl.includes(companyId)
-    );
+    // Check if current page is a watchlisted company
+    const companyId = getCompanyIdFromUrl(currentUrl);
+    if (companyId) {
+      log.debug(LogCategory.SERVICE, 'Company page detected, checking watchlist', { companyId });
+      const company = watchlistCompanies.find((c) =>
+        c.companyUrl.includes(companyId)
+      );
 
-    if (company) {
-      console.log(`[Uproot] On watchlisted company page: ${company.name}`);
+      if (company) {
+        console.log(`[Uproot] On watchlisted company page: ${company.name}`);
+        log.info(LogCategory.SERVICE, 'Watchlisted company page detected', {
+          companyName: company.name,
+          jobAlertsEnabled: company.jobAlertEnabled,
+        });
 
-      // Check for jobs if job alerts enabled
-      if (company.jobAlertEnabled && currentUrl.includes('/jobs')) {
-        await checkCompanyJobs(company, preferences);
-      }
+        // Check for jobs if job alerts enabled
+        if (company.jobAlertEnabled && currentUrl.includes('/jobs')) {
+          log.info(LogCategory.SERVICE, 'Company jobs page detected, checking for new jobs');
+          await checkCompanyJobs(company, preferences);
+        }
 
-      // Check for company updates if on posts page
-      if (currentUrl.includes('/posts')) {
-        await checkCompanyUpdates(company);
+        // Check for company updates if on posts page
+        if (currentUrl.includes('/posts')) {
+          log.info(LogCategory.SERVICE, 'Company posts page detected, checking for updates');
+          await checkCompanyUpdates(company);
+        }
+      } else {
+        log.debug(LogCategory.SERVICE, 'Company page not in watchlist');
       }
     }
-  }
 
-  // Check if current page is a watchlisted person
-  const profileUsername = getProfileUsernameFromUrl(currentUrl);
-  if (profileUsername) {
-    const person = watchlistPeople.find((p) =>
-      p.profileUrl.includes(profileUsername)
-    );
+    // Check if current page is a watchlisted person
+    const profileUsername = getProfileUsernameFromUrl(currentUrl);
+    if (profileUsername) {
+      log.debug(LogCategory.SERVICE, 'Profile page detected, checking watchlist', { profileUsername });
+      const person = watchlistPeople.find((p) =>
+        p.profileUrl.includes(profileUsername)
+      );
 
-    if (person) {
-      console.log(`[Uproot] On watchlisted person page: ${person.name}`);
-      await checkPersonProfile(person);
+      if (person) {
+        console.log(`[Uproot] On watchlisted person page: ${person.name}`);
+        log.info(LogCategory.SERVICE, 'Watchlisted person page detected', { personName: person.name });
+        await checkPersonProfile(person);
+      } else {
+        log.debug(LogCategory.SERVICE, 'Profile page not in watchlist');
+      }
     }
-  }
+
+    log.info(LogCategory.SERVICE, 'Page monitoring cycle completed');
+  });
 }

@@ -4,6 +4,7 @@
  */
 
 import type { ATSOptimization } from '../types/resume';
+import { log, LogCategory } from '../utils/logger';
 
 /**
  * Calculate ATS optimization score for resume content
@@ -14,48 +15,104 @@ export function calculateATSScore(
   extractedKeywords: string[],
   jobKeywords: string[]
 ): ATSOptimization {
-  // Keyword analysis
-  const keywordsUsed = findKeywordsInContent(content, jobKeywords);
-  const keywordMatchRate = jobKeywords.length > 0
-    ? (keywordsUsed.length / jobKeywords.length) * 100
-    : 0;
-
-  const totalWords = content.split(/\s+/).length;
-  const keywordDensity = totalWords > 0
-    ? (keywordsUsed.length / totalWords) * 100
-    : 0;
-
-  // Format compliance checks
-  const formatCompliance = checkFormatCompliance(content);
-
-  // Content quality checks
-  const contentQuality = checkContentQuality(content);
-
-  // Calculate overall ATS score (weighted average)
-  const overallATSScore = Math.round(
-    keywordMatchRate * 0.4 +        // 40% weight on keyword matching
-    formatCompliance.score * 0.3 +  // 30% weight on format
-    contentQuality.score * 0.3       // 30% weight on content quality
-  );
-
-  // Generate recommendations
-  const recommendations = generateRecommendations({
-    keywordMatchRate,
-    keywordDensity,
-    formatCompliance,
-    contentQuality,
+  const endTrace = log.trace(LogCategory.SERVICE, 'calculateATSScore', {
+    contentLength: content.length,
+    extractedKeywords: extractedKeywords.length,
+    jobKeywords: jobKeywords.length,
   });
 
-  return {
-    keywordDensity,
-    keywordMatchRate,
-    totalKeywords: extractedKeywords.length,
-    keywordsUsed,
-    formatCompliance,
-    contentQuality,
-    overallATSScore,
-    recommendations,
-  };
+  try {
+    log.debug(LogCategory.SERVICE, 'Starting ATS score calculation', {
+      resumeWordCount: content.split(/\s+/).length,
+      jobKeywordsToMatch: jobKeywords.length,
+    });
+
+    // Keyword analysis
+    log.debug(LogCategory.SERVICE, 'Analyzing keyword matches');
+    const keywordsUsed = findKeywordsInContent(content, jobKeywords);
+    const keywordMatchRate = jobKeywords.length > 0
+      ? (keywordsUsed.length / jobKeywords.length) * 100
+      : 0;
+
+    const totalWords = content.split(/\s+/).length;
+    const keywordDensity = totalWords > 0
+      ? (keywordsUsed.length / totalWords) * 100
+      : 0;
+
+    log.info(LogCategory.SERVICE, 'Keyword analysis complete', {
+      keywordsUsed: keywordsUsed.length,
+      matchRate: `${keywordMatchRate.toFixed(1)}%`,
+      density: `${keywordDensity.toFixed(2)}%`,
+    });
+
+    // Format compliance checks
+    log.debug(LogCategory.SERVICE, 'Checking format compliance');
+    const formatCompliance = checkFormatCompliance(content);
+    log.info(LogCategory.SERVICE, 'Format compliance checked', {
+      score: formatCompliance.score,
+      issues: Object.entries(formatCompliance).filter(([k, v]) => k !== 'score' && v === false).map(([k]) => k),
+    });
+
+    // Content quality checks
+    log.debug(LogCategory.SERVICE, 'Checking content quality');
+    const contentQuality = checkContentQuality(content);
+    log.info(LogCategory.SERVICE, 'Content quality checked', {
+      score: contentQuality.score,
+      hasMetrics: contentQuality.hasMetrics,
+      usesActionVerbs: contentQuality.usesActionVerbs,
+      aprFormatUsed: contentQuality.aprFormatUsed,
+    });
+
+    // Calculate overall ATS score (weighted average)
+    log.debug(LogCategory.SERVICE, 'Calculating overall ATS score (weighted average)');
+    const overallATSScore = Math.round(
+      keywordMatchRate * 0.4 +        // 40% weight on keyword matching
+      formatCompliance.score * 0.3 +  // 30% weight on format
+      contentQuality.score * 0.3       // 30% weight on content quality
+    );
+
+    log.info(LogCategory.SERVICE, 'Overall ATS score calculated', {
+      score: overallATSScore,
+      breakdown: {
+        keywords: `${keywordMatchRate.toFixed(1)}% (40% weight)`,
+        format: `${formatCompliance.score} (30% weight)`,
+        quality: `${contentQuality.score} (30% weight)`,
+      },
+    });
+
+    // Generate recommendations
+    log.debug(LogCategory.SERVICE, 'Generating recommendations');
+    const recommendations = generateRecommendations({
+      keywordMatchRate,
+      keywordDensity,
+      formatCompliance,
+      contentQuality,
+    });
+    log.info(LogCategory.SERVICE, `Generated ${recommendations.length} recommendations`);
+
+    const result = {
+      keywordDensity,
+      keywordMatchRate,
+      totalKeywords: extractedKeywords.length,
+      keywordsUsed,
+      formatCompliance,
+      contentQuality,
+      overallATSScore,
+      recommendations,
+    };
+
+    log.info(LogCategory.SERVICE, 'ATS score calculation completed', {
+      overallScore: overallATSScore,
+      recommendationsCount: recommendations.length,
+    });
+
+    endTrace(result);
+    return result;
+  } catch (error) {
+    log.error(LogCategory.SERVICE, 'ATS score calculation failed', error as Error);
+    endTrace();
+    throw error;
+  }
 }
 
 /**
@@ -338,13 +395,31 @@ export function getATSScoreLevel(score: number): {
   color: string;
   label: string;
 } {
-  if (score >= 80) {
-    return { level: 'excellent', color: '#34C759', label: 'Excellent' };
-  } else if (score >= 65) {
-    return { level: 'good', color: '#0077B5', label: 'Good' };
-  } else if (score >= 50) {
-    return { level: 'fair', color: '#FF9500', label: 'Needs Work' };
-  } else {
-    return { level: 'poor', color: '#FF3B30', label: 'Poor' };
+  const endTrace = log.trace(LogCategory.SERVICE, 'getATSScoreLevel', { score });
+
+  try {
+    let result;
+    if (score >= 80) {
+      result = { level: 'excellent' as const, color: '#34C759', label: 'Excellent' };
+    } else if (score >= 65) {
+      result = { level: 'good' as const, color: '#0077B5', label: 'Good' };
+    } else if (score >= 50) {
+      result = { level: 'fair' as const, color: '#FF9500', label: 'Needs Work' };
+    } else {
+      result = { level: 'poor' as const, color: '#FF3B30', label: 'Poor' };
+    }
+
+    log.debug(LogCategory.SERVICE, 'ATS score level determined', {
+      score,
+      level: result.level,
+      label: result.label,
+    });
+
+    endTrace(result);
+    return result;
+  } catch (error) {
+    log.error(LogCategory.SERVICE, 'ATS score level determination failed', error as Error);
+    endTrace();
+    throw error;
   }
 }

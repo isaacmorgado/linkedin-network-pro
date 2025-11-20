@@ -3,6 +3,8 @@
  * Extracts job data from LinkedIn job posting pages
  */
 
+import { log, LogCategory } from '../utils/logger';
+
 export interface LinkedInJobData {
   jobTitle: string;
   company: string;
@@ -55,49 +57,90 @@ export function getJobId(): string | null {
  * Scrape job data from current LinkedIn job page
  */
 export function scrapeJobData(): LinkedInJobData | null {
+  const endTrace = log.trace(LogCategory.SERVICE, 'scrapeJobData', {
+    url: window.location.href,
+  });
+
   try {
     console.log('[Uproot] Scraping job data from page...');
+    log.debug(LogCategory.SERVICE, 'Starting LinkedIn job page scrape', {
+      url: window.location.href,
+      pathname: window.location.pathname,
+    });
 
     // Check if we're on a job page
     if (!isJobPage()) {
       console.log('[Uproot] Not a job page, skipping scrape');
+      log.warn(LogCategory.SERVICE, 'Not a LinkedIn job page, skipping scrape');
+      endTrace();
       return null;
     }
 
+    log.debug(LogCategory.SERVICE, 'Confirmed job page, extracting job ID');
     const jobId = getJobId();
     if (!jobId) {
       console.error('[Uproot] Could not extract job ID');
+      log.error(LogCategory.SERVICE, 'Failed to extract job ID from URL', new Error('No job ID found'));
+      endTrace();
       return null;
     }
+    log.info(LogCategory.SERVICE, `Extracted job ID: ${jobId}`);
 
     // Extract job title
+    log.debug(LogCategory.SERVICE, 'Extracting job title from DOM');
     const jobTitle = extractJobTitle();
     if (!jobTitle) {
       console.error('[Uproot] Could not extract job title');
+      log.error(LogCategory.SERVICE, 'Failed to extract job title', new Error('No job title found'));
+      endTrace();
       return null;
     }
+    log.info(LogCategory.SERVICE, `Extracted job title: ${jobTitle}`);
 
     // Extract company name
+    log.debug(LogCategory.SERVICE, 'Extracting company name from DOM');
     const company = extractCompanyName();
     if (!company) {
       console.error('[Uproot] Could not extract company name');
+      log.error(LogCategory.SERVICE, 'Failed to extract company name', new Error('No company name found'));
+      endTrace();
       return null;
     }
+    log.info(LogCategory.SERVICE, `Extracted company: ${company}`);
 
     // Extract location
+    log.debug(LogCategory.SERVICE, 'Extracting location from DOM');
     const location = extractLocation();
+    if (location) {
+      log.info(LogCategory.SERVICE, `Extracted location: ${location}`);
+    } else {
+      log.warn(LogCategory.SERVICE, 'Location not found');
+    }
 
     // Extract description
+    log.debug(LogCategory.SERVICE, 'Extracting job description from DOM');
     const description = extractDescription();
     if (!description) {
       console.error('[Uproot] Could not extract job description');
+      log.error(LogCategory.SERVICE, 'Failed to extract job description', new Error('No description found'));
+      endTrace();
       return null;
     }
+    log.info(LogCategory.SERVICE, 'Extracted job description', {
+      length: description.length,
+      wordCount: description.split(/\s+/).length,
+    });
 
     // Extract additional metadata
+    log.debug(LogCategory.SERVICE, 'Extracting additional metadata');
     const postedDate = extractPostedDate();
     const employmentType = extractEmploymentType();
     const seniorityLevel = extractSeniorityLevel();
+    log.info(LogCategory.SERVICE, 'Metadata extracted', {
+      postedDate: postedDate || 'N/A',
+      employmentType: employmentType || 'N/A',
+      seniorityLevel: seniorityLevel || 'N/A',
+    });
 
     const jobData: LinkedInJobData = {
       jobTitle,
@@ -112,9 +155,22 @@ export function scrapeJobData(): LinkedInJobData | null {
     };
 
     console.log('[Uproot] Successfully scraped job data:', jobData);
+    log.info(LogCategory.SERVICE, 'Job scraping completed successfully', {
+      jobId,
+      jobTitle,
+      company,
+      hasDescription: !!description,
+      descriptionLength: description.length,
+    });
+
+    endTrace(jobData);
     return jobData;
   } catch (error) {
     console.error('[Uproot] Error scraping job data:', error);
+    log.error(LogCategory.SERVICE, 'Job scraping failed', error as Error, {
+      url: window.location.href,
+    });
+    endTrace();
     return null;
   }
 }
@@ -345,18 +401,34 @@ function extractSeniorityLevel(): string | undefined {
  * Wait for job details to load (LinkedIn loads async)
  */
 export async function waitForJobDetails(timeout = 5000): Promise<boolean> {
-  const startTime = Date.now();
+  return log.trackAsync(LogCategory.SERVICE, 'waitForJobDetails', async () => {
+    log.debug(LogCategory.SERVICE, 'Waiting for job details to load', { timeout });
+    const startTime = Date.now();
+    let attempts = 0;
 
-  while (Date.now() - startTime < timeout) {
-    // Check if description is loaded
-    const description = document.querySelector('.jobs-description__content, .job-details-jobs-unified-description__content');
-    if (description && description.textContent && description.textContent.trim().length > 100) {
-      return true;
+    while (Date.now() - startTime < timeout) {
+      attempts++;
+      // Check if description is loaded
+      const description = document.querySelector('.jobs-description__content, .job-details-jobs-unified-description__content');
+      if (description && description.textContent && description.textContent.trim().length > 100) {
+        const elapsed = Date.now() - startTime;
+        log.info(LogCategory.SERVICE, 'Job details loaded successfully', {
+          elapsed: `${elapsed}ms`,
+          attempts,
+        });
+        return true;
+      }
+
+      // Wait 100ms before checking again
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    // Wait 100ms before checking again
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-
-  return false;
+    const elapsed = Date.now() - startTime;
+    log.warn(LogCategory.SERVICE, 'Job details failed to load within timeout', {
+      timeout,
+      elapsed: `${elapsed}ms`,
+      attempts,
+    });
+    return false;
+  });
 }

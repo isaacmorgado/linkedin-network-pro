@@ -11,6 +11,7 @@ import type {
   ResumeSectionItem,
 } from '../types/resume';
 import { calculateATSScore } from './ats-optimizer';
+import { log, LogCategory } from '../utils/logger';
 
 /**
  * Generate a custom resume tailored to a specific job
@@ -20,56 +21,81 @@ export async function generateResumeWithAI(
   job: JobDescriptionAnalysis,
   profile: ProfessionalProfile
 ): Promise<GeneratedResume> {
-  console.log('[Uproot] Generating resume for:', job.jobTitle, 'at', job.company);
+  return log.trackAsync(LogCategory.SERVICE, 'generateResumeWithAI', async () => {
+    console.log('[Uproot] Generating resume for:', job.jobTitle, 'at', job.company);
+    log.debug(LogCategory.SERVICE, 'Starting resume generation', {
+      jobTitle: job.jobTitle,
+      company: job.company,
+      jobKeywords: job.extractedKeywords.length,
+      profileJobs: profile.jobs.length,
+      profileSkills: profile.technicalSkills.length,
+    });
 
-  // Select most relevant experiences based on job requirements
-  const relevantJobs = selectRelevantExperiences(profile, job);
+    // Select most relevant experiences based on job requirements
+    log.debug(LogCategory.SERVICE, 'Selecting relevant experiences');
+    const relevantJobs = selectRelevantExperiences(profile, job);
+    log.info(LogCategory.SERVICE, `Selected ${relevantJobs.length} most relevant experiences`);
 
-  // Select matching skills
-  const relevantSkills = selectRelevantSkills(profile, job);
+    // Select matching skills
+    log.debug(LogCategory.SERVICE, 'Selecting matching skills');
+    const relevantSkills = selectRelevantSkills(profile, job);
+    log.info(LogCategory.SERVICE, `Selected ${relevantSkills.length} matching skills`);
 
-  // Generate professional summary (AI-powered)
-  const professionalSummary = await generateProfessionalSummary(profile, job);
+    // Generate professional summary (AI-powered)
+    log.debug(LogCategory.SERVICE, 'Generating professional summary');
+    const professionalSummary = await generateProfessionalSummary(profile, job);
+    log.info(LogCategory.SERVICE, 'Professional summary generated', { length: professionalSummary.length });
 
-  // Build resume content
-  const content = buildResumeContent(
-    profile,
-    relevantJobs,
-    relevantSkills,
-    professionalSummary
-  );
+    // Build resume content
+    log.debug(LogCategory.SERVICE, 'Building resume content');
+    const content = buildResumeContent(
+      profile,
+      relevantJobs,
+      relevantSkills,
+      professionalSummary
+    );
+    log.info(LogCategory.SERVICE, 'Resume content built', { sections: content.sections.length });
 
-  // Calculate ATS optimization score
-  const atsOptimization = calculateATSScore(
-    content.formattedText || '',
-    job.extractedKeywords.map((k) => k.term),
-    job.extractedKeywords.map((k) => k.term)
-  );
+    // Calculate ATS optimization score
+    log.debug(LogCategory.SERVICE, 'Calculating ATS score');
+    const atsOptimization = calculateATSScore(
+      content.formattedText || '',
+      job.extractedKeywords.map((k) => k.term),
+      job.extractedKeywords.map((k) => k.term)
+    );
+    log.info(LogCategory.SERVICE, 'ATS score calculated', { score: atsOptimization.overallATSScore });
 
-  const now = Date.now();
-  const resume: GeneratedResume = {
-    id: `resume_${now}`,
-    jobDescriptionId: job.id,
-    jobTitle: job.jobTitle,
-    company: job.company,
-    selectedExperiences: relevantJobs.map((j) => ({
-      type: 'job',
-      id: j.id,
-      selectedBullets: j.bullets.map((b) => b.id),
-      bulletOrder: j.bullets.map((_, i) => i),
-    })),
-    selectedSkills: relevantSkills.map((s) => s.id),
-    selectedProjects: [],
-    selectedEducation: profile.education.map((e) => e.id),
-    professionalSummary,
-    content,
-    atsOptimization,
-    generatedAt: now,
-    version: 1,
-  };
+    const now = Date.now();
+    const resume: GeneratedResume = {
+      id: `resume_${now}`,
+      jobDescriptionId: job.id,
+      jobTitle: job.jobTitle,
+      company: job.company,
+      selectedExperiences: relevantJobs.map((j) => ({
+        type: 'job',
+        id: j.id,
+        selectedBullets: j.bullets.map((b) => b.id),
+        bulletOrder: j.bullets.map((_, i) => i),
+      })),
+      selectedSkills: relevantSkills.map((s) => s.id),
+      selectedProjects: [],
+      selectedEducation: profile.education.map((e) => e.id),
+      professionalSummary,
+      content,
+      atsOptimization,
+      generatedAt: now,
+      version: 1,
+    };
 
-  console.log('[Uproot] Resume generated with ATS score:', atsOptimization.overallATSScore);
-  return resume;
+    console.log('[Uproot] Resume generated with ATS score:', atsOptimization.overallATSScore);
+    log.info(LogCategory.SERVICE, 'Resume generation completed successfully', {
+      resumeId: resume.id,
+      atsScore: atsOptimization.overallATSScore,
+      experiencesSelected: relevantJobs.length,
+      skillsSelected: relevantSkills.length,
+    });
+    return resume;
+  });
 }
 
 /**
@@ -79,41 +105,63 @@ function selectRelevantExperiences(
   profile: ProfessionalProfile,
   job: JobDescriptionAnalysis
 ): ProfessionalProfile['jobs'] {
-  const jobKeywords = job.extractedKeywords.map((k) => k.term.toLowerCase());
-
-  // Score each job by keyword relevance
-  const scoredJobs = profile.jobs.map((jobExp) => {
-    let score = 0;
-
-    // Check technologies used
-    for (const tech of jobExp.technologies) {
-      if (jobKeywords.some((k) => k.includes(tech.toLowerCase()) || tech.toLowerCase().includes(k))) {
-        score += 10;
-      }
-    }
-
-    // Check bullet keywords
-    for (const bullet of jobExp.bullets) {
-      for (const keyword of bullet.keywords) {
-        if (jobKeywords.some((k) => k.includes(keyword.toLowerCase()))) {
-          score += 5;
-        }
-      }
-    }
-
-    // Prefer recent jobs
-    if (jobExp.current) {
-      score += 20;
-    }
-
-    return { job: jobExp, score };
+  const endTrace = log.trace(LogCategory.SERVICE, 'selectRelevantExperiences', {
+    totalJobs: profile.jobs.length,
+    jobKeywords: job.extractedKeywords.length,
   });
 
-  // Sort by score and take top 3
-  return scoredJobs
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-    .map((item) => item.job);
+  try {
+    const jobKeywords = job.extractedKeywords.map((k) => k.term.toLowerCase());
+    log.debug(LogCategory.SERVICE, 'Scoring experiences against job keywords', {
+      keywordsToMatch: jobKeywords.length,
+    });
+
+    // Score each job by keyword relevance
+    const scoredJobs = profile.jobs.map((jobExp) => {
+      let score = 0;
+
+      // Check technologies used
+      for (const tech of jobExp.technologies) {
+        if (jobKeywords.some((k) => k.includes(tech.toLowerCase()) || tech.toLowerCase().includes(k))) {
+          score += 10;
+        }
+      }
+
+      // Check bullet keywords
+      for (const bullet of jobExp.bullets) {
+        for (const keyword of bullet.keywords) {
+          if (jobKeywords.some((k) => k.includes(keyword.toLowerCase()))) {
+            score += 5;
+          }
+        }
+      }
+
+      // Prefer recent jobs
+      if (jobExp.current) {
+        score += 20;
+      }
+
+      return { job: jobExp, score };
+    });
+
+    // Sort by score and take top 3
+    const selected = scoredJobs
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((item) => item.job);
+
+    log.info(LogCategory.SERVICE, 'Selected most relevant experiences', {
+      selectedCount: selected.length,
+      topScores: scoredJobs.slice(0, 3).map((s) => ({ title: s.job.title, score: s.score })),
+    });
+
+    endTrace(selected);
+    return selected;
+  } catch (error) {
+    log.error(LogCategory.SERVICE, 'Experience selection failed', error as Error);
+    endTrace();
+    throw error;
+  }
 }
 
 /**
@@ -123,24 +171,50 @@ function selectRelevantSkills(
   profile: ProfessionalProfile,
   job: JobDescriptionAnalysis
 ): ProfessionalProfile['technicalSkills'] {
-  const jobKeywords = job.extractedKeywords.map((k) => k.term.toLowerCase());
-  const allSkills = [...profile.technicalSkills, ...profile.softSkills];
-
-  // Filter skills that match job keywords
-  const matchingSkills = allSkills.filter((skill) => {
-    const skillName = skill.name.toLowerCase();
-    return jobKeywords.some(
-      (k) => k.includes(skillName) || skillName.includes(k) || skill.synonyms?.some((s) => k.includes(s.toLowerCase()))
-    );
+  const endTrace = log.trace(LogCategory.SERVICE, 'selectRelevantSkills', {
+    technicalSkills: profile.technicalSkills.length,
+    softSkills: profile.softSkills.length,
+    jobKeywords: job.extractedKeywords.length,
   });
 
-  // Sort by proficiency and return top 15
-  return matchingSkills
-    .sort((a, b) => {
-      const proficiencyOrder = { expert: 4, advanced: 3, intermediate: 2, beginner: 1 };
-      return proficiencyOrder[b.proficiency] - proficiencyOrder[a.proficiency];
-    })
-    .slice(0, 15);
+  try {
+    const jobKeywords = job.extractedKeywords.map((k) => k.term.toLowerCase());
+    const allSkills = [...profile.technicalSkills, ...profile.softSkills];
+    log.debug(LogCategory.SERVICE, 'Matching skills against job keywords', {
+      totalSkills: allSkills.length,
+    });
+
+    // Filter skills that match job keywords
+    const matchingSkills = allSkills.filter((skill) => {
+      const skillName = skill.name.toLowerCase();
+      return jobKeywords.some(
+        (k) => k.includes(skillName) || skillName.includes(k) || skill.synonyms?.some((s) => k.includes(s.toLowerCase()))
+      );
+    });
+
+    log.debug(LogCategory.SERVICE, `Found ${matchingSkills.length} matching skills, sorting by proficiency`);
+
+    // Sort by proficiency and return top 15
+    const selected = matchingSkills
+      .sort((a, b) => {
+        const proficiencyOrder = { expert: 4, advanced: 3, intermediate: 2, beginner: 1 };
+        return proficiencyOrder[b.proficiency] - proficiencyOrder[a.proficiency];
+      })
+      .slice(0, 15);
+
+    log.info(LogCategory.SERVICE, 'Selected most relevant skills', {
+      matchingCount: matchingSkills.length,
+      selectedCount: selected.length,
+      topSkills: selected.slice(0, 5).map((s) => s.name),
+    });
+
+    endTrace(selected);
+    return selected;
+  } catch (error) {
+    log.error(LogCategory.SERVICE, 'Skill selection failed', error as Error);
+    endTrace();
+    throw error;
+  }
 }
 
 /**
@@ -151,21 +225,35 @@ async function generateProfessionalSummary(
   profile: ProfessionalProfile,
   job: JobDescriptionAnalysis
 ): Promise<string> {
-  // In production, this would call Claude API
-  // For now, generate a template-based summary
+  return log.trackAsync(LogCategory.SERVICE, 'generateProfessionalSummary', async () => {
+    log.debug(LogCategory.SERVICE, 'Generating professional summary (template-based)', {
+      jobTitle: job.jobTitle,
+      requiredSkills: job.requiredSkills.length,
+    });
 
-  const yearsExp = calculateYearsOfExperience(profile);
-  const topSkills = profile.technicalSkills
-    .slice(0, 3)
-    .map((s) => s.name)
-    .join(', ');
+    // In production, this would call Claude API
+    // For now, generate a template-based summary
 
-  const requiredSkills = job.requiredSkills.slice(0, 3).join(', ');
+    const yearsExp = calculateYearsOfExperience(profile);
+    const topSkills = profile.technicalSkills
+      .slice(0, 3)
+      .map((s) => s.name)
+      .join(', ');
 
-  // Template-based generation (would be Claude AI in production)
-  const summary = `Results-driven professional with ${yearsExp}+ years of experience in ${topSkills}. Proven track record of delivering high-impact solutions and driving innovation. Expertise in ${requiredSkills}, with a strong focus on scalability and performance. Passionate about leveraging cutting-edge technologies to solve complex business challenges and exceed organizational goals.`;
+    const requiredSkills = job.requiredSkills.slice(0, 3).join(', ');
 
-  return summary;
+    // Template-based generation (would be Claude AI in production)
+    const summary = `Results-driven professional with ${yearsExp}+ years of experience in ${topSkills}. Proven track record of delivering high-impact solutions and driving innovation. Expertise in ${requiredSkills}, with a strong focus on scalability and performance. Passionate about leveraging cutting-edge technologies to solve complex business challenges and exceed organizational goals.`;
+
+    log.info(LogCategory.SERVICE, 'Professional summary generated', {
+      yearsExperience: yearsExp,
+      topSkills,
+      summaryLength: summary.length,
+      wordCount: summary.split(/\s+/).length,
+    });
+
+    return summary;
+  });
 
   /* Production version with Claude API:
 
@@ -262,7 +350,15 @@ function buildResumeContent(
   selectedSkills: ProfessionalProfile['technicalSkills'],
   professionalSummary: string
 ): ResumeContent {
-  const sections: ResumeContent['sections'] = [];
+  const endTrace = log.trace(LogCategory.SERVICE, 'buildResumeContent', {
+    selectedJobs: selectedJobs.length,
+    selectedSkills: selectedSkills.length,
+    educationItems: profile.education.length,
+  });
+
+  try {
+    log.debug(LogCategory.SERVICE, 'Building resume sections');
+    const sections: ResumeContent['sections'] = [];
 
   // Professional Summary
   sections.push({
@@ -316,12 +412,27 @@ function buildResumeContent(
   }
 
   // Generate formatted text
+  log.debug(LogCategory.SERVICE, 'Formatting resume as plain text for ATS');
   const formattedText = formatResumeAsText(profile, sections);
 
-  return {
+  const content = {
     sections,
     formattedText,
   };
+
+  log.info(LogCategory.SERVICE, 'Resume content built successfully', {
+    totalSections: sections.length,
+    textLength: formattedText?.length || 0,
+    wordCount: formattedText ? formattedText.split(/\s+/).length : 0,
+  });
+
+  endTrace(content);
+  return content;
+  } catch (error) {
+    log.error(LogCategory.SERVICE, 'Resume content building failed', error as Error);
+    endTrace();
+    throw error;
+  }
 }
 
 /**
@@ -391,14 +502,28 @@ function formatResumeAsText(
  * Get generated resumes from storage
  */
 export async function getGeneratedResumes(): Promise<GeneratedResume[]> {
-  // This would be implemented in storage.ts
-  return [];
+  return log.trackAsync(LogCategory.SERVICE, 'getGeneratedResumes', async () => {
+    log.debug(LogCategory.SERVICE, 'Fetching generated resumes from storage');
+    // This would be implemented in storage.ts
+    const resumes: GeneratedResume[] = [];
+    log.info(LogCategory.SERVICE, 'Retrieved generated resumes', { count: resumes.length });
+    return resumes;
+  });
 }
 
 /**
  * Save generated resume to storage
  */
 export async function saveGeneratedResume(resume: GeneratedResume): Promise<void> {
-  // This would be implemented in storage.ts
-  console.log('[Uproot] Saving generated resume:', resume.id);
+  return log.trackAsync(LogCategory.SERVICE, 'saveGeneratedResume', async () => {
+    console.log('[Uproot] Saving generated resume:', resume.id);
+    log.debug(LogCategory.SERVICE, 'Saving generated resume', {
+      resumeId: resume.id,
+      jobTitle: resume.jobTitle,
+      company: resume.company,
+      atsScore: resume.atsOptimization.overallATSScore,
+    });
+    // This would be implemented in storage.ts
+    log.info(LogCategory.SERVICE, 'Resume saved successfully', { resumeId: resume.id });
+  });
 }
