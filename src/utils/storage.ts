@@ -39,6 +39,21 @@ import {
   RESUMES_STORAGE_KEY,
   RESUME_APPLICATIONS_STORAGE_KEY,
 } from '../types/resume';
+import type {
+  CoverLetter,
+  CoverLetterTemplate,
+  CoverLetterComponent,
+  CoverLetterPreferences,
+  CoverLetterAnalytics,
+  GeneratedCoverLetter,
+} from '../types/cover-letter';
+import {
+  COVER_LETTERS_KEY,
+  COVER_LETTER_TEMPLATES_KEY,
+  COVER_LETTER_COMPONENTS_KEY,
+  COVER_LETTER_PREFERENCES_KEY,
+  COVER_LETTER_ANALYTICS_KEY,
+} from '../types/cover-letter';
 
 // Get watchlist from storage
 export async function getWatchlist(): Promise<WatchlistPerson[]> {
@@ -1666,3 +1681,624 @@ export async function getJobDescriptionAnalysis(id: string): Promise<JobDescript
 }
 
 // Note: Generated resume functions are defined earlier in this file (lines 1055-1105)
+
+// ============================================================================
+// COVER LETTER MANAGEMENT
+// ============================================================================
+
+/**
+ * Get all cover letters
+ */
+export async function getCoverLetters(): Promise<CoverLetter[]> {
+  try {
+    const result = await chrome.storage.local.get(COVER_LETTERS_KEY);
+    return result[COVER_LETTERS_KEY] || [];
+  } catch (error) {
+    console.error('[Uproot] Error getting cover letters:', error);
+    return [];
+  }
+}
+
+/**
+ * Get cover letter by ID
+ */
+export async function getCoverLetter(id: string): Promise<CoverLetter | null> {
+  try {
+    const letters = await getCoverLetters();
+    return letters.find((l) => l.id === id) || null;
+  } catch (error) {
+    console.error('[Uproot] Error getting cover letter:', error);
+    return null;
+  }
+}
+
+/**
+ * Get cover letters for a specific job
+ */
+export async function getCoverLettersForJob(jobId: string): Promise<CoverLetter[]> {
+  try {
+    const letters = await getCoverLetters();
+    return letters.filter((l) => l.jobId === jobId);
+  } catch (error) {
+    console.error('[Uproot] Error getting cover letters for job:', error);
+    return [];
+  }
+}
+
+/**
+ * Save cover letter (create or update)
+ */
+export async function saveCoverLetter(letter: CoverLetter): Promise<void> {
+  try {
+    const letters = await getCoverLetters();
+    const existingIndex = letters.findIndex((l) => l.id === letter.id);
+
+    const updatedLetter: CoverLetter = {
+      ...letter,
+      updatedAt: Date.now(),
+      lastEditedAt: Date.now(),
+    };
+
+    if (existingIndex >= 0) {
+      letters[existingIndex] = updatedLetter;
+    } else {
+      letters.push(updatedLetter);
+    }
+
+    await chrome.storage.local.set({ [COVER_LETTERS_KEY]: letters });
+    console.log('[Uproot] Cover letter saved:', letter.id);
+  } catch (error) {
+    console.error('[Uproot] Error saving cover letter:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create new cover letter
+ */
+export async function createCoverLetter(
+  letterData: Omit<CoverLetter, 'id' | 'createdAt' | 'updatedAt' | 'lastEditedAt' | 'version'>
+): Promise<CoverLetter> {
+  const newLetter: CoverLetter = {
+    ...letterData,
+    id: `cover_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    version: 1,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    lastEditedAt: Date.now(),
+  };
+
+  await saveCoverLetter(newLetter);
+  console.log('[Uproot] Created cover letter:', newLetter.id, 'for', newLetter.company);
+  return newLetter;
+}
+
+/**
+ * Update cover letter
+ */
+export async function updateCoverLetter(id: string, updates: Partial<CoverLetter>): Promise<void> {
+  try {
+    const letter = await getCoverLetter(id);
+    if (!letter) {
+      throw new Error('Cover letter not found');
+    }
+
+    const updatedLetter: CoverLetter = {
+      ...letter,
+      ...updates,
+      id: letter.id, // Preserve ID
+      updatedAt: Date.now(),
+      lastEditedAt: Date.now(),
+    };
+
+    await saveCoverLetter(updatedLetter);
+    console.log('[Uproot] Updated cover letter:', id);
+  } catch (error) {
+    console.error('[Uproot] Error updating cover letter:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete cover letter
+ */
+export async function deleteCoverLetter(id: string): Promise<void> {
+  try {
+    const letters = await getCoverLetters();
+    const filtered = letters.filter((l) => l.id !== id);
+    await chrome.storage.local.set({ [COVER_LETTERS_KEY]: filtered });
+    console.log('[Uproot] Deleted cover letter:', id);
+  } catch (error) {
+    console.error('[Uproot] Error deleting cover letter:', error);
+    throw error;
+  }
+}
+
+/**
+ * Mark cover letter as sent
+ */
+export async function markCoverLetterAsSent(id: string): Promise<void> {
+  try {
+    await updateCoverLetter(id, {
+      status: 'sent',
+      sentAt: Date.now(),
+    });
+    console.log('[Uproot] Marked cover letter as sent:', id);
+  } catch (error) {
+    console.error('[Uproot] Error marking cover letter as sent:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update cover letter outcome
+ */
+export async function updateCoverLetterOutcome(
+  id: string,
+  outcome: 'no-response' | 'rejected' | 'phone-screen' | 'interview' | 'offer'
+): Promise<void> {
+  try {
+    await updateCoverLetter(id, {
+      outcomeStatus: outcome,
+      responseReceived: outcome !== 'no-response',
+      responseDate: Date.now(),
+    });
+    console.log('[Uproot] Updated cover letter outcome:', id, outcome);
+  } catch (error) {
+    console.error('[Uproot] Error updating cover letter outcome:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// COVER LETTER TEMPLATES
+// ============================================================================
+
+/**
+ * Get all cover letter templates
+ */
+export async function getCoverLetterTemplates(): Promise<CoverLetterTemplate[]> {
+  try {
+    const result = await chrome.storage.local.get(COVER_LETTER_TEMPLATES_KEY);
+    const templates = result[COVER_LETTER_TEMPLATES_KEY] || [];
+
+    // If no templates exist, return default templates
+    if (templates.length === 0) {
+      return getDefaultCoverLetterTemplates();
+    }
+
+    return templates;
+  } catch (error) {
+    console.error('[Uproot] Error getting cover letter templates:', error);
+    return getDefaultCoverLetterTemplates();
+  }
+}
+
+/**
+ * Get cover letter template by ID
+ */
+export async function getCoverLetterTemplate(id: string): Promise<CoverLetterTemplate | null> {
+  try {
+    const templates = await getCoverLetterTemplates();
+    return templates.find((t) => t.id === id) || null;
+  } catch (error) {
+    console.error('[Uproot] Error getting cover letter template:', error);
+    return null;
+  }
+}
+
+/**
+ * Save cover letter template
+ */
+export async function saveCoverLetterTemplate(template: CoverLetterTemplate): Promise<void> {
+  try {
+    const templates = await getCoverLetterTemplates();
+    const existingIndex = templates.findIndex((t) => t.id === template.id);
+
+    const updatedTemplate: CoverLetterTemplate = {
+      ...template,
+      updatedAt: Date.now(),
+    };
+
+    if (existingIndex >= 0) {
+      templates[existingIndex] = updatedTemplate;
+    } else {
+      templates.push(updatedTemplate);
+    }
+
+    await chrome.storage.local.set({ [COVER_LETTER_TEMPLATES_KEY]: templates });
+    console.log('[Uproot] Cover letter template saved:', template.id);
+  } catch (error) {
+    console.error('[Uproot] Error saving cover letter template:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete cover letter template
+ */
+export async function deleteCoverLetterTemplate(id: string): Promise<void> {
+  try {
+    const templates = await getCoverLetterTemplates();
+
+    // Prevent deleting default templates
+    const template = templates.find((t) => t.id === id);
+    if (template && template.isDefault) {
+      throw new Error('Cannot delete default template');
+    }
+
+    const filtered = templates.filter((t) => t.id !== id);
+    await chrome.storage.local.set({ [COVER_LETTER_TEMPLATES_KEY]: filtered });
+    console.log('[Uproot] Deleted cover letter template:', id);
+  } catch (error) {
+    console.error('[Uproot] Error deleting cover letter template:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get default cover letter templates
+ * Based on research: Problem-Solution format has highest response rate
+ */
+function getDefaultCoverLetterTemplates(): CoverLetterTemplate[] {
+  return [
+    {
+      id: 'template_problem_solution',
+      name: 'Problem-Solution (Recommended)',
+      description: 'Highest response rate. Position yourself as solving their problems.',
+      framework: 'problem-solution',
+      industry: ['tech', 'corporate', 'consulting'],
+      jobLevel: ['mid', 'senior', 'executive'],
+      tone: 'professional',
+      structure: {
+        opening: {
+          id: 'opening_problem_solution',
+          type: 'opening',
+          text: 'I was excited to see {{companyName}}\'s opening for {{jobTitle}}. With {{companyName}}\'s focus on {{companyMission}}, I believe my experience in {{relevantSkill}} can help address the challenges your team is facing.',
+        },
+        body: [
+          {
+            id: 'body_experience',
+            type: 'experience',
+            text: 'In my current role at {{currentCompany}}, I {{relevantAchievement}}. This directly aligns with your need for {{jobRequirement}}, and I\'m confident I can bring similar results to {{companyName}}.',
+          },
+          {
+            id: 'body_value',
+            type: 'value-proposition',
+            text: 'I\'m particularly drawn to {{specificCompanyDetail}}. My background in {{relevantExperience}} has prepared me to {{valueProposition}}.',
+          },
+        ],
+        closing: {
+          id: 'closing_cta',
+          type: 'closing',
+          text: 'I would welcome the opportunity to discuss how my experience can contribute to {{companyName}}\'s continued success. Thank you for your consideration.',
+        },
+      },
+      requiredVariables: [
+        { name: 'companyName', type: 'string', description: 'Company name', autoFillFrom: 'job', autoFillPath: 'company' },
+        { name: 'jobTitle', type: 'string', description: 'Job title', autoFillFrom: 'job', autoFillPath: 'jobTitle' },
+        { name: 'relevantSkill', type: 'string', description: 'Your most relevant skill', autoFillFrom: 'profile', autoFillPath: 'technicalSkills[0].name' },
+        { name: 'relevantAchievement', type: 'string', description: 'Your top relevant achievement' },
+      ],
+      optionalVariables: [
+        { name: 'companyMission', type: 'string', description: 'Company mission or focus area' },
+        { name: 'specificCompanyDetail', type: 'string', description: 'Specific detail about company (recent news, product, etc.)' },
+      ],
+      isDefault: true,
+      usageCount: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    },
+    {
+      id: 'template_achievement_focused',
+      name: 'Achievement-Focused',
+      description: 'Best for technical roles. Lead with quantifiable results.',
+      framework: 'achievement-focused',
+      industry: ['tech', 'data', 'engineering'],
+      jobLevel: ['mid', 'senior'],
+      tone: 'confident',
+      structure: {
+        opening: {
+          id: 'opening_achievement',
+          type: 'opening',
+          text: 'I was excited to see the {{jobTitle}} position at {{companyName}}. In my current role, I {{topAchievement}}, and I\'m eager to bring similar impact to your team.',
+        },
+        body: [
+          {
+            id: 'body_achievements',
+            type: 'experience',
+            text: 'My background includes: {{achievement1}}, {{achievement2}}, and {{achievement3}}. These experiences have given me {{relevantSkills}} that directly align with your requirements.',
+          },
+        ],
+        closing: {
+          id: 'closing_next_steps',
+          type: 'closing',
+          text: 'I would love to discuss how I can contribute to {{companyName}}\'s {{companyGoal}}. Thank you for your time and consideration.',
+        },
+      },
+      requiredVariables: [
+        { name: 'companyName', type: 'string', description: 'Company name', autoFillFrom: 'job', autoFillPath: 'company' },
+        { name: 'jobTitle', type: 'string', description: 'Job title', autoFillFrom: 'job', autoFillPath: 'jobTitle' },
+        { name: 'topAchievement', type: 'string', description: 'Your single best achievement with metrics' },
+      ],
+      optionalVariables: [],
+      isDefault: true,
+      usageCount: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    },
+  ];
+}
+
+// ============================================================================
+// COVER LETTER COMPONENTS
+// ============================================================================
+
+/**
+ * Get all cover letter components
+ */
+export async function getCoverLetterComponents(): Promise<CoverLetterComponent[]> {
+  try {
+    const result = await chrome.storage.local.get(COVER_LETTER_COMPONENTS_KEY);
+    const components = result[COVER_LETTER_COMPONENTS_KEY] || [];
+
+    // If no components exist, return default components
+    if (components.length === 0) {
+      return getDefaultCoverLetterComponents();
+    }
+
+    return components;
+  } catch (error) {
+    console.error('[Uproot] Error getting cover letter components:', error);
+    return getDefaultCoverLetterComponents();
+  }
+}
+
+/**
+ * Save cover letter component
+ */
+export async function saveCoverLetterComponent(component: CoverLetterComponent): Promise<void> {
+  try {
+    const components = await getCoverLetterComponents();
+    const existingIndex = components.findIndex((c) => c.id === component.id);
+
+    if (existingIndex >= 0) {
+      components[existingIndex] = component;
+    } else {
+      components.push(component);
+    }
+
+    await chrome.storage.local.set({ [COVER_LETTER_COMPONENTS_KEY]: components });
+    console.log('[Uproot] Cover letter component saved:', component.id);
+  } catch (error) {
+    console.error('[Uproot] Error saving cover letter component:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get default cover letter components
+ * Research-backed opening hooks, value props, and closings
+ */
+function getDefaultCoverLetterComponents(): CoverLetterComponent[] {
+  return [
+    {
+      id: 'opening_passion',
+      type: 'opening-hook',
+      name: 'Passion Opening',
+      description: 'For mission-driven companies',
+      text: 'I\'ve been following {{companyName}}\'s work in {{companyMission}} for some time, and I\'m excited to apply for the {{jobTitle}} position.',
+      variables: ['companyName', 'companyMission', 'jobTitle'],
+      example: 'I\'ve been following Tesla\'s work in sustainable energy for some time, and I\'m excited to apply for the Senior Software Engineer position.',
+      bestFor: { tone: ['enthusiastic'], industry: ['nonprofit', 'tech', 'healthcare'] },
+      isDefault: true,
+      usageCount: 0,
+      createdAt: Date.now(),
+    },
+    {
+      id: 'opening_achievement',
+      type: 'opening-hook',
+      name: 'Achievement Opening',
+      description: 'Lead with impressive results',
+      text: 'When I {{achievement}}, I knew this type of impact was what I wanted to continue creating. Your {{jobTitle}} role at {{companyName}} represents exactly that opportunity.',
+      variables: ['achievement', 'jobTitle', 'companyName'],
+      example: 'When I reduced deployment time by 70% at my last company, I knew this type of impact was what I wanted to continue creating.',
+      bestFor: { tone: ['confident'], jobLevel: ['mid', 'senior'] },
+      isDefault: true,
+      usageCount: 0,
+      createdAt: Date.now(),
+    },
+    {
+      id: 'closing_enthusiastic',
+      type: 'closing-cta',
+      name: 'Enthusiastic Closing',
+      description: 'Show genuine excitement',
+      text: 'I would be thrilled to bring my {{relevantSkills}} to {{companyName}} and contribute to {{companyGoal}}. I look forward to discussing how I can add value to your team.',
+      variables: ['relevantSkills', 'companyName', 'companyGoal'],
+      example: 'I would be thrilled to bring my full-stack expertise to Stripe and contribute to building the financial infrastructure of the internet.',
+      bestFor: { tone: ['enthusiastic'], jobLevel: ['entry', 'mid'] },
+      isDefault: true,
+      usageCount: 0,
+      createdAt: Date.now(),
+    },
+    {
+      id: 'closing_professional',
+      type: 'closing-cta',
+      name: 'Professional Closing',
+      description: 'Confident and professional',
+      text: 'I would welcome the opportunity to discuss how my experience in {{relevantArea}} can contribute to {{companyName}}\'s continued success. Thank you for your consideration.',
+      variables: ['relevantArea', 'companyName'],
+      example: 'I would welcome the opportunity to discuss how my experience in enterprise architecture can contribute to Microsoft\'s continued success.',
+      bestFor: { tone: ['professional'], jobLevel: ['senior', 'executive'] },
+      isDefault: true,
+      usageCount: 0,
+      createdAt: Date.now(),
+    },
+  ];
+}
+
+// ============================================================================
+// COVER LETTER PREFERENCES
+// ============================================================================
+
+/**
+ * Get user's cover letter preferences
+ */
+export async function getCoverLetterPreferences(): Promise<CoverLetterPreferences> {
+  try {
+    const result = await chrome.storage.local.get(COVER_LETTER_PREFERENCES_KEY);
+    const prefs = result[COVER_LETTER_PREFERENCES_KEY];
+
+    if (!prefs) {
+      // Return default preferences
+      return {
+        defaultTone: 'professional',
+        defaultCustomizationLevel: 'standard',
+        defaultFramework: 'problem-solution',
+        minimumQualityScore: 75,
+        minimumATSScore: 70,
+        preferredContactFormat: 'header',
+        includeLinkedIn: true,
+        includePortfolio: true,
+        autoFetchCompanyResearch: true,
+        includeCompanyResearchInLetter: true,
+        trackOutcomes: true,
+        storeSentLetters: true,
+        anonymizeLettersForAnalysis: false,
+      };
+    }
+
+    return prefs;
+  } catch (error) {
+    console.error('[Uproot] Error getting cover letter preferences:', error);
+    throw error;
+  }
+}
+
+/**
+ * Save cover letter preferences
+ */
+export async function saveCoverLetterPreferences(prefs: CoverLetterPreferences): Promise<void> {
+  try {
+    await chrome.storage.local.set({ [COVER_LETTER_PREFERENCES_KEY]: prefs });
+    console.log('[Uproot] Cover letter preferences saved');
+  } catch (error) {
+    console.error('[Uproot] Error saving cover letter preferences:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// COVER LETTER ANALYTICS
+// ============================================================================
+
+/**
+ * Get cover letter analytics
+ */
+export async function getCoverLetterAnalytics(): Promise<CoverLetterAnalytics> {
+  try {
+    const result = await chrome.storage.local.get(COVER_LETTER_ANALYTICS_KEY);
+    const analytics = result[COVER_LETTER_ANALYTICS_KEY];
+
+    if (!analytics) {
+      // Return empty analytics
+      return {
+        totalGenerated: 0,
+        totalSent: 0,
+        responsesReceived: 0,
+        responseRate: 0,
+        phoneScreens: 0,
+        interviews: 0,
+        offers: 0,
+        rejections: 0,
+        averageQualityScore: 0,
+        averageATSScore: 0,
+        performanceByFramework: {},
+        performanceByTone: {},
+        performanceByIndustry: {},
+        averageCustomizationLevel: 'standard',
+        averageGenerationTime: 0,
+        manualEditRate: 0,
+      };
+    }
+
+    return analytics;
+  } catch (error) {
+    console.error('[Uproot] Error getting cover letter analytics:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update cover letter analytics
+ */
+export async function updateCoverLetterAnalytics(updates: Partial<CoverLetterAnalytics>): Promise<void> {
+  try {
+    const analytics = await getCoverLetterAnalytics();
+    const updated: CoverLetterAnalytics = {
+      ...analytics,
+      ...updates,
+    };
+
+    await chrome.storage.local.set({ [COVER_LETTER_ANALYTICS_KEY]: updated });
+    console.log('[Uproot] Cover letter analytics updated');
+  } catch (error) {
+    console.error('[Uproot] Error updating cover letter analytics:', error);
+    throw error;
+  }
+}
+
+/**
+ * Recalculate analytics from all cover letters
+ * Call this periodically to keep analytics fresh
+ */
+export async function recalculateCoverLetterAnalytics(): Promise<void> {
+  try {
+    const letters = await getCoverLetters();
+
+    const totalGenerated = letters.length;
+    const totalSent = letters.filter((l) => l.status === 'sent').length;
+    const responsesReceived = letters.filter((l) => l.responseReceived).length;
+    const responseRate = totalSent > 0 ? (responsesReceived / totalSent) * 100 : 0;
+
+    const phoneScreens = letters.filter((l) => l.outcomeStatus === 'phone-screen').length;
+    const interviews = letters.filter((l) => l.outcomeStatus === 'interview').length;
+    const offers = letters.filter((l) => l.outcomeStatus === 'offer').length;
+    const rejections = letters.filter((l) => l.outcomeStatus === 'rejected').length;
+
+    const qualityScores = letters.map((l) => l.qualityScore.overallScore);
+    const averageQualityScore = qualityScores.length > 0
+      ? qualityScores.reduce((sum, score) => sum + score, 0) / qualityScores.length
+      : 0;
+
+    const atsScores = letters.map((l) => l.atsOptimization.overallATSScore);
+    const averageATSScore = atsScores.length > 0
+      ? atsScores.reduce((sum, score) => sum + score, 0) / atsScores.length
+      : 0;
+
+    const analytics: CoverLetterAnalytics = {
+      totalGenerated,
+      totalSent,
+      responsesReceived,
+      responseRate,
+      phoneScreens,
+      interviews,
+      offers,
+      rejections,
+      averageQualityScore,
+      averageATSScore,
+      performanceByFramework: {},
+      performanceByTone: {},
+      performanceByIndustry: {},
+      averageCustomizationLevel: 'standard', // Could calculate this
+      averageGenerationTime: 0, // Would need to track this separately
+      manualEditRate: 0, // Would need to track edits
+    };
+
+    await chrome.storage.local.set({ [COVER_LETTER_ANALYTICS_KEY]: analytics });
+    console.log('[Uproot] Cover letter analytics recalculated');
+  } catch (error) {
+    console.error('[Uproot] Error recalculating cover letter analytics:', error);
+    throw error;
+  }
+}
