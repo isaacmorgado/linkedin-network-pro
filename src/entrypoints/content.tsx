@@ -7,6 +7,7 @@ import ReactDOM from 'react-dom/client';
 import { FloatingPanel } from '@/components/FloatingPanel';
 import { monitorCurrentPage } from '@/services/watchlist-monitor';
 import { getCompanyWatchlist, getWatchlist, getOnboardingState } from '@/utils/storage';
+import { isJobPage, scrapeJobData, waitForJobDetails } from '@/services/linkedin-job-scraper';
 
 export default defineContentScript({
   matches: ['https://www.linkedin.com/*'],
@@ -25,6 +26,7 @@ export default defineContentScript({
       // Wait a bit for LinkedIn to finish loading
       setTimeout(() => {
         injectPanel();
+        // NO floating widgets - user wants everything in popup only
         startMonitoring();
       }, 1000);
 
@@ -79,6 +81,7 @@ export default defineContentScript({
 
           // Wait for page to settle, then monitor
           setTimeout(() => {
+            // NO floating widgets
             startMonitoring();
           }, 2000);
         }
@@ -126,7 +129,7 @@ export default defineContentScript({
       console.log('✅ Panel injected!');
     }
 
-    // Listen for toggle messages from popup
+    // Listen for messages from popup
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('📨 Message received:', message);
 
@@ -142,9 +145,38 @@ export default defineContentScript({
           injectPanel();
           sendResponse({ success: true, action: 'injected' });
         }
+        return true;
       }
 
-      return true;
+      if (message.type === 'ANALYZE_CURRENT_JOB') {
+        console.log('[Uproot] Analyzing current job page...');
+
+        // Check if on job page
+        if (!isJobPage()) {
+          console.log('[Uproot] Not on a job page');
+          sendResponse({ success: false, error: 'Not on a LinkedIn job page' });
+          return true;
+        }
+
+        // Wait for job details to load, then scrape
+        waitForJobDetails()
+          .then(() => {
+            const jobData = scrapeJobData();
+            if (!jobData) {
+              throw new Error('Could not extract job data');
+            }
+            console.log('[Uproot] Scraped job:', jobData.jobTitle);
+            sendResponse({ success: true, data: jobData });
+          })
+          .catch((error) => {
+            console.error('[Uproot] Scraping error:', error);
+            sendResponse({ success: false, error: error.message });
+          });
+
+        return true; // Keep message channel open for async response
+      }
+
+      return false;
     });
   },
 });

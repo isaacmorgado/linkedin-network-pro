@@ -17,6 +17,7 @@ import { OnboardingTab } from '../tabs/OnboardingTab';
 import { SettingsTab } from '../tabs/SettingsTab';
 import { FeedTab } from '../tabs/FeedTab';
 import { ResumeTab } from '../tabs/ResumeTab';
+import { JobsTab } from '../tabs/JobsTab';
 import { ProfileBuilderTab } from '../tabs/ProfileBuilderTab';
 import { JobAnalyzerTab } from '../tabs/JobAnalyzerTab';
 import { ResumeGeneratorTab } from '../tabs/ResumeGeneratorTab';
@@ -33,6 +34,7 @@ const TabContent: Record<string, React.ComponentType<TabContentProps>> = {
   company: CompanyTab,
   watchlist: WatchlistTab,
   resume: ResumeTab,
+  jobs: JobsTab,
   'profile-builder': ProfileBuilderTab,
   'job-analyzer': JobAnalyzerTab,
   'resume-generator': ResumeGeneratorTab,

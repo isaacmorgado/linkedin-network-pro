@@ -52,10 +52,21 @@ export const TAB_CONFIGS: TabConfig[] = [
   },
 
   {
+    id: 'jobs',
+    label: 'Jobs',
+    icon: Briefcase,
+    shortcut: 4,
+    alwaysVisible: false,
+    visibleOn: ['job'], // Only on LinkedIn job pages
+    badge: true, // Show count of analyzed jobs
+    badgeColor: 'blue',
+  },
+
+  {
     id: 'settings',
     label: 'Settings',
     icon: Settings2,
-    shortcut: 4,
+    shortcut: 5,
     alwaysVisible: true,
     badge: false,
   },
@@ -68,7 +79,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'profile',
     label: 'Profile',
     icon: UserCircle,
-    shortcut: 5,
+    shortcut: 6,
     alwaysVisible: false,
     visibleOn: ['profile'], // Only on person pages
     badge: false,
@@ -78,19 +89,9 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'company',
     label: 'Company',
     icon: Building2,
-    shortcut: 6,
-    alwaysVisible: false,
-    visibleOn: ['company'], // Only on company pages
-    badge: false,
-  },
-
-  {
-    id: 'jobs',
-    label: 'Jobs',
-    icon: Briefcase,
     shortcut: 7,
     alwaysVisible: false,
-    visibleOn: ['job'], // Only on job pages
+    visibleOn: ['company'], // Only on company pages
     badge: false,
   },
 

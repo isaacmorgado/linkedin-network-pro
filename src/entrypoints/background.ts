@@ -94,6 +94,24 @@ export default defineBackground(() => {
             sendResponse({ success: true });
             break;
 
+          case 'ANALYZE_CURRENT_JOB':
+            // Forward to active tab's content script
+            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!activeTab.id) {
+              sendResponse({ success: false, error: 'No active tab found' });
+              break;
+            }
+
+            // Forward message to content script
+            chrome.tabs.sendMessage(activeTab.id, { type: 'ANALYZE_CURRENT_JOB' }, (response) => {
+              if (chrome.runtime.lastError) {
+                sendResponse({ success: false, error: chrome.runtime.lastError.message });
+              } else {
+                sendResponse(response);
+              }
+            });
+            break;
+
           default:
             sendResponse({ error: 'Unknown message type' });
         }
