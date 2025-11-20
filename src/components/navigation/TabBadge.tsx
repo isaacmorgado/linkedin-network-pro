@@ -3,10 +3,18 @@
  * Displays notification counts on tabs
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { TabBadgeProps } from '../../types/navigation';
+import { log, LogCategory } from '../../utils/logger';
 
 export function TabBadge({ count, color = 'red' }: TabBadgeProps) {
+  // Log badge display
+  useEffect(() => {
+    if (count > 0) {
+      log.debug(LogCategory.UI, 'TabBadge displayed', { count, color });
+    }
+  }, [count, color]);
+
   if (count === 0) return null;
 
   const colors = {

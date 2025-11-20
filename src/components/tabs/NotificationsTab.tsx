@@ -2,9 +2,18 @@
  * Notifications Tab (Stub - Phase 4)
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { log, LogCategory } from '../../utils/logger';
 
 export function NotificationsTab() {
+  // Component mount/unmount logging
+  useEffect(() => {
+    log.info(LogCategory.UI, 'NotificationsTab mounted');
+    return () => {
+      log.debug(LogCategory.UI, 'NotificationsTab unmounting');
+    };
+  }, []);
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Notifications</h2>

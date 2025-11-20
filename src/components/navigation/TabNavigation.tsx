@@ -10,6 +10,7 @@ import { usePageContext } from '../../hooks/usePageContext';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useBadgeCounts } from '../../hooks/useBadgeCounts';
 import { TAB_CONFIGS, getVisibleTabs } from '../../config/tabs';
+import { log, LogCategory } from '../../utils/logger';
 import { ProfileTab } from '../tabs/ProfileTab';
 import { CompanyTab } from '../tabs/CompanyTab';
 import { WatchlistTab } from '../tabs/WatchlistTab';
@@ -82,11 +83,26 @@ export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabN
   const { getCountForTab } = useBadgeCounts();
   const [isFirstRun, setIsFirstRun] = React.useState(false);
 
+  // Component mount/unmount logging
+  useEffect(() => {
+    log.info(LogCategory.UI, 'TabNavigation mounted', {
+      activeTab,
+      panelWidth,
+      pageContext: pageContext.type
+    });
+
+    return () => {
+      log.debug(LogCategory.UI, 'TabNavigation unmounting');
+    };
+  }, []);
+
   // Check onboarding status on mount
   useEffect(() => {
     async function checkOnboarding() {
+      log.debug(LogCategory.UI, 'Checking onboarding status in TabNavigation');
       const { isOnboardingComplete } = await import('../../utils/storage');
       const completed = await isOnboardingComplete();
+      log.info(LogCategory.UI, 'Onboarding status retrieved', { completed, isFirstRun: !completed });
       setIsFirstRun(!completed);
     }
     checkOnboarding();
@@ -124,6 +140,12 @@ export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabN
     const isActiveTabVisible = tabsWithBadges.some((tab) => tab.id === activeTab);
     if (!isActiveTabVisible && tabsWithBadges.length > 0) {
       // Switch to first visible tab (usually Feed)
+      log.action('Auto-switching to visible tab', {
+        from: activeTab,
+        to: tabsWithBadges[0].id,
+        reason: 'active-tab-hidden',
+        component: 'TabNavigation'
+      });
       onTabChange(tabsWithBadges[0].id);
     }
   }, [activeTab, tabsWithBadges, onTabChange]);
@@ -183,7 +205,14 @@ export function TabNavigation({ activeTab, onTabChange, panelWidth = 400 }: TabN
             key={tab.id}
             tab={tab}
             isActive={activeTab === tab.id}
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => {
+              log.action('Tab clicked in TabNavigation', {
+                tabId: tab.id,
+                tabLabel: TAB_CONFIGS[tab.id]?.label,
+                fromTab: activeTab
+              });
+              onTabChange(tab.id);
+            }}
             badgeCount={tab.badgeCount}
             compact={isCompact}
             totalVisibleTabs={tabsWithBadges.length}

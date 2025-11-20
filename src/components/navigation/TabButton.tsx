@@ -3,13 +3,23 @@
  * Individual tab with icon, label, and optional badge
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import type { TabButtonProps } from '../../types/navigation';
 import { TabBadge } from './TabBadge';
+import { log, LogCategory } from '../../utils/logger';
 
 export function TabButton({ tab, isActive, onClick, badgeCount, compact = false, totalVisibleTabs = 6 }: TabButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Log mount and active state changes
+  useEffect(() => {
+    log.debug(LogCategory.UI, 'TabButton state changed', {
+      tabId: tab.id,
+      isActive,
+      badgeCount
+    });
+  }, [isActive, tab.id, badgeCount]);
 
   const Icon = tab.icon;
 
@@ -47,6 +57,12 @@ export function TabButton({ tab, isActive, onClick, badgeCount, compact = false,
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    log.action('Tab button clicked', {
+      tabId: tab.id,
+      tabLabel: tab.label,
+      wasActive: isActive,
+      component: 'TabButton'
+    });
     onClick();
 
     // Add a subtle press animation

@@ -7,6 +7,7 @@ import { Rnd } from 'react-rnd';
 import { X, Minimize2, Maximize2 } from 'lucide-react';
 import { TabNavigation } from './navigation/TabNavigation';
 import type { TabId } from '../types/navigation';
+import { log, LogCategory } from '../utils/logger';
 
 export function FloatingPanel() {
   const [activeTab, setActiveTab] = useState<TabId>('feed');
@@ -16,12 +17,29 @@ export function FloatingPanel() {
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const rndRef = useRef<Rnd>(null);
 
+  // Component mount/unmount logging
+  useEffect(() => {
+    log.info(LogCategory.UI, 'FloatingPanel mounted', {
+      activeTab,
+      panelSize,
+      panelPosition,
+      isMinimized
+    });
+
+    return () => {
+      log.debug(LogCategory.UI, 'FloatingPanel unmounting');
+    };
+  }, []);
+
   // Check if first run and set to onboarding tab
   useEffect(() => {
     async function checkFirstRun() {
+      log.debug(LogCategory.UI, 'Checking onboarding status');
       const { isOnboardingComplete } = await import('../utils/storage');
       const completed = await isOnboardingComplete();
+      log.info(LogCategory.UI, 'Onboarding status checked', { completed });
       if (!completed) {
+        log.action('Setting active tab to onboarding', { reason: 'first-run' });
         setActiveTab('onboarding');
       }
     }
@@ -29,14 +47,21 @@ export function FloatingPanel() {
   }, []);
 
   const handleClose = () => {
+    log.action('Close button clicked', { component: 'FloatingPanel' });
     const container = document.getElementById('linkedin-extension-root');
     if (container) {
       container.style.display = 'none';
+      log.debug(LogCategory.UI, 'FloatingPanel hidden');
     }
   };
 
   const handleMinimize = () => {
     const willBeMinimized = !isMinimized;
+    log.action('Minimize/Maximize button clicked', {
+      component: 'FloatingPanel',
+      willBeMinimized,
+      currentPosition: panelPosition
+    });
 
     // If we're MAXIMIZING (currently minimized, about to expand)
     if (!willBeMinimized && rndRef.current) {
@@ -128,14 +153,26 @@ export function FloatingPanel() {
       }}
       size={isMinimized ? { width: panelSize.width, height: 60 } : undefined}
       onDragStop={(e, data) => {
+        log.action('Panel dragged', {
+          from: panelPosition,
+          to: { x: data.x, y: data.y },
+          component: 'FloatingPanel'
+        });
         setPanelPosition({ x: data.x, y: data.y });
       }}
       onResize={(e, direction, ref, delta, position) => {
         if (!isMinimized) {
-          setPanelSize({
+          const newSize = {
             width: parseInt(ref.style.width),
             height: parseInt(ref.style.height),
+          };
+          log.action('Panel resized', {
+            from: panelSize,
+            to: newSize,
+            direction,
+            component: 'FloatingPanel'
           });
+          setPanelSize(newSize);
           // Update position when resizing from top or left edges
           setPanelPosition({ x: position.x, y: position.y });
         }
@@ -273,7 +310,10 @@ export function FloatingPanel() {
           >
             <TabNavigation
               activeTab={activeTab}
-              onTabChange={setActiveTab}
+              onTabChange={(tab) => {
+        log.action('Tab changed', { from: activeTab, to: tab, component: 'FloatingPanel' });
+        setActiveTab(tab);
+      }}
               panelWidth={panelSize.width}
             />
           </div>
