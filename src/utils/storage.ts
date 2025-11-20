@@ -13,8 +13,8 @@ import type { OnboardingState, JobPreferences } from '../types/onboarding';
 import { ONBOARDING_STORAGE_KEY } from '../types/onboarding';
 import type { FeedItem, FeedStats } from '../types/feed';
 import { FEED_STORAGE_KEY } from '../types/feed';
-import type { Resume, ResumeApplication, ResumeStats, ProfessionalProfile, ProfileStats, JobDescriptionAnalysis } from '../types/resume';
-import { RESUMES_STORAGE_KEY, RESUME_APPLICATIONS_STORAGE_KEY, PROFESSIONAL_PROFILE_KEY, JOB_DESCRIPTIONS_KEY } from '../types/resume';
+import type { Resume, ResumeApplication, ResumeStats, ProfessionalProfile, ProfileStats, JobDescriptionAnalysis, GeneratedResume } from '../types/resume';
+import { RESUMES_STORAGE_KEY, RESUME_APPLICATIONS_STORAGE_KEY, PROFESSIONAL_PROFILE_KEY, JOB_DESCRIPTIONS_KEY, GENERATED_RESUMES_KEY } from '../types/resume';
 
 // Get watchlist from storage
 export async function getWatchlist(): Promise<WatchlistPerson[]> {
@@ -1593,6 +1593,79 @@ export async function getJobDescriptionAnalysis(id: string): Promise<JobDescript
     return analyses.find((a) => a.id === id) || null;
   } catch (error) {
     console.error('[Uproot] Error getting job description analysis:', error);
+    return null;
+  }
+}
+
+// ============================================================================
+// GENERATED RESUMES FUNCTIONS
+// ============================================================================
+
+/**
+ * Get all generated resumes from storage
+ */
+export async function getGeneratedResumes(): Promise<GeneratedResume[]> {
+  try {
+    const result = await chrome.storage.local.get(GENERATED_RESUMES_KEY);
+    const resumes = result[GENERATED_RESUMES_KEY] || [];
+    // Sort by generated date, newest first
+    return resumes.sort((a: GeneratedResume, b: GeneratedResume) => b.generatedAt - a.generatedAt);
+  } catch (error) {
+    console.error('[Uproot] Error getting generated resumes:', error);
+    return [];
+  }
+}
+
+/**
+ * Save generated resume to storage
+ */
+export async function saveGeneratedResume(resume: GeneratedResume): Promise<void> {
+  try {
+    const resumes = await getGeneratedResumes();
+
+    // Check if resume with same ID exists
+    const existingIndex = resumes.findIndex((r) => r.id === resume.id);
+
+    if (existingIndex !== -1) {
+      // Update existing
+      resumes[existingIndex] = resume;
+    } else {
+      // Add new
+      resumes.push(resume);
+    }
+
+    await chrome.storage.local.set({ [GENERATED_RESUMES_KEY]: resumes });
+    console.log('[Uproot] Generated resume saved:', resume.jobTitle);
+  } catch (error) {
+    console.error('[Uproot] Error saving generated resume:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete generated resume
+ */
+export async function deleteGeneratedResume(id: string): Promise<void> {
+  try {
+    const resumes = await getGeneratedResumes();
+    const filtered = resumes.filter((r) => r.id !== id);
+    await chrome.storage.local.set({ [GENERATED_RESUMES_KEY]: filtered });
+    console.log('[Uproot] Generated resume deleted:', id);
+  } catch (error) {
+    console.error('[Uproot] Error deleting generated resume:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get generated resume by ID
+ */
+export async function getGeneratedResume(id: string): Promise<GeneratedResume | null> {
+  try {
+    const resumes = await getGeneratedResumes();
+    return resumes.find((r) => r.id === id) || null;
+  } catch (error) {
+    console.error('[Uproot] Error getting generated resume:', error);
     return null;
   }
 }

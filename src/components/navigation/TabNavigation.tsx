@@ -19,6 +19,7 @@ import { FeedTab } from '../tabs/FeedTab';
 import { ResumeTab } from '../tabs/ResumeTab';
 import { ProfileBuilderTab } from '../tabs/ProfileBuilderTab';
 import { JobAnalyzerTab } from '../tabs/JobAnalyzerTab';
+import { ResumeGeneratorTab } from '../tabs/ResumeGeneratorTab';
 
 // Tab content props interface
 interface TabContentProps {
@@ -34,6 +35,7 @@ const TabContent: Record<string, React.ComponentType<TabContentProps>> = {
   resume: ResumeTab,
   'profile-builder': ProfileBuilderTab,
   'job-analyzer': JobAnalyzerTab,
+  'resume-generator': ResumeGeneratorTab,
   onboarding: OnboardingTab,
   settings: SettingsTab,
   // Other tabs will use placeholder for now
