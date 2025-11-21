@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Detection Test - Mock Job Application</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f5f5;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      color: #1d1d1f;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin-top: 32px;
+      margin-bottom: 16px;
+      color: #0077B5;
+      border-bottom: 2px solid #0077B5;
+      padding-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 32px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .required {
+      color: #e74c3c;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="date"],
+    input[type="file"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d1d6;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #0077B5;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .instructions {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 16px;
+      border-radius: 6px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .instructions h3 {
+      margin-bottom: 8px;
+      color: #856404;
+    }
+
+    .instructions ol {
+      margin-left: 20px;
+    }
+
+    .instructions li {
+      margin-bottom: 4px;
+    }
+
+    button {
+      background: #0077B5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 24px;
+    }
+
+    button:hover {
+      background: #005582;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Software Engineer Application</h1>
+    <p class="subtitle">Acme Corp - San Francisco, CA</p>
+
+    <div class="instructions">
+      <h3>🧪 Testing Instructions</h3>
+      <ol>
+        <li>Load the Uproot extension in Chrome</li>
+        <li>Open browser console (F12)</li>
+        <li>Run: <code>testFormDetection()</code></li>
+        <li>Review detection results in console</li>
+        <li>Run: <code>validateAccuracy()</code> to visually inspect</li>
+      </ol>
+    </div>
+
+    <form id="job-application-form">
+      <!-- Personal Information -->
+      <h2>Personal Information</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="first-name">First Name <span class="required">*</span></label>
+          <input type="text" id="first-name" name="first_name" placeholder="John" required>
+        </div>
+        <div class="form-group">
+          <label for="last-name">Last Name <span class="required">*</span></label>
+          <input type="text" id="last-name" name="last_name" placeholder="Doe" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address <span class="required">*</span></label>
+        <input type="email" id="email" name="email" placeholder="john.doe@example.com" required autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number <span class="required">*</span></label>
+        <input type="tel" id="phone" name="phone" placeholder="(555) 123-4567" required autocomplete="tel">
+      </div>
+
+      <div class="form-group">
+        <label for="location">Current Location <span class="required">*</span></label>
+        <input type="text" id="location" name="location" placeholder="San Francisco, CA" required>
+        <div class="help-text">City, State or Remote</div>
+      </div>
+
+      <!-- Additional Info -->
+      <h2>Additional Information</h2>
+
+      <div class="form-group">
+        <label for="linkedin">LinkedIn Profile URL</label>
+        <input type="url" id="linkedin" name="linkedin_url" placeholder="https://www.linkedin.com/in/johndoe">
+      </div>
+
+      <div class="form-group">
+        <label for="github">GitHub Profile URL</label>
+        <input type="url" id="github" name="github_url" placeholder="https://github.com/johndoe">
+      </div>
+
+      <div class="form-group">
+        <label for="portfolio">Portfolio Website</label>
+        <input type="url" id="portfolio" name="portfolio_url" placeholder="https://johndoe.com">
+      </div>
+
+      <div class="form-group">
+        <label for="skills">Technical Skills <span class="required">*</span></label>
+        <input type="text" id="skills" name="skills" placeholder="React, TypeScript, Node.js, Python" required>
+        <div class="help-text">Separate multiple skills with commas</div>
+      </div>
+
+      <!-- Documents -->
+      <h2>Documents</h2>
+
+      <div class="form-group">
+        <label for="resume">Resume / CV <span class="required">*</span></label>
+        <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required>
+        <div class="help-text">Accepted formats: PDF, DOC, DOCX (Max 5MB)</div>
+      </div>
+
+      <div class="form-group">
+        <label for="cover-letter-file">Cover Letter (Optional)</label>
+        <input type="file" id="cover-letter-file" name="cover_letter" accept=".pdf,.doc,.docx">
+      </div>
+
+      <!-- Questions -->
+      <h2>Application Questions</h2>
+
+      <div class="form-group">
+        <label for="why-interested">Why are you interested in this role? <span class="required">*</span></label>
+        <textarea id="why-interested" name="why_interested" placeholder="Tell us what excites you about this opportunity..." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="experience">Describe your relevant experience <span class="required">*</span></label>
+        <textarea id="experience" name="experience" placeholder="Share examples of your work that align with this position..." required></textarea>
+      </div>
+
+      <!-- Legal / EEO -->
+      <h2>Equal Opportunity Information (Optional)</h2>
+
+      <div class="form-group">
+        <label for="work-auth">Are you authorized to work in the United States?</label>
+        <select id="work-auth" name="work_authorization">
+          <option value="">Select...</option>
+          <option value="yes-citizen">Yes, US Citizen</option>
+          <option value="yes-permanent">Yes, Permanent Resident</option>
+          <option value="yes-visa">Yes, Work Visa</option>
+          <option value="need-sponsorship">Will require sponsorship</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="veteran">Veteran Status</label>
+        <select id="veteran" name="veteran_status">
+          <option value="">Prefer not to say</option>
+          <option value="not-veteran">I am not a veteran</option>
+          <option value="veteran">I am a veteran</option>
+          <option value="disabled-veteran">I am a disabled veteran</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="referral">How did you hear about this position?</label>
+        <select id="referral" name="referral_source">
+          <option value="">Select...</option>
+          <option value="linkedin">LinkedIn</option>
+          <option value="indeed">Indeed</option>
+          <option value="company-website">Company Website</option>
+          <option value="referral">Employee Referral</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <button type="submit">Submit Application</button>
+    </form>
+  </div>
+
+  <script>
+    // Prevent actual form submission
+    document.getElementById('job-application-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      alert('✅ Form validation successful! (This is a test page - not submitted)');
+    });
+
+    // Log when page loads
+    console.log('%c📄 Mock Job Application Loaded', 'font-size: 16px; font-weight: bold; color: #0077B5;');
+    console.log('Run testFormDetection() to test the form detector');
+  </script>
+</body>
+</html>

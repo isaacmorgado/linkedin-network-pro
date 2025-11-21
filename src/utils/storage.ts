@@ -48,6 +48,20 @@ import type {
   CoverLetterAnalytics,
   GeneratedCoverLetter,
 } from '../types/cover-letter';
+import type {
+  AutofillProfile,
+  SavedQuestion,
+  QuestionBank,
+  AutofillProfileUpdate,
+  QuestionUpdate,
+  QuestionFilters,
+} from '../types/autofill';
+import {
+  AUTOFILL_PROFILE_KEY,
+  QUESTION_BANK_KEY,
+  DEFAULT_AUTOFILL_PROFILE,
+  DEFAULT_QUESTION_BANK,
+} from '../types/autofill';
 import {
   COVER_LETTERS_KEY,
   COVER_LETTER_TEMPLATES_KEY,

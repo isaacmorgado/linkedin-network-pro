@@ -25,6 +25,35 @@ export default defineConfig({
     action: {
       default_title: 'Uproot - Toggle Panel',
     },
+    commands: {
+      'toggle-panel': {
+        suggested_key: {
+          default: 'Alt+1',
+          mac: 'Alt+1',
+          windows: 'Alt+1',
+          linux: 'Alt+1',
+        },
+        description: 'Toggle Uproot panel (open/close)',
+      },
+      'save-question': {
+        suggested_key: {
+          default: 'Alt+2',
+          mac: 'Alt+2',
+          windows: 'Alt+2',
+          linux: 'Alt+2',
+        },
+        description: 'Save highlighted text as question',
+      },
+      'paste-to-generate': {
+        suggested_key: {
+          default: 'Alt+Enter',
+          mac: 'Alt+Enter',
+          windows: 'Alt+Enter',
+          linux: 'Alt+Enter',
+        },
+        description: 'Paste highlighted question to Generate section',
+      },
+    },
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
     },

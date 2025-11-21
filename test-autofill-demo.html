@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto-Fill Demo - Job Application</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+      color: #1d1d1f;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 32px;
+      font-size: 16px;
+    }
+
+    .demo-controls {
+      background: #f0f4ff;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 32px;
+    }
+
+    .demo-controls h3 {
+      margin-bottom: 12px;
+      color: #667eea;
+      font-size: 18px;
+    }
+
+    .demo-controls p {
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+    }
+
+    .btn-secondary:hover {
+      background: #f0f4ff;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-top: 32px;
+      margin-bottom: 16px;
+      color: #667eea;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .required {
+      color: #e74c3c;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    #status {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+
+    #status.success {
+      background: #d4edda;
+      border: 2px solid #28a745;
+      color: #155724;
+      display: block;
+    }
+
+    #status.error {
+      background: #f8d7da;
+      border: 2px solid #dc3545;
+      color: #721c24;
+      display: block;
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .stat {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      border: 2px solid #e0e0e0;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Auto-Fill Demo</h1>
+    <p class="subtitle">Test the auto-fill functionality on a mock job application form</p>
+
+    <!-- Demo Controls -->
+    <div class="demo-controls">
+      <h3>📋 How to Test</h3>
+      <p>
+        <strong>1.</strong> Set up your profile first (click "Setup Test Profile")<br>
+        <strong>2.</strong> Click "Auto-Fill Form" to test auto-fill<br>
+        <strong>3.</strong> Watch the fields fill automatically with green highlights
+      </p>
+      <div class="button-group">
+        <button class="btn-primary" onclick="setupTestProfile()">Setup Test Profile</button>
+        <button class="btn-primary" onclick="triggerAutoFill()">Auto-Fill Form</button>
+        <button class="btn-secondary" onclick="clearForm()">Clear Form</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="filled-count">0</div>
+          <div class="stat-label">Fields Filled</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="total-count">0</div>
+          <div class="stat-label">Total Fields</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="accuracy">0%</div>
+          <div class="stat-label">Fill Rate</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status"></div>
+
+    <!-- Job Application Form -->
+    <form id="job-application">
+      <h2>Personal Information</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="first-name">First Name <span class="required">*</span></label>
+          <input type="text" id="first-name" name="first_name" placeholder="John">
+        </div>
+        <div class="form-group">
+          <label for="last-name">Last Name <span class="required">*</span></label>
+          <input type="text" id="last-name" name="last_name" placeholder="Doe">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address <span class="required">*</span></label>
+        <input type="email" id="email" name="email" placeholder="john.doe@example.com">
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number <span class="required">*</span></label>
+        <input type="tel" id="phone" name="phone" placeholder="(555) 123-4567">
+      </div>
+
+      <div class="form-group">
+        <label for="location">Current Location <span class="required">*</span></label>
+        <input type="text" id="location" name="location" placeholder="San Francisco, CA">
+      </div>
+
+      <h2>Professional Links</h2>
+
+      <div class="form-group">
+        <label for="linkedin">LinkedIn Profile URL</label>
+        <input type="url" id="linkedin" name="linkedin_url" placeholder="https://www.linkedin.com/in/johndoe">
+      </div>
+
+      <div class="form-group">
+        <label for="github">GitHub Profile URL</label>
+        <input type="url" id="github" name="github_url" placeholder="https://github.com/johndoe">
+      </div>
+
+      <div class="form-group">
+        <label for="portfolio">Portfolio Website</label>
+        <input type="url" id="portfolio" name="portfolio_url" placeholder="https://johndoe.com">
+      </div>
+
+      <h2>Additional Information</h2>
+
+      <div class="form-group">
+        <label for="work-auth">Are you authorized to work in the United States?</label>
+        <select id="work-auth" name="work_authorization">
+          <option value="">Select...</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="veteran">Veteran Status</label>
+        <select id="veteran" name="veteran_status">
+          <option value="">Prefer not to say</option>
+          <option value="no">Not a veteran</option>
+          <option value="yes">Veteran</option>
+        </select>
+      </div>
+    </form>
+  </div>
+
+  <script type="module">
+    // Import auto-fill functionality
+    import { AutoFiller } from './src/services/autofill/auto-filler.ts';
+    import { saveAutofillProfile } from './src/utils/autofill-storage.ts';
+
+    // Make functions globally available
+    window.autoFiller = new AutoFiller();
+
+    window.setupTestProfile = async function() {
+      try {
+        showStatus('Setting up test profile...', 'info');
+
+        await saveAutofillProfile({
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '(555) 123-4567',
+          location: 'San Francisco, CA',
+          linkedinUrl: 'https://www.linkedin.com/in/johndoe',
+          githubUrl: 'https://github.com/johndoe',
+          portfolioUrl: 'https://johndoe.com',
+          skills: ['React', 'TypeScript', 'Node.js'],
+          workAuthorization: 'us_citizen',
+          veteranStatus: 'not_veteran',
+        });
+
+        showStatus('✅ Test profile created successfully!', 'success');
+      } catch (error) {
+        showStatus('❌ Failed to create profile: ' + error.message, 'error');
+        console.error(error);
+      }
+    };
+
+    window.triggerAutoFill = async function() {
+      try {
+        showStatus('Auto-filling form...', 'info');
+
+        const result = await window.autoFiller.autoFill({
+          visualFeedback: true,
+          skipLowConfidence: false,
+          confidenceThreshold: 0.3,
+          fillDelay: 200,
+          onComplete: (filled, total) => {
+            const accuracy = ((filled / total) * 100).toFixed(0);
+            document.getElementById('filled-count').textContent = filled;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+
+            showStatus(
+              `✅ Auto-fill complete! Filled ${filled}/${total} fields (${accuracy}%)`,
+              'success'
+            );
+          },
+        });
+
+        if (!result.success && result.errors.length > 0) {
+          showStatus('⚠️ ' + result.errors[0].error, 'error');
+        }
+      } catch (error) {
+        showStatus('❌ Auto-fill failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    };
+
+    window.clearForm = function() {
+      document.getElementById('job-application').reset();
+      document.getElementById('filled-count').textContent = '0';
+      document.getElementById('total-count').textContent = '0';
+      document.getElementById('accuracy').textContent = '0%';
+      showStatus('Form cleared', 'success');
+    };
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+
+      if (type !== 'error') {
+        setTimeout(() => {
+          status.style.display = 'none';
+        }, 3000);
+      }
+    }
+
+    // Initial message
+    console.log('%c🚀 Auto-Fill Demo Ready!', 'font-size: 16px; font-weight: bold; color: #667eea;');
+    console.log('Run setupTestProfile() then triggerAutoFill() to test');
+  </script>
+</body>
+</html>

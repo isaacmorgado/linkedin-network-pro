@@ -243,6 +243,47 @@ export default defineBackground(() => {
       log.warn(LogCategory.BACKGROUND, 'No tab ID available for extension icon click');
     }
   });
+
+  // ============================================================================
+  // Keyboard Command Handlers
+  // ============================================================================
+
+  chrome.commands.onCommand.addListener(async (command) => {
+    log.info(LogCategory.BACKGROUND, 'Keyboard command triggered', { command });
+
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!activeTab.id) {
+      log.warn(LogCategory.BACKGROUND, 'No active tab for keyboard command', { command });
+      return;
+    }
+
+    try {
+      switch (command) {
+        case 'toggle-panel':
+          log.info(LogCategory.BACKGROUND, 'Executing toggle-panel command (Alt+1)', { tabId: activeTab.id });
+          await chrome.tabs.sendMessage(activeTab.id, { type: 'TOGGLE_PANEL' });
+          break;
+
+        case 'save-question':
+          log.info(LogCategory.BACKGROUND, 'Executing save-question command (Alt+2)', { tabId: activeTab.id });
+          await chrome.tabs.sendMessage(activeTab.id, { type: 'SAVE_HIGHLIGHTED_QUESTION' });
+          break;
+
+        case 'paste-to-generate':
+          log.info(LogCategory.BACKGROUND, 'Executing paste-to-generate command (Alt+Enter)', { tabId: activeTab.id });
+          await chrome.tabs.sendMessage(activeTab.id, { type: 'PASTE_TO_GENERATE' });
+          break;
+
+        default:
+          log.warn(LogCategory.BACKGROUND, 'Unknown keyboard command', { command });
+      }
+    } catch (error) {
+      log.error(LogCategory.BACKGROUND, 'Keyboard command execution failed', error as Error, {
+        command,
+        tabId: activeTab.id
+      });
+    }
+  });
 });
 
 // ============================================================================
