@@ -14,6 +14,9 @@ import {
   AlertTriangle,
   Check,
   Info,
+  Crown,
+  Palette,
+  Lock,
 } from 'lucide-react';
 import { useSettingsStore } from '../../../stores/settings';
 import { useAuthStore } from '../../../stores/auth';
@@ -32,7 +35,11 @@ export function AccountSettings({ panelWidth = 400 }: AccountSettingsProps) {
   const resetSettings = useSettingsStore((state) => state.resetSettings);
   const user = useAuthStore((state) => state.user);
   const isElite = user?.subscriptionTier === 'elite';
-  const { backgroundColor, textColor, accentColor } = useTheme();
+
+  // Use white theme colors (hardcoded to avoid useTheme dependency)
+  const backgroundColor = '#FFFFFF';
+  const textColor = '#1d1d1f';
+  const accentColor = '#0077B5';
 
   // Default theme values for reset functionality
   // Local state for unsaved changes
@@ -232,6 +239,36 @@ export function AccountSettings({ panelWidth = 400 }: AccountSettingsProps) {
       setTimeout(() => setSaveMessage(''), 3000);
     }
   }, []);
+
+  // ============================================================================
+  // THEME RESET HANDLER
+  // ============================================================================
+
+  const handleResetTheme = useCallback(async () => {
+    const confirmed = window.confirm(
+      'Reset theme to default settings?\n\n' +
+        'This will revert all color and blur customizations.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // Reset to default theme values
+      const defaultTheme: Theme = {
+        primaryColor: '#FFFFFF',
+        accentColor: '#0077B5',
+        blurIntensity: 10,
+      };
+      await updateTheme(defaultTheme);
+      setLocalTheme(defaultTheme);
+      setSaveMessage('✓ Theme reset to defaults!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      console.error('[AccountSettings] Error resetting theme:', error);
+      setSaveMessage('✗ Failed to reset theme.');
+      setTimeout(() => setSaveMessage(''), 3000);
+    }
+  }, [updateTheme]);
 
   // ============================================================================
   // RENDER
@@ -890,8 +927,8 @@ interface SliderControlProps {
 }
 
 function SliderControl({ label, description, value, min, max, onChange, accentColor }: SliderControlProps) {
-  // Get textColor from context for label styling
-  const { textColor } = useTheme();
+  // Use white theme colors (hardcoded to avoid useTheme dependency)
+  const textColor = '#1d1d1f';
 
   // Event handlers to prevent slider drag from propagating to panel drag
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -961,6 +998,77 @@ function SliderControl({ label, description, value, min, max, onChange, accentCo
           outline: 'none',
           WebkitAppearance: 'none',
           appearance: 'none',
+          cursor: 'pointer',
+        }}
+      />
+    </div>
+  );
+}
+
+interface AppleColorPickerProps {
+  label: string;
+  description: string;
+  value: string;
+  onChange: (color: string) => void;
+}
+
+function AppleColorPicker({ label, description, value, onChange }: AppleColorPickerProps) {
+  // Use white theme colors (hardcoded to avoid useTheme dependency)
+  const textColor = '#1d1d1f';
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '12px',
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: textColor,
+              marginBottom: '4px',
+            }}
+          >
+            {label}
+          </div>
+          <div
+            style={{
+              fontSize: '12px',
+              color: `${textColor}80`,
+              lineHeight: '1.4',
+            }}
+          >
+            {description}
+          </div>
+        </div>
+        <div
+          style={{
+            fontSize: '12px',
+            fontWeight: '600',
+            color: textColor,
+            minWidth: '80px',
+            textAlign: 'right',
+            fontFamily: 'monospace',
+          }}
+        >
+          {value}
+        </div>
+      </div>
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: '100%',
+          height: '40px',
+          border: `1px solid ${textColor}20`,
+          borderRadius: '8px',
           cursor: 'pointer',
         }}
       />

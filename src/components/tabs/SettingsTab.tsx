@@ -272,7 +272,8 @@ function SettingsNavButton({
 
 // Subscription Settings Placeholder
 function SubscriptionSettings() {
-  const { textColor } = useTheme();
+  // Use white theme colors (hardcoded to avoid useTheme dependency)
+  const textColor = '#1d1d1f';
   return (
     <div
       style={{
