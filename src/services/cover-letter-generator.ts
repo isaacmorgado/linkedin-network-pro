@@ -1,23 +1,41 @@
 /**
- * AI-Powered Cover Letter Generator
+ * AI-Powered Cover Letter Generator (Kenkai Framework)
  *
- * Generates tailored cover letters using:
- * - Job description analysis
- * - Professional profile data
- * - AI enhancement (Claude 3.5 Sonnet)
- * - ATS optimization
+ * Advanced cover letter generation using:
+ * - Claude 3.5 Sonnet API with anti-hallucination prompts
+ * - STAR method (60% Action focus)
+ * - Strict fact verification
+ * - 250-400 word optimization
+ * - Temperature 0.4 (balanced)
+ *
+ * Pipeline:
+ * 1. Extract job context from posting
+ * 2. Detect company culture for tone
+ * 3. Match user to job requirements
+ * 4. Select best stories for narrative
+ * 5. Build narrative structure
+ * 6. Generate sections with AI
+ * 7. Assemble full letter
+ * 8. Verify no hallucination
+ * 9. Calculate ATS score
  */
 
-import type { LinkedInJobData } from './linkedin-job-scraper';
-import type { ProfessionalProfile } from '../types/resume';
-import type { JobDescriptionAnalysis } from './job-description-analyzer';
+import Anthropic from '@anthropic-ai/sdk';
 import type {
-  CoverLetter,
-  CoverLetterContent,
-  CoverLetterTone,
-  CoverLetterGenerationOptions,
-  CoverLetterGenerationResult,
-} from '../types/cover-letter';
+  UserProfile,
+  GeneratedCoverLetter,
+  CoverLetterConfig,
+  JobContext,
+  ToneProfile,
+  AchievementStory,
+  CoverLetterNarrative,
+  CoverLetterSections,
+  CoverLetterVerification,
+} from '../../../kenkai/cover-letter-generation-types';
+import type { ExtractedKeyword } from '../types/resume';
+import { extractKeywordsFromJobDescription } from './keyword-extractor';
+import { matchUserToJob } from './resume-matcher';
+import { verifyNoHallucination, extractFacts } from './hallucination-detector';
 import { log, LogCategory } from '../utils/logger';
 
 // ============================================================================
@@ -25,100 +43,139 @@ import { log, LogCategory } from '../utils/logger';
 // ============================================================================
 
 /**
- * Generate a tailored cover letter for a specific job
+ * Generate AI-powered cover letter with anti-hallucination constraints
+ *
+ * @param profile - User's complete professional profile (SINGLE SOURCE OF TRUTH)
+ * @param jobPosting - Full job posting text
+ * @param config - Optional configuration (tone, length, temperature)
+ * @returns Complete generated cover letter with verification and ATS score
  */
 export async function generateCoverLetter(
-  jobData: LinkedInJobData,
-  jobAnalysis: JobDescriptionAnalysis,
-  profile: ProfessionalProfile,
-  options: CoverLetterGenerationOptions = {}
-): Promise<CoverLetterGenerationResult> {
-  const startTime = Date.now();
+  profile: UserProfile,
+  jobPosting: string,
+  config?: CoverLetterConfig
+): Promise<GeneratedCoverLetter> {
   const endTrace = log.trace(LogCategory.SERVICE, 'generateCoverLetter', {
-    jobTitle: jobData.jobTitle,
-    company: jobData.company,
-    useAI: options.useAI !== false,
+    profileName: profile.name,
+    jobPostingLength: jobPosting.length,
   });
 
-  const warnings: string[] = [];
-
   try {
-    // Set defaults
-    const tone = options.tone || 'professional';
-    const useAI = options.useAI !== false;
-    const targetWordCount = options.targetWordCount || 280;
-
-    log.info(LogCategory.SERVICE, 'Starting cover letter generation', {
-      jobTitle: jobData.jobTitle,
-      company: jobData.company,
-      tone,
-      useAI,
-      targetWordCount,
+    log.info(LogCategory.SERVICE, 'Starting AI cover letter generation', {
+      name: profile.name,
+      targetLength: config?.targetLength || 300,
+      temperature: config?.temperature || 0.4,
     });
 
-    // Generate content
-    let content: CoverLetterContent;
+    // STEP 1: Extract job context
+    log.debug(LogCategory.SERVICE, 'Extracting job context');
+    const jobContext = extractJobContext(jobPosting);
+    log.info(LogCategory.SERVICE, 'Job context extracted', {
+      company: jobContext.company,
+      role: jobContext.role,
+      culture: jobContext.culture,
+      keyRequirements: jobContext.keyRequirements.length,
+    });
 
-    if (useAI) {
-      // Try AI generation first
-      try {
-        content = await generateWithAI(
-          jobData,
-          jobAnalysis,
-          profile,
-          tone,
-          targetWordCount,
-          options
-        );
-        log.info(LogCategory.SERVICE, 'Cover letter generated with AI');
-      } catch (error) {
-        log.warn(LogCategory.SERVICE, 'AI generation failed, falling back to template', {
-          error: (error as Error).message,
-        });
-        warnings.push('AI generation unavailable - using template-based generation');
-        content = generateWithTemplate(jobData, jobAnalysis, profile, tone, options);
-      }
-    } else {
-      // Template-based generation
-      content = generateWithTemplate(jobData, jobAnalysis, profile, tone, options);
-      log.info(LogCategory.SERVICE, 'Cover letter generated with template');
-    }
+    // STEP 2: Detect company culture for tone
+    log.debug(LogCategory.SERVICE, 'Detecting company culture');
+    const tone = detectCompanyCulture(jobPosting, config?.tone);
+    log.info(LogCategory.SERVICE, 'Tone profile determined', {
+      style: tone.style,
+      formality: tone.formality,
+      enthusiasm: tone.enthusiasm,
+    });
 
-    // Calculate ATS score
-    const atsScore = calculateCoverLetterATSScore(content.fullText, jobAnalysis);
+    // STEP 3: Match user to job
+    log.debug(LogCategory.SERVICE, 'Matching user to job requirements');
+    const jobRequirements = {
+      required: jobContext.keyRequirements.filter(k => k.required),
+      preferred: jobContext.keyRequirements.filter(k => !k.required),
+    };
+    const matchReport = matchUserToJob(profile, jobRequirements);
+    log.info(LogCategory.SERVICE, 'User-job matching complete', {
+      matchScore: matchReport.matchScore,
+      matches: matchReport.matches.length,
+    });
 
-    // Build cover letter object
-    const coverLetter: CoverLetter = {
-      id: crypto.randomUUID(),
-      jobId: jobData.jobId,
-      jobTitle: jobData.jobTitle,
-      company: jobData.company,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      content,
-      wordCount: countWords(content.fullText),
-      atsScore,
+    // STEP 4: Select best stories
+    log.debug(LogCategory.SERVICE, 'Selecting best achievement stories');
+    const stories = selectBestStories(profile, matchReport, jobContext);
+    log.info(LogCategory.SERVICE, 'Stories selected', {
+      primaryStory: stories.primary ? stories.primary.achievement.id : 'none',
+      secondaryStory: stories.secondary ? stories.secondary.achievement.id : 'none',
+    });
+
+    // STEP 5: Build narrative
+    log.debug(LogCategory.SERVICE, 'Building cover letter narrative');
+    const narrative = buildNarrative(profile, matchReport, stories, jobContext);
+    log.info(LogCategory.SERVICE, 'Narrative structure created', {
+      hook: narrative.hook.substring(0, 50),
+      theme: narrative.closingTheme,
+    });
+
+    // STEP 6: Generate sections with AI
+    log.debug(LogCategory.SERVICE, 'Generating sections with Claude API');
+    const sections = await generateSectionsWithAI(narrative, jobContext, tone, config);
+    log.info(LogCategory.SERVICE, 'AI generation complete');
+
+    // STEP 7: Assemble full letter
+    log.debug(LogCategory.SERVICE, 'Assembling full cover letter');
+    const fullText = assembleCoverLetter(sections, profile, jobContext, config);
+    const htmlFormatted = formatAsHTML(fullText);
+    const wordCount = countWords(fullText);
+    log.info(LogCategory.SERVICE, 'Cover letter assembled', {
+      wordCount,
+      targetRange: '250-400',
+    });
+
+    // STEP 8: Verify no hallucination
+    log.debug(LogCategory.SERVICE, 'Verifying no hallucination');
+    const verification = verifyNoHallucinationInCoverLetter(
+      fullText,
+      profile,
+      sections,
+      jobContext
+    );
+    log.info(LogCategory.SERVICE, 'Hallucination check complete', {
+      noHallucination: verification.noHallucination,
+      confidence: verification.confidence,
+      addedFacts: verification.addedFacts.length,
+    });
+
+    // STEP 9: Calculate ATS score
+    log.debug(LogCategory.SERVICE, 'Calculating ATS score');
+    const matchAnalysis = calculateCoverLetterATSScore(
+      fullText,
+      jobContext,
+      matchReport
+    );
+    log.info(LogCategory.SERVICE, 'ATS score calculated', {
+      atsScore: matchAnalysis.atsScore,
+      keywordCoverage: verification.keywordCoverage,
+    });
+
+    // Build result
+    const result: GeneratedCoverLetter = {
+      fullText,
+      htmlFormatted,
+      sections,
+      narrative,
       tone,
-      generatedWithAI: useAI,
+      wordCount,
+      verification,
+      matchAnalysis,
     };
 
-    const generationTime = Date.now() - startTime;
-
     log.info(LogCategory.SERVICE, 'Cover letter generation complete', {
-      wordCount: coverLetter.wordCount,
-      atsScore,
-      generationTime,
-      aiUsed: useAI,
+      wordCount,
+      atsScore: matchAnalysis.atsScore,
+      noHallucination: verification.noHallucination,
     });
 
     endTrace();
+    return result;
 
-    return {
-      coverLetter,
-      warnings,
-      generationTime,
-      aiUsed: useAI,
-    };
   } catch (error) {
     log.error(LogCategory.SERVICE, 'Cover letter generation failed', error as Error);
     endTrace();
@@ -127,438 +184,750 @@ export async function generateCoverLetter(
 }
 
 // ============================================================================
-// AI GENERATION
+// JOB CONTEXT EXTRACTION (NO API)
 // ============================================================================
 
-async function generateWithAI(
-  jobData: LinkedInJobData,
-  jobAnalysis: JobDescriptionAnalysis,
-  profile: ProfessionalProfile,
-  tone: CoverLetterTone,
-  targetWordCount: number,
-  options: CoverLetterGenerationOptions
-): Promise<CoverLetterContent> {
-  const apiKey = options.anthropicApiKey || import.meta.env.VITE_ANTHROPIC_API_KEY;
+/**
+ * Extract job context from posting
+ * Identifies company, role, hiring manager, key requirements, culture
+ */
+function extractJobContext(jobPosting: string): JobContext {
+  const lines = jobPosting.split('\n');
 
-  if (!apiKey) {
-    throw new Error('Anthropic API key not configured');
+  // Extract company name - look for common patterns
+  let company = 'Hiring Company';
+  const companyPatterns = [
+    /(?:at|@)\s+([A-Z][A-Za-z0-9\s&.,-]+?)(?:\s+is|,|\.|$)/,
+    /([A-Z][A-Za-z0-9\s&.,-]+?)\s+is\s+(?:hiring|looking|seeking)/i,
+    /Company:\s*([A-Z][A-Za-z0-9\s&.,-]+)/,
+  ];
+
+  for (const pattern of companyPatterns) {
+    const match = jobPosting.match(pattern);
+    if (match && match[1]) {
+      company = match[1].trim();
+      break;
+    }
   }
 
-  // Build resume summary for context
-  const resumeSummary = buildResumeSummary(profile);
+  // Extract role/job title - usually first line or after "Position:"
+  let role = 'Position';
+  const rolePatterns = [
+    /(?:Position|Role|Job Title|Title):\s*(.+)/i,
+    /^([A-Z][A-Za-z\s-]+(?:Engineer|Developer|Manager|Designer|Analyst|Specialist))/m,
+  ];
 
-  // Build prompt
-  const prompt = buildAIPrompt(
-    jobData,
-    jobAnalysis,
-    resumeSummary,
-    profile.personalInfo.fullName,
-    tone,
-    targetWordCount,
-    options
-  );
+  for (const pattern of rolePatterns) {
+    const match = jobPosting.match(pattern);
+    if (match && match[1]) {
+      role = match[1].trim();
+      break;
+    }
+  }
 
-  // Call Claude API
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 2048,
-      temperature: 0.7,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    }),
+  // Extract hiring manager if mentioned
+  let hiringManager: string | undefined;
+  const managerPatterns = [
+    /(?:Dear|Contact|Hiring Manager):\s*([A-Z][a-z]+\s+[A-Z][a-z]+)/,
+    /(?:reach out to|contact)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)/,
+  ];
+
+  for (const pattern of managerPatterns) {
+    const match = jobPosting.match(pattern);
+    if (match && match[1]) {
+      hiringManager = match[1].trim();
+      break;
+    }
+  }
+
+  // Extract key requirements using keyword extractor
+  const keyRequirements = extractKeywordsFromJobDescription(jobPosting);
+
+  // Determine culture
+  const culture = detectCultureLevel(jobPosting);
+
+  return {
+    company,
+    role,
+    hiringManager,
+    keyRequirements,
+    culture,
+  };
+}
+
+/**
+ * Detect company culture level from job posting
+ */
+function detectCultureLevel(jobPosting: string): 'formal' | 'business-casual' | 'casual' {
+  const lowerPosting = jobPosting.toLowerCase();
+
+  // Formal indicators
+  const formalKeywords = [
+    'professional', 'corporate', 'established', 'traditional',
+    'conservative', 'enterprise', 'fortune', 'institutional'
+  ];
+  const formalCount = formalKeywords.filter(kw => lowerPosting.includes(kw)).length;
+
+  // Casual indicators
+  const casualKeywords = [
+    'startup', 'fast-paced', 'fun', 'innovative', 'disruptive',
+    'cutting-edge', 'dynamic', 'flexible', 'remote-first', 'async'
+  ];
+  const casualCount = casualKeywords.filter(kw => lowerPosting.includes(kw)).length;
+
+  // Decide based on counts
+  if (formalCount > casualCount && formalCount >= 2) {
+    return 'formal';
+  } else if (casualCount > formalCount && casualCount >= 2) {
+    return 'casual';
+  } else {
+    return 'business-casual'; // Default
+  }
+}
+
+/**
+ * Detect company culture and build tone profile
+ */
+function detectCompanyCulture(
+  jobPosting: string,
+  toneOverride?: Partial<ToneProfile>
+): ToneProfile {
+  const culture = detectCultureLevel(jobPosting);
+
+  // Base tone on culture
+  let baseTone: ToneProfile;
+
+  switch (culture) {
+    case 'formal':
+      baseTone = {
+        style: 'professional',
+        enthusiasm: 'reserved',
+        formality: 'formal',
+        personalityLevel: 0.2,
+      };
+      break;
+    case 'casual':
+      baseTone = {
+        style: 'conversational',
+        enthusiasm: 'high',
+        formality: 'casual',
+        personalityLevel: 0.8,
+      };
+      break;
+    default: // business-casual
+      baseTone = {
+        style: 'balanced',
+        enthusiasm: 'moderate',
+        formality: 'business-casual',
+        personalityLevel: 0.5,
+      };
+  }
+
+  // Apply overrides if provided
+  return {
+    ...baseTone,
+    ...toneOverride,
+  };
+}
+
+// ============================================================================
+// STORY SELECTION
+// ============================================================================
+
+/**
+ * Select best achievement stories for cover letter
+ * Primary story: highest relevance to job
+ * Secondary story: complementary skill/aspect
+ */
+function selectBestStories(
+  profile: UserProfile,
+  matchReport: any,
+  jobContext: JobContext
+): { primary: AchievementStory | null; secondary: AchievementStory | null } {
+  const allAchievements: any[] = [];
+
+  // Collect all achievements from work experience
+  profile.workExperience.forEach(exp => {
+    exp.achievements.forEach(achievement => {
+      allAchievements.push({
+        achievement,
+        source: 'work',
+        company: exp.company,
+        title: exp.title,
+      });
+    });
   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(`Claude API error: ${JSON.stringify(errorData)}`);
+  // Collect from projects
+  profile.projects.forEach(project => {
+    project.achievements.forEach(achievement => {
+      allAchievements.push({
+        achievement,
+        source: 'project',
+        company: project.name,
+        title: 'Project',
+      });
+    });
+  });
+
+  // Score each achievement based on relevance
+  const scoredAchievements = allAchievements.map(item => {
+    const score = scoreAchievementRelevance(
+      item.achievement,
+      jobContext.keyRequirements,
+      matchReport
+    );
+
+    return {
+      ...item,
+      relevanceScore: score,
+      starFramework: extractSTARFramework(item.achievement),
+      keywords: item.achievement.keywords,
+      estimatedWordCount: estimateWordCount(item.achievement),
+    };
+  });
+
+  // Sort by relevance
+  scoredAchievements.sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+  // Select primary (highest score)
+  const primary = scoredAchievements.length > 0 ? scoredAchievements[0] : null;
+
+  // Select secondary (different skill focus than primary)
+  let secondary: AchievementStory | null = null;
+  if (scoredAchievements.length > 1 && primary) {
+    for (const story of scoredAchievements.slice(1)) {
+      // Check if skills are complementary (not too similar)
+      const skillOverlap = calculateSkillOverlap(
+        primary.achievement.skills,
+        story.achievement.skills
+      );
+
+      if (skillOverlap < 0.6) { // Less than 60% overlap
+        secondary = story;
+        break;
+      }
+    }
   }
 
-  const data = await response.json();
-  const generatedText = data.content[0].text;
-
-  // Parse AI response into structured content
-  const content = parseAIResponse(
-    generatedText,
-    profile,
-    jobData.company,
-    options.includeAddress || false
-  );
-
-  return content;
+  return { primary, secondary };
 }
 
 /**
- * Build AI prompt for cover letter generation
+ * Score achievement relevance to job (0-1)
  */
-function buildAIPrompt(
-  jobData: LinkedInJobData,
-  jobAnalysis: JobDescriptionAnalysis,
-  resumeSummary: string,
-  candidateName: string,
-  tone: CoverLetterTone,
-  targetWordCount: number,
-  options: CoverLetterGenerationOptions
-): string {
-  const toneInstructions = {
-    professional:
-      'Use a formal, traditional business tone. Professional and respectful language.',
-    enthusiastic:
-      'Use an energetic, passionate tone. Show genuine excitement about the opportunity.',
-    technical:
-      'Use a detail-oriented, precise tone. Focus on technical achievements and specifics.',
-    conversational:
-      'Use a friendly, approachable tone. Be warm while maintaining professionalism.',
+function scoreAchievementRelevance(
+  achievement: any,
+  jobRequirements: ExtractedKeyword[],
+  matchReport: any
+): number {
+  let score = 0;
+
+  // Keyword match (50%)
+  const achievementKeywords = new Set(
+    [...achievement.skills, ...achievement.keywords].map(k => k.toLowerCase())
+  );
+  const jobKeywords = new Set(
+    jobRequirements.map(r => r.term.toLowerCase())
+  );
+
+  let matchCount = 0;
+  for (const keyword of achievementKeywords) {
+    if (jobKeywords.has(keyword)) {
+      matchCount++;
+    }
+  }
+
+  const keywordScore = jobKeywords.size > 0
+    ? matchCount / jobKeywords.size
+    : 0;
+  score += keywordScore * 0.5;
+
+  // Has metrics (20%)
+  if (achievement.metrics && achievement.metrics.length > 0) {
+    score += 0.2;
+  }
+
+  // Recency (15%) - more recent = better
+  // This would need date info, using placeholder
+  score += 0.1; // Assume relatively recent
+
+  // Impact level (15%) - based on action verbs
+  const impactVerbs = ['led', 'built', 'architected', 'launched', 'transformed', 'established'];
+  const hasImpact = impactVerbs.some(verb =>
+    achievement.bullet.toLowerCase().includes(verb)
+  );
+  if (hasImpact) {
+    score += 0.15;
+  }
+
+  return Math.min(1.0, score);
+}
+
+/**
+ * Extract STAR framework from achievement
+ */
+function extractSTARFramework(achievement: any): {
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+} {
+  const bullet = achievement.bullet;
+
+  // Simple extraction based on structure
+  // In production, this would use NLP/AI
+
+  return {
+    situation: extractSituation(bullet, achievement),
+    task: extractTask(bullet, achievement),
+    action: extractAction(bullet, achievement),
+    result: extractResult(bullet, achievement),
   };
+}
 
-  const emphasizeSkills = options.emphasizeSkills || jobAnalysis.keywords.slice(0, 5);
-  const companyContext = options.companyResearch || '';
+function extractSituation(bullet: string, achievement: any): string {
+  // Extract context/setting (10% focus)
+  // Look for "At [Company]" or context clues
+  const contextMatch = bullet.match(/(?:At|In|During)\s+([^,]+)/);
+  return contextMatch
+    ? contextMatch[1]
+    : `In ${achievement.action || 'role'}`;
+}
 
-  return `You are an expert cover letter writer specializing in ATS-optimized applications.
+function extractTask(bullet: string, achievement: any): string {
+  // Extract what needed to be done (10% focus)
+  return achievement.object || 'the objective';
+}
 
-**Task:** Write a compelling cover letter for the following job application.
+function extractAction(bullet: string, achievement: any): string {
+  // Extract what user DID (60% focus) - this is the key
+  return achievement.bullet; // Full bullet for now, AI will focus on this
+}
 
-**Job Details:**
-- Position: ${jobData.jobTitle}
-- Company: ${jobData.company}
-- Location: ${jobData.location}
+function extractResult(bullet: string, achievement: any): string {
+  // Extract outcome (20% focus)
+  if (achievement.result) {
+    return achievement.result;
+  }
 
-**Job Description:**
-${jobData.description}
+  // Try to extract metrics
+  if (achievement.metrics && achievement.metrics.length > 0) {
+    const metric = achievement.metrics[0];
+    return `${metric.type} by ${metric.value}${metric.unit}`;
+  }
 
-**Key Requirements (from analysis):**
-${jobAnalysis.requiredSkills.slice(0, 8).join(', ')}
+  return 'successful outcome';
+}
 
-**Skills to Emphasize:**
-${emphasizeSkills.join(', ')}
+function estimateWordCount(achievement: any): number {
+  return achievement.bullet.split(/\s+/).length;
+}
 
-**Candidate Information:**
-Name: ${candidateName}
+function calculateSkillOverlap(skills1: string[], skills2: string[]): number {
+  const set1 = new Set(skills1.map(s => s.toLowerCase()));
+  const set2 = new Set(skills2.map(s => s.toLowerCase()));
 
-**Candidate's Resume Summary:**
-${resumeSummary}
+  let overlap = 0;
+  for (const skill of set1) {
+    if (set2.has(skill)) {
+      overlap++;
+    }
+  }
 
-${companyContext ? `**Company Research:**\n${companyContext}\n` : ''}
+  return Math.max(set1.size, set2.size) > 0
+    ? overlap / Math.max(set1.size, set2.size)
+    : 0;
+}
 
-**Instructions:**
-1. Write a ${tone} cover letter targeting ${targetWordCount} words
-2. ${toneInstructions[tone]}
-3. Structure: Opening hook → Relevant experience → Motivation & fit → Call to action
-4. Include keywords naturally: ${emphasizeSkills.slice(0, 3).join(', ')}
-5. Each paragraph should be 3-4 sentences
-6. Show specific examples from the candidate's experience
-7. Demonstrate knowledge of the company and role
-8. End with a strong call to action
+// ============================================================================
+// NARRATIVE BUILDER
+// ============================================================================
 
-**Output Format:**
-Provide the cover letter body text only (no header, no signature block).
-Use this exact structure:
+/**
+ * Build cover letter narrative structure
+ */
+function buildNarrative(
+  profile: UserProfile,
+  matchReport: any,
+  stories: { primary: AchievementStory | null; secondary: AchievementStory | null },
+  jobContext: JobContext
+): CoverLetterNarrative {
+  // Build hook (why excited about this role)
+  const hook = buildHook(profile, jobContext, matchReport);
 
-GREETING: [greeting line]
+  // Build value proposition
+  const valueProposition = buildValueProposition(profile, jobContext, matchReport);
 
-OPENING: [opening paragraph - hook about why excited]
+  // Connection to role
+  const connectionToRole = buildConnectionToRole(profile, jobContext, stories);
 
-BODY1: [paragraph about relevant experience and achievements]
+  // Closing theme
+  const closingTheme = buildClosingTheme(profile, jobContext);
 
-BODY2: [paragraph about motivation and company fit]
+  return {
+    hook,
+    valueProposition,
+    primaryStory: stories.primary!,
+    secondaryStory: stories.secondary || undefined,
+    connectionToRole,
+    closingTheme,
+  };
+}
 
-CLOSING: [paragraph with call to action and availability]
+function buildHook(profile: UserProfile, jobContext: JobContext, matchReport: any): string {
+  const topMatch = matchReport.matches[0];
+  const skill = topMatch ? topMatch.requirement.term : jobContext.keyRequirements[0].term;
 
-SIGNATURE: [closing salutation]
+  return `${profile.metadata.totalYearsExperience}+ years of ${skill} experience, passionate about ${jobContext.company}'s mission`;
+}
+
+function buildValueProposition(profile: UserProfile, jobContext: JobContext, matchReport: any): string {
+  const strengths = matchReport.matches.slice(0, 3).map((m: any) => m.requirement.term);
+  return `Proven track record in ${strengths.join(', ')}`;
+}
+
+function buildConnectionToRole(
+  profile: UserProfile,
+  jobContext: JobContext,
+  stories: any
+): string {
+  return `My experience aligns closely with ${jobContext.role} requirements`;
+}
+
+function buildClosingTheme(profile: UserProfile, jobContext: JobContext): string {
+  return `eager to contribute to ${jobContext.company}'s continued success`;
+}
+
+// ============================================================================
+// AI GENERATION FUNCTIONS (Claude API)
+// ============================================================================
+
+/**
+ * Generate all sections using Claude API
+ */
+async function generateSectionsWithAI(
+  narrative: CoverLetterNarrative,
+  jobContext: JobContext,
+  tone: ToneProfile,
+  config?: CoverLetterConfig
+): Promise<CoverLetterSections> {
+  // Initialize Anthropic client
+  const apiKey = process.env.VITE_ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('VITE_ANTHROPIC_API_KEY environment variable not set');
+  }
+
+  const anthropic = new Anthropic({ apiKey });
+
+  // Generate opening
+  const opening = await generateOpening(anthropic, narrative, jobContext, tone, config);
+
+  // Generate body paragraph 1 (primary story)
+  const paragraph1 = await generateBodyParagraph(
+    anthropic,
+    narrative.primaryStory,
+    jobContext,
+    tone,
+    config
+  );
+
+  // Generate body paragraph 2 if secondary story exists
+  let paragraph2: string | undefined;
+  if (narrative.secondaryStory) {
+    paragraph2 = await generateBodyParagraph(
+      anthropic,
+      narrative.secondaryStory,
+      jobContext,
+      tone,
+      config
+    );
+  }
+
+  // Generate closing
+  const closing = await generateClosing(anthropic, narrative, jobContext, tone, config);
+
+  return {
+    opening,
+    body: {
+      paragraph1,
+      paragraph2,
+    },
+    closing,
+  };
+}
+
+/**
+ * Generate opening paragraph with AI
+ */
+async function generateOpening(
+  anthropic: Anthropic,
+  narrative: CoverLetterNarrative,
+  jobContext: JobContext,
+  tone: ToneProfile,
+  config?: CoverLetterConfig
+): Promise<{ greeting: string; hook: string; valueProposition: string }> {
+  const prompt = `You are writing the opening paragraph of a cover letter.
+
+STRICT RULES:
+1. DO NOT invent experiences, achievements, or skills not provided
+2. DO reference the company by name: "${jobContext.company}"
+3. DO show genuine enthusiasm (not generic)
+4. DO keep it 2-3 sentences max
+5. DO use ${tone.style} tone
+6. DO NOT add fake metrics or team sizes
+
+USER INFO:
+- Name: ${narrative.primaryStory.achievement.action}
+- Years Experience: Not specified (DO NOT INVENT)
+
+JOB INFO:
+- Company: ${jobContext.company}
+- Role: ${jobContext.role}
+- Key requirement: ${jobContext.keyRequirements[0]?.term || 'relevant skills'}
+
+NARRATIVE:
+Hook: "${narrative.hook}"
+Value Proposition: "${narrative.valueProposition}"
+
+Write ONLY the opening paragraph (2-3 sentences).
+Format: "Dear [Name or Hiring Team],\\n\\n[Hook sentence]. [Value proposition]."
 
 Begin:`;
+
+  const message = await anthropic.messages.create({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 200,
+    temperature: config?.temperature || 0.4,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+  });
+
+  const responseText = message.content[0].type === 'text'
+    ? message.content[0].text
+    : '';
+
+  // Parse response
+  const lines = responseText.split('\n\n');
+  const greeting = lines[0] || 'Dear Hiring Manager,';
+  const body = lines.slice(1).join(' ').trim();
+
+  // Split into hook and value prop (simple heuristic)
+  const sentences = body.split(/\.\s+/);
+  const hook = sentences[0] + '.' || body;
+  const valueProposition = sentences.slice(1).join('. ').trim() || '';
+
+  return {
+    greeting,
+    hook,
+    valueProposition: valueProposition || narrative.valueProposition,
+  };
 }
 
 /**
- * Parse AI response into structured cover letter content
+ * Generate body paragraph using STAR method (60% Action focus)
  */
-function parseAIResponse(
-  aiResponse: string,
-  profile: ProfessionalProfile,
-  companyName: string,
-  includeAddress: boolean
-): CoverLetterContent {
-  // Extract sections using regex
-  const greetingMatch = aiResponse.match(/GREETING:\s*(.+)/i);
-  const openingMatch = aiResponse.match(/OPENING:\s*(.+?)(?=BODY1:)/is);
-  const body1Match = aiResponse.match(/BODY1:\s*(.+?)(?=BODY2:)/is);
-  const body2Match = aiResponse.match(/BODY2:\s*(.+?)(?=CLOSING:)/is);
-  const closingMatch = aiResponse.match(/CLOSING:\s*(.+?)(?=SIGNATURE:)/is);
-  const signatureMatch = aiResponse.match(/SIGNATURE:\s*(.+)/is);
+async function generateBodyParagraph(
+  anthropic: Anthropic,
+  story: AchievementStory,
+  jobContext: JobContext,
+  tone: ToneProfile,
+  config?: CoverLetterConfig
+): Promise<string> {
+  const prompt = `You are writing a body paragraph using the STAR method.
 
-  const greeting = greetingMatch?.[1]?.trim() || 'Dear Hiring Manager,';
-  const opening = openingMatch?.[1]?.trim() || '';
-  const body1 = body1Match?.[1]?.trim() || '';
-  const body2 = body2Match?.[1]?.trim() || '';
-  const closing = closingMatch?.[1]?.trim() || '';
-  const signature = signatureMatch?.[1]?.trim() || 'Sincerely,';
+STRICT RULES:
+1. ONLY use facts from the achievement provided below
+2. DO NOT add fake metrics, team sizes, or accomplishments
+3. DO quantify results if metrics are provided
+4. DO emphasize the ACTION (60% of paragraph)
+5. DO connect to job requirement: "${jobContext.keyRequirements[0]?.term || 'role'}"
+6. DO use ${tone.style} tone
+7. DO keep it 100-150 words
+8. DO write in narrative form (NOT bullet points)
+9. DO NOT invent company names, technologies, or team details
 
-  // Build full text
-  const fullText = buildFullCoverLetterText(
-    profile,
-    companyName,
-    greeting,
-    opening,
-    body1,
-    body2,
-    closing,
-    signature,
-    includeAddress
-  );
+ACHIEVEMENT (VERIFIED FACTS):
+${JSON.stringify(story.achievement, null, 2)}
+
+STAR BREAKDOWN:
+Situation (10%): ${story.starFramework.situation}
+Task (10%): ${story.starFramework.task}
+Action (60%): ${story.starFramework.action} ← FOCUS HERE
+Result (20%): ${story.starFramework.result}
+
+Write the body paragraph focusing on what the user DID.
+Example structure: "In [context], I [action verb] [object] [details]. [More action]. This resulted in [outcome]."
+
+DO NOT start with "At [Company]" unless company is in the verified facts above.
+
+Begin:`;
+
+  const message = await anthropic.messages.create({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 250,
+    temperature: config?.temperature || 0.4,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+  });
+
+  const paragraph = message.content[0].type === 'text'
+    ? message.content[0].text.trim()
+    : '';
+
+  return paragraph;
+}
+
+/**
+ * Generate closing paragraph with AI
+ */
+async function generateClosing(
+  anthropic: Anthropic,
+  narrative: CoverLetterNarrative,
+  jobContext: JobContext,
+  tone: ToneProfile,
+  config?: CoverLetterConfig
+): Promise<{ reiterateInterest: string; callToAction: string; signOff: string }> {
+  const prompt = `You are writing the closing paragraph of a cover letter.
+
+STRICT RULES:
+1. DO reiterate interest in the role
+2. DO include a call to action ("I'd love to discuss...")
+3. DO keep it 2-3 sentences
+4. DO use ${tone.style} tone
+5. DO NOT be generic or overly formal
+6. DO NOT invent availability or specific dates
+
+CONTEXT:
+Company: ${jobContext.company}
+Role: ${jobContext.role}
+Theme: ${narrative.closingTheme}
+
+Write the closing paragraph (interest + call to action).
+Format: "[Interest statement]. [Call to action]. [Sign-off]"
+
+Begin:`;
+
+  const message = await anthropic.messages.create({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 200,
+    temperature: config?.temperature || 0.4,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+  });
+
+  const responseText = message.content[0].type === 'text'
+    ? message.content[0].text
+    : '';
+
+  // Parse into components
+  const sentences = responseText.split(/\.\s+/);
+  const reiterateInterest = sentences[0] + '.' || responseText;
+  const callToAction = sentences[1] + '.' || 'I look forward to discussing this opportunity.';
+  const signOff = sentences.length > 2
+    ? sentences.slice(2).join('. ').trim()
+    : 'Sincerely';
 
   return {
-    candidateName: profile.personalInfo.fullName,
-    candidateEmail: profile.personalInfo.email || '',
-    candidatePhone: profile.personalInfo.phone || '',
-    candidateAddress: includeAddress ? profile.personalInfo.location : undefined,
-    date: new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }),
-    hiringManagerName: undefined,
-    companyName,
-    companyAddress: undefined,
-    greeting,
-    opening,
-    body1,
-    body2,
-    closing,
-    signature,
-    fullText,
+    reiterateInterest,
+    callToAction,
+    signOff: signOff || 'Sincerely',
   };
 }
 
 // ============================================================================
-// TEMPLATE-BASED GENERATION
-// ============================================================================
-
-function generateWithTemplate(
-  jobData: LinkedInJobData,
-  jobAnalysis: JobDescriptionAnalysis,
-  profile: ProfessionalProfile,
-  tone: CoverLetterTone,
-  options: CoverLetterGenerationOptions
-): CoverLetterContent {
-  const topSkills = jobAnalysis.keywords.slice(0, 3);
-  const companyName = jobData.company;
-  const position = jobData.jobTitle;
-  const candidateName = profile.personalInfo.fullName;
-
-  // Get top experience
-  const topExperience = profile.experience?.[0];
-  const yearsExperience = topExperience
-    ? calculateYearsOfExperience(topExperience.startDate, topExperience.endDate)
-    : 0;
-
-  // Generate greeting
-  const greeting = 'Dear Hiring Manager,';
-
-  // Generate opening (hook)
-  const opening = `I am writing to express my strong interest in the ${position} position at ${companyName}. With ${yearsExperience}+ years of experience in ${topSkills[0] || 'the field'} and a proven track record of ${topExperience?.achievements?.[0] || 'delivering results'}, I am excited about the opportunity to contribute to your team's success.`;
-
-  // Generate body1 (relevant experience)
-  const body1 = `In my current role as ${topExperience?.title || 'a professional'} at ${topExperience?.company || 'my current company'}, I have developed strong expertise in ${topSkills.join(', ')}. ${topExperience?.achievements?.[0] || 'I have successfully led multiple projects'}, demonstrating my ability to ${jobAnalysis.requiredSkills[0] || 'drive results'}. My technical proficiency in ${topSkills[1] || 'relevant technologies'} aligns closely with the requirements outlined in your job posting.`;
-
-  // Generate body2 (motivation & fit)
-  const body2 = `I am particularly drawn to ${companyName}'s commitment to ${jobAnalysis.keywords[0] || 'innovation'} and your focus on ${jobAnalysis.keywords[1] || 'excellence'}. Your company's reputation for ${jobAnalysis.keywords[2] || 'quality'} resonates with my professional values, and I am eager to bring my skills in ${topSkills[0]} to contribute to your continued growth. I believe my experience and enthusiasm make me an excellent fit for this role.`;
-
-  // Generate closing (call to action)
-  const closing = `I would welcome the opportunity to discuss how my background in ${topSkills[0]} and ${topSkills[1] || 'related areas'} can benefit ${companyName}. I am available for an interview at your earliest convenience and look forward to the possibility of joining your team. Thank you for considering my application.`;
-
-  // Generate signature
-  const signature = 'Sincerely,';
-
-  // Build full text
-  const fullText = buildFullCoverLetterText(
-    profile,
-    companyName,
-    greeting,
-    opening,
-    body1,
-    body2,
-    closing,
-    signature,
-    options.includeAddress || false
-  );
-
-  return {
-    candidateName: profile.personalInfo.fullName,
-    candidateEmail: profile.personalInfo.email || '',
-    candidatePhone: profile.personalInfo.phone || '',
-    candidateAddress: options.includeAddress ? profile.personalInfo.location : undefined,
-    date: new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }),
-    hiringManagerName: undefined,
-    companyName,
-    companyAddress: undefined,
-    greeting,
-    opening,
-    body1,
-    body2,
-    closing,
-    signature,
-    fullText,
-  };
-}
-
-// ============================================================================
-// UTILITY FUNCTIONS
+// ASSEMBLY AND FORMATTING
 // ============================================================================
 
 /**
- * Build full cover letter text
+ * Assemble full cover letter from sections
  */
-function buildFullCoverLetterText(
-  profile: ProfessionalProfile,
-  companyName: string,
-  greeting: string,
-  opening: string,
-  body1: string,
-  body2: string,
-  closing: string,
-  signature: string,
-  includeAddress: boolean
+function assembleCoverLetter(
+  sections: CoverLetterSections,
+  profile: UserProfile,
+  jobContext: JobContext,
+  config?: CoverLetterConfig
 ): string {
   const lines: string[] = [];
 
-  // Header - Candidate info
-  lines.push(profile.personalInfo.fullName);
-  if (profile.personalInfo.email) lines.push(profile.personalInfo.email);
-  if (profile.personalInfo.phone) lines.push(profile.personalInfo.phone);
-  if (includeAddress && profile.personalInfo.location) {
-    lines.push(profile.personalInfo.location);
-  }
+  // Header - candidate info
+  lines.push(profile.name);
+  if (profile.email) lines.push(profile.email);
+  if (profile.phone) lines.push(profile.phone);
+  if (profile.location) lines.push(profile.location);
   lines.push(''); // Blank line
 
   // Date
-  const formattedDate = new Date().toLocaleDateString('en-US', {
+  const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
-  lines.push(formattedDate);
+  lines.push(date);
   lines.push(''); // Blank line
 
   // Recipient
-  lines.push('Hiring Manager');
-  lines.push(companyName);
+  if (config?.includeHiringManager && jobContext.hiringManager) {
+    lines.push(jobContext.hiringManager);
+  }
+  lines.push(jobContext.company);
+  lines.push(''); // Blank line
+
+  // Opening
+  lines.push(sections.opening.greeting);
+  lines.push(''); // Blank line
+  lines.push(sections.opening.hook);
+  if (sections.opening.valueProposition) {
+    lines.push(sections.opening.valueProposition);
+  }
   lines.push(''); // Blank line
 
   // Body
-  lines.push(greeting);
+  lines.push(sections.body.paragraph1);
   lines.push(''); // Blank line
-  lines.push(opening);
-  lines.push(''); // Blank line
-  lines.push(body1);
-  lines.push(''); // Blank line
-  lines.push(body2);
-  lines.push(''); // Blank line
-  lines.push(closing);
+
+  if (sections.body.paragraph2) {
+    lines.push(sections.body.paragraph2);
+    lines.push(''); // Blank line
+  }
+
+  // Closing
+  lines.push(sections.closing.reiterateInterest);
+  lines.push(sections.closing.callToAction);
   lines.push(''); // Blank line
 
   // Signature
-  lines.push(signature);
-  lines.push(profile.personalInfo.fullName);
+  lines.push(sections.closing.signOff);
+  lines.push(profile.name);
 
   return lines.join('\n');
 }
 
 /**
- * Build resume summary for AI context
+ * Format as HTML for display
  */
-function buildResumeSummary(profile: ProfessionalProfile): string {
-  const parts: string[] = [];
+function formatAsHTML(text: string): string {
+  // Convert line breaks to paragraphs
+  const paragraphs = text.split('\n\n').filter(p => p.trim());
 
-  // Experience
-  if (profile.experience && profile.experience.length > 0) {
-    const exp = profile.experience.slice(0, 3);
-    parts.push('**Experience:**');
-    exp.forEach((e) => {
-      parts.push(
-        `- ${e.title} at ${e.company} (${e.startDate} - ${e.endDate || 'Present'})`
-      );
-      if (e.achievements && e.achievements.length > 0) {
-        e.achievements.slice(0, 2).forEach((a) => {
-          parts.push(`  • ${a}`);
-        });
-      }
-    });
-  }
+  const htmlParts = paragraphs.map(p => {
+    const trimmed = p.trim().replace(/\n/g, '<br>');
+    return `<p>${trimmed}</p>`;
+  });
 
-  // Skills
-  if (profile.skills && profile.skills.length > 0) {
-    parts.push('');
-    parts.push('**Skills:**');
-    parts.push(profile.skills.slice(0, 15).join(', '));
-  }
-
-  // Education
-  if (profile.education && profile.education.length > 0) {
-    parts.push('');
-    parts.push('**Education:**');
-    profile.education.forEach((e) => {
-      parts.push(`- ${e.degree} in ${e.fieldOfStudy} from ${e.institution}`);
-    });
-  }
-
-  return parts.join('\n');
-}
-
-/**
- * Calculate ATS score for cover letter
- */
-function calculateCoverLetterATSScore(
-  coverLetterText: string,
-  jobAnalysis: JobDescriptionAnalysis
-): number {
-  let score = 0;
-  const lowerText = coverLetterText.toLowerCase();
-
-  // Keyword match (50 points)
-  const keywords = [...jobAnalysis.requiredSkills, ...jobAnalysis.keywords]
-    .slice(0, 20)
-    .map((k) => k.toLowerCase());
-  const matchedKeywords = keywords.filter((keyword) => lowerText.includes(keyword));
-  const keywordScore = (matchedKeywords.length / keywords.length) * 50;
-  score += keywordScore;
-
-  // Length check (15 points) - 200-350 words ideal
-  const wordCount = countWords(coverLetterText);
-  if (wordCount >= 200 && wordCount <= 350) {
-    score += 15;
-  } else if (wordCount >= 150 && wordCount < 200) {
-    score += 10;
-  } else if (wordCount > 350 && wordCount <= 400) {
-    score += 10;
-  } else {
-    score += 5;
-  }
-
-  // Structure check (20 points)
-  if (lowerText.includes('dear')) score += 5; // Has greeting
-  if (lowerText.includes('sincerely') || lowerText.includes('best regards')) score += 5; // Has closing
-  if (lowerText.match(/\n\n/g)?.length >= 3) score += 5; // Multiple paragraphs
-  if (lowerText.includes(jobAnalysis.company.toLowerCase())) score += 5; // Mentions company
-
-  // Company-specific (15 points)
-  if (lowerText.includes(jobAnalysis.jobTitle.toLowerCase())) score += 8; // Mentions role
-  if (matchedKeywords.length >= 5) score += 7; // Good keyword density
-
-  return Math.min(100, Math.round(score));
+  return htmlParts.join('\n');
 }
 
 /**
@@ -568,13 +937,186 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).length;
 }
 
+// ============================================================================
+// VERIFICATION
+// ============================================================================
+
 /**
- * Calculate years of experience
+ * Verify no hallucination in generated cover letter
+ * Adapts hallucination-detector for cover letter context
  */
-function calculateYearsOfExperience(startDate: string, endDate?: string): number {
-  const start = new Date(startDate);
-  const end = endDate ? new Date(endDate) : new Date();
-  const diffMs = end.getTime() - start.getTime();
-  const years = diffMs / (1000 * 60 * 60 * 24 * 365.25);
-  return Math.round(years);
+function verifyNoHallucinationInCoverLetter(
+  fullText: string,
+  profile: UserProfile,
+  sections: CoverLetterSections,
+  jobContext: JobContext
+): CoverLetterVerification {
+  const addedFacts: string[] = [];
+  let confidence = 1.0;
+
+  // Check body paragraphs for hallucination
+  const bodyTexts = [
+    sections.body.paragraph1,
+    sections.body.paragraph2 || '',
+  ].filter(t => t);
+
+  for (const bodyText of bodyTexts) {
+    // Extract facts from body
+    const extractedFacts = extractFacts(bodyText);
+
+    // Check for unauthorized additions
+    // 1. Check team involvement claims
+    if (extractedFacts.teamInvolvement) {
+      // Verify user actually has team leadership experience
+      const hasTeamExp = profile.workExperience.some(exp =>
+        exp.achievements.some(a =>
+          a.bullet.toLowerCase().includes('led') ||
+          a.bullet.toLowerCase().includes('team') ||
+          a.bullet.toLowerCase().includes('managed')
+        )
+      );
+
+      if (!hasTeamExp) {
+        addedFacts.push('Added team leadership claim without evidence');
+        confidence -= 0.25;
+      }
+    }
+
+    // 2. Check for specific team sizes
+    if (extractedFacts.teamSize !== undefined) {
+      const hasTeamSize = profile.workExperience.some(exp =>
+        exp.achievements.some(a => /team\s+of\s+\d+/i.test(a.bullet))
+      );
+
+      if (!hasTeamSize) {
+        addedFacts.push(`Added specific team size: ${extractedFacts.teamSize}`);
+        confidence -= 0.25;
+      }
+    }
+
+    // 3. Check for added metrics
+    if (extractedFacts.metrics.length > 0) {
+      const allProfileMetrics = profile.workExperience.flatMap(exp =>
+        exp.achievements.flatMap(a => a.metrics || [])
+      );
+
+      for (const metric of extractedFacts.metrics) {
+        const hasMetric = allProfileMetrics.some(m =>
+          Math.abs(m.value - metric.value) < 0.1 &&
+          m.unit === metric.unit
+        );
+
+        if (!hasMetric) {
+          addedFacts.push(`Added metric: ${metric.value}${metric.unit}`);
+          confidence -= 0.2;
+        }
+      }
+    }
+  }
+
+  // Word count validation
+  const wordCount = countWords(fullText);
+  const wordCountValid = wordCount >= 200 && wordCount <= 450;
+
+  // Check spelling (basic - production would use spell checker)
+  const spellingErrors: string[] = [];
+
+  // Calculate sentiment (basic)
+  const sentimentScore = 0.7; // Placeholder
+
+  // Extract keywords used
+  const keywordsUsed = jobContext.keyRequirements
+    .filter(kw => fullText.toLowerCase().includes(kw.term.toLowerCase()))
+    .map(kw => kw.term);
+
+  const keywordCoverage = jobContext.keyRequirements.length > 0
+    ? keywordsUsed.length / jobContext.keyRequirements.length
+    : 0;
+
+  // Determine if all facts are from profile
+  const allFactsFromProfile = profile.workExperience.flatMap(exp =>
+    exp.achievements.map(a => a.bullet)
+  );
+
+  return {
+    noHallucination: addedFacts.length === 0,
+    allFactsFromProfile,
+    addedFacts,
+    confidence: Math.max(0, confidence),
+    wordCount,
+    wordCountValid,
+    spellingErrors,
+    sentimentScore,
+    keywordsUsed,
+    keywordCoverage,
+  };
+}
+
+// ============================================================================
+// ATS SCORING
+// ============================================================================
+
+/**
+ * Calculate ATS score for cover letter
+ * Adapts resume-generator ATS logic
+ */
+function calculateCoverLetterATSScore(
+  fullText: string,
+  jobContext: JobContext,
+  matchReport: any
+): {
+  requirementsAddressed: string[];
+  requirementsMissed: string[];
+  atsScore: number;
+} {
+  const lowerText = fullText.toLowerCase();
+  const requirements = jobContext.keyRequirements;
+
+  // Check which requirements are addressed
+  const requirementsAddressed: string[] = [];
+  const requirementsMissed: string[] = [];
+
+  for (const req of requirements) {
+    if (lowerText.includes(req.term.toLowerCase())) {
+      requirementsAddressed.push(req.term);
+    } else {
+      requirementsMissed.push(req.term);
+    }
+  }
+
+  let score = 0;
+
+  // Keyword coverage (50 points)
+  const keywordScore = requirements.length > 0
+    ? (requirementsAddressed.length / requirements.length) * 50
+    : 0;
+  score += keywordScore;
+
+  // Word count optimization (15 points)
+  const wordCount = countWords(fullText);
+  if (wordCount >= 250 && wordCount <= 400) {
+    score += 15;
+  } else if (wordCount >= 200 && wordCount < 250) {
+    score += 10;
+  } else if (wordCount > 400 && wordCount <= 450) {
+    score += 10;
+  } else {
+    score += 5;
+  }
+
+  // Structure (20 points)
+  if (lowerText.includes('dear')) score += 5; // Has greeting
+  if (lowerText.includes('sincerely') || lowerText.includes('best')) score += 5; // Has closing
+  if (lowerText.includes(jobContext.company.toLowerCase())) score += 5; // Mentions company
+  if (lowerText.includes(jobContext.role.toLowerCase())) score += 5; // Mentions role
+
+  // Specificity (15 points)
+  if (requirementsAddressed.length >= 5) score += 8; // Good keyword density
+  if (/\d+%|\d+\s*(?:users|hours|days)/.test(fullText)) score += 7; // Has metrics
+
+  return {
+    requirementsAddressed,
+    requirementsMissed,
+    atsScore: Math.min(100, Math.round(score)),
+  };
 }

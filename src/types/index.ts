@@ -61,6 +61,7 @@ export const LinkedInProfileSchema = z.object({
   name: z.string(),
   headline: z.string().optional(),
   location: z.string().optional(),
+  industry: z.string().optional(),
   avatarUrl: z.string().url().optional(),
   about: z.string().optional(),
   experience: z.array(z.object({
@@ -100,6 +101,7 @@ export const NetworkNodeSchema = z.object({
   status: ConnectionStatusSchema,
   degree: z.number().min(1).max(3), // 1st, 2nd, 3rd degree
   matchScore: z.number().min(0).max(100), // 0-100 percentage
+  activityScore: z.number().optional(),
   lastContactedAt: z.string().datetime().optional(),
 });
 
@@ -357,3 +359,39 @@ export const STORAGE_KEYS = {
   CURRENT_ROUTE: 'current_route',
   TEMP_MESSAGE: 'temp_message',
 } as const;
+
+// ============================================================================
+// Graph Interface for Universal Pathfinder
+// ============================================================================
+
+/**
+ * Graph interface for universal pathfinder compatibility
+ */
+export interface Graph {
+  /**
+   * Get all 1st-degree connections for a user
+   */
+  getConnections(userId: string): NetworkNode[] | Promise<NetworkNode[]>;
+
+  /**
+   * Get mutual connections between two users
+   */
+  getMutualConnections?(userId1: string, userId2: string): NetworkNode[];
+
+  /**
+   * Bidirectional BFS pathfinding
+   */
+  bidirectionalBFS?(
+    sourceId: string,
+    targetId: string
+  ): Promise<{
+    path: NetworkNode[];
+    probability: number;
+    mutualConnections: number;
+  } | null>;
+
+  /**
+   * Get a single node by ID
+   */
+  getNode?(nodeId: string): NetworkNode | null;
+}

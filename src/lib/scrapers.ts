@@ -88,7 +88,13 @@ export async function scrapeProfileData(): Promise<Partial<LinkedInProfile> | nu
     // Headline
     const headlineElement = document.querySelector('.pv-top-card--list-bullet li:first-child');
     if (headlineElement) {
-      profileData.headline = headlineElement.textContent?.trim();
+      const headline = headlineElement.textContent?.trim();
+      profileData.headline = headline;
+
+      // Infer industry from headline
+      if (headline) {
+        profileData.industry = inferIndustryFromHeadline(headline);
+      }
     }
 
     // Location
@@ -127,6 +133,14 @@ export async function scrapeProfileData(): Promise<Partial<LinkedInProfile> | nu
           });
         }
       });
+    }
+
+    // If no industry from headline, try to infer from first job title
+    if (!profileData.industry && profileData.experience && profileData.experience.length > 0) {
+      const firstJobTitle = profileData.experience[0].title;
+      if (firstJobTitle) {
+        profileData.industry = inferIndustryFromHeadline(firstJobTitle);
+      }
     }
 
     // Education
@@ -343,4 +357,45 @@ export function parseManualJobDescription(text: string): Partial<JobPosting> {
     title: 'Manual Job Entry',
     company: 'Unknown',
   };
+}
+
+/**
+ * Infer industry from profile headline
+ * Uses keyword matching against common industries
+ */
+function inferIndustryFromHeadline(headline: string): string | undefined {
+  if (!headline) return undefined;
+
+  const text = headline.toLowerCase();
+
+  // Industry keyword mapping (ordered by priority)
+  const industryKeywords: Record<string, string[]> = {
+    'Software Development': ['software engineer', 'software developer', 'programmer', 'full stack', 'backend', 'frontend', 'mobile developer', 'web developer'],
+    'Information Technology': ['it manager', 'system administrator', 'devops', 'sre', 'cloud engineer', 'infrastructure'],
+    'Data Science': ['data scientist', 'machine learning', 'ai engineer', 'data engineer', 'analytics'],
+    'Product Management': ['product manager', 'product owner', 'technical product'],
+    'Design': ['designer', 'ux', 'ui', 'product design', 'graphic design'],
+    'Finance': ['finance', 'investment banker', 'financial analyst', 'trading', 'portfolio manager'],
+    'Consulting': ['consultant', 'advisory', 'strategy consultant'],
+    'Healthcare': ['doctor', 'physician', 'nurse', 'medical', 'healthcare'],
+    'Education': ['teacher', 'professor', 'educator', 'instructor'],
+    'Marketing': ['marketing', 'brand manager', 'growth', 'digital marketing'],
+    'Sales': ['sales', 'account executive', 'business development'],
+    'Human Resources': ['hr', 'recruiter', 'talent acquisition', 'people operations'],
+    'Legal': ['lawyer', 'attorney', 'legal counsel', 'paralegal'],
+    'Research': ['researcher', 'research scientist', 'phd', 'postdoc'],
+    'Engineering': ['mechanical engineer', 'civil engineer', 'electrical engineer', 'hardware engineer'],
+    'Management': ['ceo', 'cto', 'cfo', 'director', 'vp', 'head of', 'manager'],
+  };
+
+  // Check each industry's keywords
+  for (const [industry, keywords] of Object.entries(industryKeywords)) {
+    for (const keyword of keywords) {
+      if (text.includes(keyword)) {
+        return industry;
+      }
+    }
+  }
+
+  return undefined;
 }

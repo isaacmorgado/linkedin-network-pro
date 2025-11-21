@@ -6,6 +6,7 @@
 
 import type { ExtractedKeyword, KeywordCategory } from '../types/resume';
 import { log, LogCategory } from '../utils/logger';
+import { skillsDatabase } from '../types/skills';
 
 /**
  * Extract keywords from job description
@@ -24,13 +25,67 @@ export function extractKeywordsFromJobDescription(jobDescription: string): Extra
 
     const keywords: Map<string, ExtractedKeyword> = new Map();
 
-    // Clean and tokenize text
+    // STEP 1: Extract known skills from database (HIGH PRIORITY)
+    log.debug(LogCategory.SERVICE, 'Extracting known skills from skills database');
+    const allSkills = skillsDatabase.getAllSkills();
+    let knownSkillsFound = 0;
+
+    for (const skill of allSkills) {
+      // Check if skill appears in job description (case-insensitive)
+      const skillPattern = new RegExp(`\\b${escapeRegex(skill.id)}\\b`, 'i');
+
+      // Also check synonyms
+      const termsToCheck = [skill.id, skill.name, ...skill.synonyms];
+
+      for (const term of termsToCheck) {
+        const termPattern = new RegExp(`\\b${escapeRegex(term)}\\b`, 'i');
+
+        if (termPattern.test(jobDescription)) {
+          // Found this skill! Add it with canonical name
+          const canonicalTerm = skill.name;
+          const frequency = (jobDescription.match(termPattern) || []).length;
+          const required = isRequiredSkill(canonicalTerm, jobDescription);
+          const weight = calculateKeywordWeight(canonicalTerm, frequency, jobDescription, required) + 10; // +10 bonus for known skills
+
+          if (weight >= 20) {
+            keywords.set(canonicalTerm.toLowerCase(), {
+              term: canonicalTerm,
+              category: skill.category as KeywordCategory,
+              required,
+              frequency,
+              weight,
+              context: findKeywordContext(canonicalTerm, jobDescription),
+              synonyms: skill.synonyms,
+            });
+
+            log.debug(LogCategory.SERVICE, `Added keyword: "${canonicalTerm}"`, {
+              required,
+              weight,
+              frequency,
+            });
+
+            knownSkillsFound++;
+          } else {
+            log.debug(LogCategory.SERVICE, `Filtered out "${canonicalTerm}" (weight too low)`, {
+              required,
+              weight,
+              threshold: 20,
+            });
+          }
+
+          break; // Found this skill, move to next skill
+        }
+      }
+    }
+
+    log.info(LogCategory.SERVICE, `Found ${knownSkillsFound} known skills from database`);
+
+    // STEP 2: Extract n-grams for unknown terms (LOWER PRIORITY)
     log.debug(LogCategory.SERVICE, 'Tokenizing text');
     const tokens = tokenize(jobDescription);
     log.info(LogCategory.SERVICE, `Tokenized into ${tokens.length} tokens`);
 
-    // Extract n-grams (1-3 words)
-    log.debug(LogCategory.SERVICE, 'Extracting n-grams (1-3 words)');
+    log.debug(LogCategory.SERVICE, 'Extracting n-grams for unknown terms (1-3 words)');
     const unigrams = extractNGrams(tokens, 1);
     const bigrams = extractNGrams(tokens, 2);
     const trigrams = extractNGrams(tokens, 3);
@@ -55,6 +110,12 @@ export function extractKeywordsFromJobDescription(jobDescription: string): Extra
     for (const [term, frequency] of frequencyMap.entries()) {
       // Skip common words and short terms
       if (isCommonWord(term) || term.length < 2) {
+        filtered++;
+        continue;
+      }
+
+      // Skip if already found as known skill
+      if (keywords.has(term.toLowerCase())) {
         filtered++;
         continue;
       }
@@ -91,17 +152,16 @@ export function extractKeywordsFromJobDescription(jobDescription: string): Extra
     log.debug(LogCategory.SERVICE, 'Sorting keywords by weight');
     const sortedKeywords = Array.from(keywords.values()).sort((a, b) => b.weight - a.weight);
 
-    // Return top 50 keywords
-    const topKeywords = sortedKeywords.slice(0, 50);
+    // Return all keywords (already filtered by weight >= 20 threshold)
     log.info(LogCategory.SERVICE, 'Keyword extraction completed', {
-      totalExtracted: topKeywords.length,
-      requiredCount: topKeywords.filter((k) => k.required).length,
-      preferredCount: topKeywords.filter((k) => !k.required).length,
-      topKeywords: topKeywords.slice(0, 10).map((k) => k.term),
+      totalExtracted: sortedKeywords.length,
+      requiredCount: sortedKeywords.filter((k) => k.required).length,
+      preferredCount: sortedKeywords.filter((k) => !k.required).length,
+      topKeywords: sortedKeywords.slice(0, 10).map((k) => k.term),
     });
 
-    endTrace(topKeywords);
-    return topKeywords;
+    endTrace(sortedKeywords);
+    return sortedKeywords;
   } catch (error) {
     log.error(LogCategory.SERVICE, 'Keyword extraction failed', error as Error);
     endTrace();
@@ -166,10 +226,155 @@ function isCommonWord(term: string): boolean {
 }
 
 /**
+ * Job description sections interface
+ */
+interface JobSections {
+  responsibilities?: string;
+  requiredQualifications?: string;
+  preferredQualifications?: string;
+  benefits?: string;
+  rawText: string;
+}
+
+/**
+ * Parse job description into structured sections
+ * Separates required from preferred qualifications
+ */
+function parseJobSections(jobDescription: string): JobSections {
+  const sections: JobSections = {
+    rawText: jobDescription
+  };
+
+  // Section header patterns (order matters - most specific first!)
+  const patterns: Record<string, RegExp[]> = {
+    requiredQualifications: [
+      /^\s*(required\s+qualifications?)\s*:?/im,
+      /^\s*(requirements?)\s*:?/im,
+      /^\s*(must\s+have)\s*:?/im,
+      /^\s*(required\s+skills?)\s*:?/im,
+      /^\s*(minimum\s+qualifications?)\s*:?/im,
+    ],
+    preferredQualifications: [
+      /^\s*(preferred\s+qualifications?)\s*:?/im,
+      /^\s*(nice\s+to\s+have)\s*:?/im,
+      /^\s*(bonus)\s*:?/im,
+      /^\s*(plus)\s*:?/im,
+      /^\s*(ideal\s+candidate)\s*:?/im,
+      /^\s*(preferred\s+skills?)\s*:?/im,
+      /^\s*(optional)\s*:?/im,
+    ],
+    responsibilities: [
+      /^\s*(responsibilities?)\s*:?/im,
+      /^\s*(what\s+you'?ll\s+do)\s*:?/im,
+      /^\s*(role\s+overview)\s*:?/im,
+      /^\s*(your\s+role)\s*:?/im,
+      /^\s*(duties)\s*:?/im,
+    ],
+    benefits: [
+      /^\s*(benefits)\s*:?/im,
+      /^\s*(what\s+we\s+offer)\s*:?/im,
+      /^\s*(perks)\s*:?/im,
+      /^\s*(compensation)\s*:?/im,
+    ],
+  };
+
+  const lines = jobDescription.split('\n');
+  let currentSection: keyof Omit<JobSections, 'rawText'> | null = null;
+  let sectionText = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Check if this line is a section header
+    let matchedSection: keyof Omit<JobSections, 'rawText'> | null = null;
+
+    for (const [section, regexes] of Object.entries(patterns)) {
+      if (regexes.some(regex => regex.test(line))) {
+        matchedSection = section as keyof Omit<JobSections, 'rawText'>;
+        break;
+      }
+    }
+
+    if (matchedSection) {
+      // Save previous section
+      if (currentSection && sectionText) {
+        sections[currentSection] = sectionText.trim();
+      }
+
+      // Start new section
+      currentSection = matchedSection;
+      sectionText = '';
+    } else if (currentSection) {
+      // Add to current section
+      sectionText += line + ' ';
+    }
+  }
+
+  // Save last section
+  if (currentSection && sectionText) {
+    sections[currentSection] = sectionText.trim();
+  }
+
+  // Debug logging to see what sections were extracted
+  log.debug(LogCategory.SERVICE, 'Job sections parsed', {
+    hasRequired: !!sections.requiredQualifications,
+    hasPreferred: !!sections.preferredQualifications,
+    hasResponsibilities: !!sections.responsibilities,
+    hasBenefits: !!sections.benefits,
+    requiredLength: sections.requiredQualifications?.length || 0,
+    preferredLength: sections.preferredQualifications?.length || 0,
+  });
+
+  return sections;
+}
+
+/**
  * Determine if keyword is required vs preferred
  * Based on surrounding context in job description
  */
 function isRequiredSkill(term: string, jobDescription: string): boolean {
+  // Parse job description into sections
+  const sections = parseJobSections(jobDescription);
+  const lowerTerm = term.toLowerCase();
+
+  // Track which sections contain this term for debugging
+  const regex = new RegExp(`\\b${escapeRegex(lowerTerm)}\\b`, 'i');
+  const inRequired = sections.requiredQualifications && regex.test(sections.requiredQualifications);
+  const inPreferred = sections.preferredQualifications && regex.test(sections.preferredQualifications);
+  const inResponsibilities = sections.responsibilities && regex.test(sections.responsibilities);
+
+  // PRIORITY 1: Check if in required qualifications section
+  if (inRequired) {
+    log.debug(LogCategory.SERVICE, `[isRequiredSkill] "${term}" → REQUIRED (Priority 1: in required section)`, {
+      inRequired,
+      inPreferred,
+      inResponsibilities,
+    });
+    return true;
+  }
+
+  // PRIORITY 2: Check if in preferred qualifications section (explicitly NOT required)
+  if (inPreferred) {
+    log.debug(LogCategory.SERVICE, `[isRequiredSkill] "${term}" → PREFERRED (Priority 2: in preferred section)`, {
+      inRequired,
+      inPreferred,
+      inResponsibilities,
+    });
+    return false;
+  }
+
+  // PRIORITY 2.5: Check if in responsibilities section (treat as required but lower priority than explicit required)
+  if (inResponsibilities) {
+    log.debug(LogCategory.SERVICE, `[isRequiredSkill] "${term}" → REQUIRED (Priority 2.5: in responsibilities section)`, {
+      inRequired,
+      inPreferred,
+      inResponsibilities,
+    });
+    return true;
+  }
+
+  // PRIORITY 3: Check for indicator words as fallback
   const requiredIndicators = [
     'required', 'must have', 'must possess', 'essential', 'mandatory',
     'necessary', 'require', 'requires', 'requiring',
@@ -180,11 +385,9 @@ function isRequiredSkill(term: string, jobDescription: string): boolean {
     'ideal', 'would be great',
   ];
 
-  // Find sentences containing the term
   const sentences = jobDescription.toLowerCase().split(/[.!?]+/);
-  const relevantSentences = sentences.filter((s) => s.includes(term));
+  const relevantSentences = sentences.filter((s) => s.includes(lowerTerm));
 
-  // Check for required indicators
   const hasRequiredIndicator = relevantSentences.some((sentence) =>
     requiredIndicators.some((indicator) => sentence.includes(indicator))
   );
@@ -193,18 +396,46 @@ function isRequiredSkill(term: string, jobDescription: string): boolean {
     preferredIndicators.some((indicator) => sentence.includes(indicator))
   );
 
-  // If in "requirements" section, more likely to be required
-  const requirementsSection = extractSection(jobDescription, ['requirements', 'qualifications']);
-  const inRequirementsSection = requirementsSection.toLowerCase().includes(term);
+  if (hasRequiredIndicator) {
+    log.debug(LogCategory.SERVICE, `[isRequiredSkill] "${term}" → REQUIRED (Priority 3: has required indicator)`, {
+      inRequired,
+      inPreferred,
+      inResponsibilities,
+      hasRequiredIndicator,
+    });
+    return true;
+  }
 
-  // Scoring
-  if (hasRequiredIndicator) return true;
-  if (hasPreferredIndicator) return false;
-  if (inRequirementsSection) return true;
+  if (hasPreferredIndicator) {
+    log.debug(LogCategory.SERVICE, `[isRequiredSkill] "${term}" → PREFERRED (Priority 3: has preferred indicator)`, {
+      inRequired,
+      inPreferred,
+      inResponsibilities,
+      hasPreferredIndicator,
+    });
+    return false;
+  }
 
-  // Default to required if appears frequently (3+ times)
-  const frequency = (jobDescription.toLowerCase().match(new RegExp(`\\b${term}\\b`, 'g')) || []).length;
-  return frequency >= 3;
+  // PRIORITY 4: Default to required if appears frequently (3+ times)
+  const frequency = (jobDescription.toLowerCase().match(new RegExp(`\\b${escapeRegex(lowerTerm)}\\b`, 'g')) || []).length;
+  const isFrequent = frequency >= 3;
+
+  log.debug(LogCategory.SERVICE, `[isRequiredSkill] "${term}" → ${isFrequent ? 'REQUIRED' : 'PREFERRED'} (Priority 4: frequency=${frequency})`, {
+    inRequired,
+    inPreferred,
+    inResponsibilities,
+    frequency,
+    isFrequent,
+  });
+
+  return isFrequent;
+}
+
+/**
+ * Escape special regex characters
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -271,10 +502,37 @@ function calculateKeywordWeight(
     weight += 15;
   }
 
-  // Length bonus for multi-word terms (15 points)
+  // Multi-word term weighting (smarter approach)
   const wordCount = term.split(/\s+/).length;
-  if (wordCount >= 2) {
-    weight += Math.min(15, wordCount * 5);
+  const isKnownSkill = skillsDatabase.isKnownSkill(term);
+  const hasStopWords = /\b(with|using|and|or|the|a|an|in|on|at|for|of|to|from)\b/i.test(term);
+
+  if (isKnownSkill && wordCount >= 2) {
+    // Reward legitimate compound skills: "machine learning", "react native"
+    weight += 15;
+  } else if (hasStopWords) {
+    // Penalize sentence fragments with stop words: "with react and", "using jenkins"
+    weight -= 20;
+  } else if (wordCount >= 2) {
+    // Neutral for unknown multi-word terms
+    weight += 5;
+  }
+
+  // Generic term penalty (filter out overly broad terms)
+  const genericTerms = new Set([
+    'experience', 'software', 'data', 'design', 'development',
+    'engineer', 'system', 'work', 'team', 'project', 'build',
+    'implement', 'create', 'manage', 'lead', 'support',
+    'maintain', 'infrastructure', 'services', 'applications',
+  ]);
+
+  if (genericTerms.has(term.toLowerCase())) {
+    // Heavily penalize generic terms unless they're in a compound skill
+    if (wordCount === 1) {
+      weight -= 25; // Single generic word: major penalty
+    } else {
+      weight -= 10; // Generic word in phrase: minor penalty
+    }
   }
 
   return Math.min(100, weight);

@@ -3,6 +3,29 @@
  * For saving and tracking LinkedIn profiles, companies, and connection paths
  */
 
+import type { ConnectionStrategy } from '../services/universal-connection/universal-connection-types';
+
+/**
+ * Saved network path with detailed strategy information
+ */
+export interface SavedNetwork {
+  id: string;
+  targetPerson: {
+    id: string;
+    name: string;
+    headline?: string;
+    avatarUrl?: string;
+    location?: string;
+    status: 'target';
+    degree: number;
+    matchScore: number;
+  };
+  path: ConnectionStrategy; // From universal-connection-types
+  savedAt: string; // ISO date
+  strategy: 'mutual' | 'direct-similarity' | 'intermediary' | 'cold-similarity';
+  estimatedAcceptance: number;
+}
+
 export interface ConnectionPath {
   id: string; // Unique identifier (target profile URL)
   targetName: string;
@@ -69,3 +92,4 @@ export interface WatchlistStats {
 export const CONNECTION_PATHS_STORAGE_KEY = 'uproot_connection_paths';
 export const WATCHLIST_PEOPLE_STORAGE_KEY = 'uproot_watchlist'; // Keep old key for backward compatibility
 export const WATCHLIST_COMPANIES_STORAGE_KEY = 'uproot_watchlist_companies';
+export const SAVED_NETWORKS_STORAGE_KEY = 'savedNetworks';

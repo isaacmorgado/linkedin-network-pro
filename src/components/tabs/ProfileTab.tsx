@@ -9,12 +9,15 @@
  */
 
 import React, { useState } from 'react';
-import { GitBranch, MessageSquare, BookmarkPlus, User, Briefcase, Loader2 } from 'lucide-react';
+import { GitBranch, MessageSquare, BookmarkPlus, User, Briefcase, Loader2, Search } from 'lucide-react';
 import { usePageContext } from '../../hooks/usePageContext';
 import { useWatchlist } from '../../hooks/useWatchlist';
 import { NetworkGraph, findConnectionRoute } from '../../lib/graph';
 import type { ConnectionRoute } from '../../types';
 import { RouteResultCard } from '../shared/RouteResultCard';
+import { findUniversalConnection } from '../../services/universal-connection/universal-pathfinder';
+import type { ConnectionStrategy } from '../../services/universal-connection/universal-connection-types';
+import type { UserProfile } from '../../types/resume-tailoring';
 
 interface ProfileTabProps {
   panelWidth?: number;
@@ -29,6 +32,11 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
   const [isSavingPath, setIsSavingPath] = useState(false);
   const [routeResult, setRouteResult] = useState<ConnectionRoute | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+
+  // Universal pathfinding state
+  const [isSearchingPath, setIsSearchingPath] = useState(false);
+  const [connectionPath, setConnectionPath] = useState<ConnectionStrategy | null>(null);
+  const [pathError, setPathError] = useState<string | null>(null);
 
   // Extract profile data from context
   const profileData = pageContext.profileData;
@@ -133,7 +141,7 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
     }
   };
 
-  const handleSavePathToWatchlist = async () => {
+  const handleSaveOldRouteToWatchlist = async () => {
     if (!routeResult || !profileData) {
       console.error('[Uproot] No route result or profile data');
       return;
@@ -145,12 +153,12 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
       await addPath({
         targetName: profileData.name,
         targetProfileUrl: profileData.profileUrl,
-        targetProfileImage: profileData.profileImage,
+        targetProfileImage: profileData.profileImage || undefined,
         targetHeadline: profileData.headline,
         path: routeResult.nodes.slice(1).map((node, index) => ({
           name: node.profile.name || 'Connection',
-          profileUrl: node.profile.profileUrl || node.id,
-          profileImage: node.profile.profileImage,
+          profileUrl: node.profile.id || node.id,
+          profileImage: node.profile.avatarUrl,
           degree: node.degree,
           connected: false,
         })),
@@ -197,6 +205,257 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
       console.error('[Uproot] Failed to add to watchlist:', error);
     } finally {
       setIsAddingToWatchlist(false);
+    }
+  };
+
+  /**
+   * Find connection path to this profile using universal pathfinder
+   *
+   * Finds the optimal connection path using multi-stage pathfinding:
+   * 1. Mutual connections (via A* algorithm)
+   * 2. Direct similarity (>65% match)
+   * 3. Intermediary matching
+   * 4. Cold outreach with personalization
+   */
+  const handleFindConnectionPath = async () => {
+    if (!profileData) {
+      setPathError('No profile loaded');
+      return;
+    }
+
+    setIsSearchingPath(true);
+    setPathError(null);
+    setConnectionPath(null);
+
+    try {
+      // Get current user profile from storage
+      const currentUserData = await chrome.storage.local.get(['userProfile']);
+      const currentUser = currentUserData.userProfile;
+
+      if (!currentUser) {
+        throw new Error('Your profile not found. Please complete your Resume tab first to enable pathfinding.');
+      }
+
+      // Initialize network graph
+      const networkGraph = new NetworkGraph();
+
+      // Load network data from storage
+      const networkData = await chrome.storage.local.get(['networkGraph']);
+      if (networkData.networkGraph) {
+        networkGraph.import(networkData.networkGraph);
+      }
+
+      // Check if graph has data
+      if (networkGraph.getAllNodes().length === 0) {
+        throw new Error('Network graph not built yet. Visit some LinkedIn profiles to build your network first.');
+      }
+
+      // Create adapter for universal pathfinder Graph interface
+      const graphAdapter = {
+        async getConnections(userId: string): Promise<UserProfile[]> {
+          const nodes = networkGraph.getConnections(userId);
+          // Convert NetworkNode[] to UserProfile[]
+          return nodes.map(node => ({
+            name: node.profile.name || 'Unknown',
+            email: node.id,
+            location: node.profile.location || '',
+            title: node.profile.headline || '',
+            workExperience: (node.profile.experience || []).map(exp => ({
+              id: `${exp.company}-${exp.title}`,
+              company: exp.company || '',
+              title: exp.title || '',
+              startDate: '',
+              endDate: '',
+              location: exp.location || '',
+              description: '',
+              industry: '',
+              achievements: [],
+              skills: [],
+              domains: [],
+              responsibilities: []
+            })),
+            education: (node.profile.education || []).map(edu => ({
+              id: `${edu.school}-${edu.degree || ''}`,
+              school: edu.school || '',
+              degree: edu.degree || '',
+              field: edu.field || '',
+              startDate: '',
+              endDate: null
+            })),
+            projects: [],
+            skills: (node.profile.skills || []).map(skill => ({
+              name: skill,
+              level: 'intermediate' as const,
+              yearsOfExperience: 1,
+              category: 'Technical'
+            })),
+            metadata: {
+              totalYearsExperience: 0,
+              domains: [],
+              seniority: 'entry' as const,
+              careerStage: 'professional' as const
+            }
+          }));
+        },
+        async bidirectionalBFS(sourceId: string, targetId: string) {
+          const result = await networkGraph.bidirectionalBFS(sourceId, targetId);
+          if (!result) return null;
+
+          // Convert NetworkNode[] to UserProfile[]
+          return {
+            path: result.path.map(node => ({
+              name: node.profile.name || 'Unknown',
+              email: node.id,
+              location: node.profile.location || '',
+              title: node.profile.headline || '',
+              workExperience: [],
+              education: [],
+              projects: [],
+              skills: [],
+              metadata: {
+                totalYearsExperience: 0,
+                domains: [],
+                seniority: 'entry' as const,
+                careerStage: 'professional' as const
+              }
+            })),
+            probability: result.probability,
+            mutualConnections: result.mutualConnections
+          };
+        },
+        getNode(nodeId: string) {
+          const node = networkGraph.getNode(nodeId);
+          if (!node) return null;
+          return {
+            name: node.profile.name || 'Unknown',
+            email: node.id,
+            location: node.profile.location || '',
+            title: node.profile.headline || '',
+            workExperience: [],
+            education: [],
+            projects: [],
+            skills: [],
+            metadata: {
+              totalYearsExperience: 0,
+              domains: [],
+              seniority: 'entry' as const,
+              careerStage: 'professional' as const
+            }
+          };
+        },
+        getMutualConnections(userId1: string, userId2: string) {
+          const nodes = networkGraph.getMutualConnections(userId1, userId2);
+          return nodes.map(node => ({
+            name: node.profile.name || 'Unknown',
+            email: node.id,
+            location: node.profile.location || '',
+            title: node.profile.headline || '',
+            workExperience: [],
+            education: [],
+            projects: [],
+            skills: [],
+            metadata: {
+              totalYearsExperience: 0,
+              domains: [],
+              seniority: 'entry' as const,
+              careerStage: 'professional' as const
+            }
+          }));
+        }
+      };
+
+      // Convert profile to UserProfile format expected by pathfinder
+      // Note: LinkedIn's basic profileData doesn't include experience/education/skills
+      // These would need to be scraped separately for full similarity matching
+      const targetProfile: UserProfile = {
+        name: profileData.name || 'Unknown',
+        email: profileData.profileUrl,
+        location: '',
+        title: profileData.headline || '',
+        workExperience: [],
+        education: [],
+        projects: [],
+        skills: [],
+        metadata: {
+          totalYearsExperience: 0,
+          domains: [],
+          seniority: 'entry' as const,
+          careerStage: 'professional' as const
+        }
+      };
+
+      // Find universal connection
+      const result = await findUniversalConnection(
+        currentUser,
+        targetProfile,
+        graphAdapter
+      );
+
+      if (result) {
+        setConnectionPath(result);
+        console.log('[Uproot] Found connection strategy:', result.type);
+      } else {
+        setPathError('No connection path found. Try building your network first.');
+      }
+
+    } catch (error) {
+      console.error('[Uproot] Pathfinding error:', error);
+      setPathError(error instanceof Error ? error.message : 'Failed to find connection path');
+    } finally {
+      setIsSearchingPath(false);
+    }
+  };
+
+  /**
+   * Save universal connection path to watchlist under "Networks" section
+   *
+   * Stores the complete connection strategy including:
+   * - Target person info
+   * - Connection path/strategy
+   * - Estimated acceptance rate
+   * - Next steps
+   */
+  const handleSaveUniversalPathToWatchlist = async () => {
+    if (!connectionPath || !profileData) return;
+
+    try {
+      // Get existing saved networks
+      const data = await chrome.storage.local.get(['savedNetworks']);
+      const savedNetworks = data.savedNetworks || [];
+
+      // Create new saved network entry
+      const newNetwork = {
+        id: `network-${Date.now()}`,
+        targetPerson: {
+          id: profileData.profileUrl || profileData.name,
+          name: profileData.name || '',
+          headline: profileData.headline || '',
+          profileImage: profileData.profileImage || '',
+          location: '',
+          status: 'target' as const,
+          degree: connectionPath.path?.nodes.length || 0,
+          matchScore: Math.round((connectionPath.confidence || 0) * 100)
+        },
+        path: connectionPath,
+        savedAt: new Date().toISOString(),
+        strategy: connectionPath.type,
+        estimatedAcceptance: connectionPath.estimatedAcceptanceRate
+      };
+
+      // Add to saved networks
+      savedNetworks.push(newNetwork);
+
+      // Save to storage
+      await chrome.storage.local.set({ savedNetworks });
+
+      console.log('[Uproot] Path saved to watchlist!');
+
+      // Show success feedback
+      setPathError(null);
+
+    } catch (error) {
+      console.error('[Uproot] Error saving to watchlist:', error);
+      setPathError('Failed to save to watchlist');
     }
   };
 
@@ -332,11 +591,22 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
           onClick={handleAddToWatchlist}
         />
 
+        {/* Universal Pathfinding Card */}
+        <ActionCard
+          icon={Search}
+          title="Find Connection Path"
+          description="Universal pathfinder - works even without mutual connections"
+          buttonText={isSearchingPath ? 'Searching...' : 'Find Connection Path'}
+          buttonColor="#8E44AD"
+          isLoading={isSearchingPath}
+          onClick={handleFindConnectionPath}
+        />
+
         {/* Route Result Display */}
         {routeResult && (
           <RouteResultCard
             route={routeResult}
-            onSaveToWatchlist={handleSavePathToWatchlist}
+            onSaveToWatchlist={handleSaveOldRouteToWatchlist}
             onClose={() => setRouteResult(null)}
             isSaving={isSavingPath}
           />
@@ -362,6 +632,173 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
             >
               ❌ {routeError}
             </p>
+          </div>
+        )}
+
+        {/* Universal Pathfinding Error Display */}
+        {pathError && (
+          <div
+            style={{
+              padding: '16px',
+              backgroundColor: '#FEE2E2',
+              border: '1px solid #F87171',
+              borderRadius: '12px',
+              marginTop: '12px',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '13px',
+                color: '#991B1B',
+                margin: 0,
+              }}
+            >
+              <strong>Error:</strong> {pathError}
+            </p>
+          </div>
+        )}
+
+        {/* Universal Connection Path Result */}
+        {connectionPath && connectionPath.type !== 'none' && (
+          <div style={{ marginTop: '16px' }}>
+            {connectionPath.path ? (
+              <RouteResultCard
+                route={connectionPath.path}
+                onSaveToWatchlist={handleSaveUniversalPathToWatchlist}
+              />
+            ) : (
+              // For strategies without full path (direct similarity, cold outreach)
+              <div
+                style={{
+                  padding: '16px',
+                  backgroundColor: '#F0F9FF',
+                  border: '1px solid #3B82F6',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                }}
+              >
+                <h4
+                  style={{
+                    margin: '0 0 8px 0',
+                    color: '#1E40AF',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                  }}
+                >
+                  Connection Strategy: {connectionPath.type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </h4>
+                <p
+                  style={{
+                    margin: '0 0 12px 0',
+                    fontSize: '14px',
+                    color: '#1E3A8A',
+                    lineHeight: '1.5',
+                  }}
+                >
+                  {connectionPath.reasoning}
+                </p>
+
+                {/* Estimated Acceptance Rate */}
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    backgroundColor: '#DBEAFE',
+                    borderRadius: '8px',
+                    marginBottom: '12px',
+                  }}
+                >
+                  <div style={{ fontSize: '12px', color: '#1E40AF', marginBottom: '4px' }}>
+                    Estimated Acceptance Rate
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: '#1E40AF' }}>
+                    {(connectionPath.estimatedAcceptanceRate * 100).toFixed(0)}%
+                  </div>
+                </div>
+
+                {/* Next Steps */}
+                <div style={{ fontSize: '13px', color: '#1E3A8A' }}>
+                  <strong style={{ display: 'block', marginBottom: '8px' }}>Next Steps:</strong>
+                  <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                    {connectionPath.nextSteps.map((step, i) => (
+                      <li key={i} style={{ marginBottom: '6px', lineHeight: '1.4' }}>
+                        {step}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Save Button */}
+                <button
+                  onClick={handleSaveUniversalPathToWatchlist}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    marginTop: '16px',
+                    backgroundColor: '#3B82F6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'background-color 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#2563EB';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3B82F6';
+                  }}
+                >
+                  Save to Watchlist
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* No Path Found Message */}
+        {connectionPath && connectionPath.type === 'none' && (
+          <div
+            style={{
+              marginTop: '16px',
+              padding: '16px',
+              backgroundColor: '#FEF3C7',
+              border: '1px solid #F59E0B',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <h4
+              style={{
+                margin: '0 0 8px 0',
+                color: '#92400E',
+                fontSize: '15px',
+                fontWeight: '600',
+              }}
+            >
+              No Strong Connection Path
+            </h4>
+            <p
+              style={{
+                margin: '0 0 12px 0',
+                fontSize: '14px',
+                color: '#92400E',
+                lineHeight: '1.5',
+              }}
+            >
+              {connectionPath.reasoning}
+            </p>
+            <div style={{ fontSize: '13px', color: '#92400E' }}>
+              <strong style={{ display: 'block', marginBottom: '8px' }}>Suggestions:</strong>
+              <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                {connectionPath.nextSteps.map((step, i) => (
+                  <li key={i} style={{ marginBottom: '6px', lineHeight: '1.4' }}>
+                    {step}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
       </div>

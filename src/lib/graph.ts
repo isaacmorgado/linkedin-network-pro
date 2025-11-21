@@ -11,7 +11,7 @@
 import Graph from 'graphology';
 import { bidirectional } from 'graphology-shortest-path';
 import { MinPriorityQueue } from '@datastructures-js/priority-queue';
-import type { NetworkNode, NetworkEdge, ConnectionRoute, LinkedInProfile } from '@/types';
+import type { NetworkNode, NetworkEdge, ConnectionRoute, LinkedInProfile } from '../types';
 
 // ============================================================================
 // Graph Construction
@@ -31,7 +31,7 @@ export class NetworkGraph {
     if (!this.graph.hasNode(node.id)) {
       this.graph.addNode(node.id, node);
     } else {
-      this.graph.setNodeAttributes(node.id, node);
+      this.graph.replaceNodeAttributes(node.id, node);
     }
   }
 
@@ -95,9 +95,11 @@ export class NetworkGraph {
 
           const edge = this.graph.getEdgeAttributes(currentNode, neighbor) as NetworkEdge;
           const weight = edge.weight || 1.0;
-          const newDistance = (distances.get(currentNode) || Infinity) + weight;
+          const currentDistance = distances.get(currentNode) ?? Infinity;
+          const neighborDistance = distances.get(neighbor) ?? Infinity;
+          const newDistance = currentDistance + weight;
 
-          if (newDistance < (distances.get(neighbor) || Infinity)) {
+          if (newDistance < neighborDistance) {
             distances.set(neighbor, newDistance);
             previous.set(neighbor, currentNode);
             queue.enqueue({ node: neighbor, distance: newDistance });
@@ -203,6 +205,77 @@ export class NetworkGraph {
 
     data.nodes.forEach((node) => this.addNode(node));
     data.edges.forEach((edge) => this.addEdge(edge));
+  }
+
+  /**
+   * Get all connections for a user
+   * Required by universal pathfinder for intermediary matching
+   */
+  getConnections(userId: string): NetworkNode[] {
+    const connections: NetworkNode[] = [];
+
+    try {
+      this.graph.forEachOutNeighbor(userId, (neighborId) => {
+        const node = this.graph.getNodeAttributes(neighborId) as NetworkNode;
+        if (node) {
+          connections.push(node);
+        }
+      });
+    } catch (error) {
+      console.error(`Error getting connections for ${userId}:`, error);
+    }
+
+    return connections;
+  }
+
+  /**
+   * Get mutual connections between two users
+   * Used by universal pathfinder to calculate connection strength
+   */
+  getMutualConnections(userId1: string, userId2: string): NetworkNode[] {
+    const connections1 = new Set(
+      this.getConnections(userId1).map(n => n.id)
+    );
+    const connections2 = this.getConnections(userId2);
+
+    return connections2.filter(n => connections1.has(n.id));
+  }
+
+  /**
+   * Bidirectional BFS adapter for universal pathfinder compatibility
+   * Returns format expected by universal-pathfinder.ts
+   */
+  async bidirectionalBFS(
+    sourceId: string,
+    targetId: string
+  ): Promise<{
+    path: NetworkNode[];
+    probability: number;
+    mutualConnections: number;
+  } | null> {
+    const route = this.findWeightedPath(sourceId, targetId);
+    if (!route) return null;
+
+    const mutuals = this.getMutualConnections(sourceId, targetId);
+
+    return {
+      path: route.nodes,
+      probability: route.successProbability / 100, // Convert percentage to 0-1
+      mutualConnections: mutuals.length
+    };
+  }
+
+  /**
+   * Get a single node by ID
+   */
+  getNode(nodeId: string): NetworkNode | null {
+    try {
+      if (!this.graph.hasNode(nodeId)) return null;
+      return this.graph.getNodeAttributes(nodeId) as NetworkNode;
+    } catch (error) {
+      console.error(`Error getting node ${nodeId}:`, error);
+      return null;
+    }
   }
 }
 
