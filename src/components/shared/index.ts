@@ -30,3 +30,6 @@ export type { EmptyStateProps } from './EmptyState';
 
 export { InfoRow } from './InfoRow';
 export type { InfoRowProps } from './InfoRow';
+
+export { ProgressBar } from './ProgressBar';
+export type { ProgressBarProps } from './ProgressBar';

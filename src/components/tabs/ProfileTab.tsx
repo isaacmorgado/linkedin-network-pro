@@ -12,6 +12,9 @@ import React, { useState } from 'react';
 import { GitBranch, MessageSquare, BookmarkPlus, User, Briefcase, Loader2 } from 'lucide-react';
 import { usePageContext } from '../../hooks/usePageContext';
 import { useWatchlist } from '../../hooks/useWatchlist';
+import { NetworkGraph, findConnectionRoute } from '../../lib/graph';
+import type { ConnectionRoute } from '../../types';
+import { RouteResultCard } from '../shared/RouteResultCard';
 
 interface ProfileTabProps {
   panelWidth?: number;
@@ -19,10 +22,13 @@ interface ProfileTabProps {
 
 export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
   const pageContext = usePageContext();
-  const { addPerson } = useWatchlist();
+  const { addPerson, addPath } = useWatchlist();
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
   const [isAddingToWatchlist, setIsAddingToWatchlist] = useState(false);
+  const [isSavingPath, setIsSavingPath] = useState(false);
+  const [routeResult, setRouteResult] = useState<ConnectionRoute | null>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
 
   // Extract profile data from context
   const profileData = pageContext.profileData;
@@ -31,12 +37,135 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
   const profileImage = profileData?.profileImage;
 
   const handleFindRoute = async () => {
+    if (!profileData) {
+      console.error('[Uproot] No profile data available');
+      return;
+    }
+
     setIsLoadingRoute(true);
-    // TODO: Implement pathfinding algorithm
-    setTimeout(() => {
+    setRouteError(null);
+    setRouteResult(null);
+
+    try {
+      // For demo purposes, we'll create a sample network graph
+      // In production, this would come from:
+      // 1. User's actual LinkedIn connections
+      // 2. Scraped network data
+      // 3. Backend API with network graph
+
+      const currentUserId = 'current-user'; // In production: from auth
+      const targetUserId = profileData.profileUrl;
+
+      // Create sample network for demonstration
+      // In production: Load from storage or API
+      const graph = new NetworkGraph();
+
+      // Add current user
+      graph.addNode({
+        id: currentUserId,
+        profile: {
+          name: 'You',
+          headline: 'Your current role',
+          profileUrl: currentUserId,
+        } as any,
+        status: 'connected' as any,
+        degree: 0,
+        matchScore: 100,
+      });
+
+      // Add target person
+      graph.addNode({
+        id: targetUserId,
+        profile: {
+          name: profileData.name,
+          headline: profileData.headline || '',
+          profileUrl: targetUserId,
+        } as any,
+        status: 'not_contacted' as any,
+        degree: 2, // Example: 2nd degree connection
+        matchScore: 85,
+      });
+
+      // Add intermediate connections (sample data)
+      const intermediateId = `connection-1-${Date.now()}`;
+      graph.addNode({
+        id: intermediateId,
+        profile: {
+          name: 'Mutual Connection',
+          headline: 'Connector role',
+          profileUrl: intermediateId,
+        } as any,
+        status: 'connected' as any,
+        degree: 1,
+        matchScore: 92,
+      });
+
+      // Add edges (connections)
+      graph.addEdge({
+        from: currentUserId,
+        to: intermediateId,
+        weight: 0.3, // Strong connection
+        relationshipType: 'mutual',
+      });
+
+      graph.addEdge({
+        from: intermediateId,
+        to: targetUserId,
+        weight: 0.5, // Medium connection
+        relationshipType: 'colleague',
+      });
+
+      // Find the path
+      const route = graph.findWeightedPath(currentUserId, targetUserId);
+
+      if (route) {
+        setRouteResult(route);
+        console.log('[Uproot] Found connection route:', route);
+      } else {
+        setRouteError('No connection path found. Try expanding your network!');
+        console.log('[Uproot] No route found to', name);
+      }
+    } catch (error) {
+      console.error('[Uproot] Error finding route:', error);
+      setRouteError('Failed to calculate connection path. Please try again.');
+    } finally {
       setIsLoadingRoute(false);
-      console.log('Finding route to', name);
-    }, 1500);
+    }
+  };
+
+  const handleSavePathToWatchlist = async () => {
+    if (!routeResult || !profileData) {
+      console.error('[Uproot] No route result or profile data');
+      return;
+    }
+
+    setIsSavingPath(true);
+    try {
+      // Convert ConnectionRoute to watchlist ConnectionPath format
+      await addPath({
+        targetName: profileData.name,
+        targetProfileUrl: profileData.profileUrl,
+        targetProfileImage: profileData.profileImage,
+        targetHeadline: profileData.headline,
+        path: routeResult.nodes.slice(1).map((node, index) => ({
+          name: node.profile.name || 'Connection',
+          profileUrl: node.profile.profileUrl || node.id,
+          profileImage: node.profile.profileImage,
+          degree: node.degree,
+          connected: false,
+        })),
+        totalSteps: routeResult.nodes.length - 1,
+        completedSteps: 0,
+        isComplete: false,
+      });
+
+      console.log('[Uproot] Saved connection path to watchlist');
+      // Optionally: Show success message or close the result card
+    } catch (error) {
+      console.error('[Uproot] Failed to save path to watchlist:', error);
+    } finally {
+      setIsSavingPath(false);
+    }
   };
 
   const handleGenerateMessage = async () => {
@@ -202,6 +331,39 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
           isLoading={isAddingToWatchlist}
           onClick={handleAddToWatchlist}
         />
+
+        {/* Route Result Display */}
+        {routeResult && (
+          <RouteResultCard
+            route={routeResult}
+            onSaveToWatchlist={handleSavePathToWatchlist}
+            onClose={() => setRouteResult(null)}
+            isSaving={isSavingPath}
+          />
+        )}
+
+        {/* Error Message */}
+        {routeError && (
+          <div
+            style={{
+              padding: '16px',
+              backgroundColor: '#FFEBEE',
+              border: '1px solid #FFCDD2',
+              borderRadius: '12px',
+              marginTop: '12px',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '13px',
+                color: '#C62828',
+                margin: 0,
+              }}
+            >
+              ❌ {routeError}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Help Text */}
