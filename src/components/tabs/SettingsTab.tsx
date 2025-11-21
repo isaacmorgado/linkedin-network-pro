@@ -3,10 +3,13 @@
  */
 
 import React, { useState } from 'react';
-import { Briefcase, User, CreditCard } from 'lucide-react';
+import { Briefcase, User, CreditCard, Bell } from 'lucide-react';
 import { JobPreferencesSettings } from './settings/JobPreferencesSettings';
+import { NotificationSettings } from './settings/NotificationSettings';
+import { AccountSettings } from './settings/AccountSettings';
 
-type SettingsView = 'preferences' | 'account' | 'subscription';
+
+type SettingsView = 'preferences' | 'notifications' | 'account' | 'subscription';
 
 interface SettingsTabProps {
   panelWidth?: number;
@@ -14,6 +17,9 @@ interface SettingsTabProps {
 
 export function SettingsTab({ panelWidth = 400 }: SettingsTabProps) {
   const [activeView, setActiveView] = useState<SettingsView>('preferences');
+  // Use white theme colors
+  const accentColor = '#0077B5';
+  const textColor = '#1d1d1f';
 
   return (
     <div
@@ -36,7 +42,7 @@ export function SettingsTab({ panelWidth = 400 }: SettingsTabProps) {
             fontSize: '20px',
             fontWeight: '700',
             margin: '0 0 4px 0',
-            color: '#1d1d1f',
+            color: textColor,
           }}
         >
           Settings
@@ -44,7 +50,8 @@ export function SettingsTab({ panelWidth = 400 }: SettingsTabProps) {
         <p
           style={{
             fontSize: '13px',
-            color: '#6e6e73',
+            color: textColor,
+            opacity: 0.7,
             margin: 0,
           }}
         >
@@ -57,6 +64,7 @@ export function SettingsTab({ panelWidth = 400 }: SettingsTabProps) {
         activeView={activeView}
         onViewChange={setActiveView}
         panelWidth={panelWidth}
+        accentColor={accentColor}
       />
 
       {/* Settings Content */}
@@ -67,7 +75,8 @@ export function SettingsTab({ panelWidth = 400 }: SettingsTabProps) {
         }}
       >
         {activeView === 'preferences' && <JobPreferencesSettings panelWidth={panelWidth} />}
-        {activeView === 'account' && <AccountSettings />}
+        {activeView === 'notifications' && <NotificationSettings panelWidth={panelWidth} />}
+        {activeView === 'account' && <AccountSettings panelWidth={panelWidth} />}
         {activeView === 'subscription' && <SubscriptionSettings />}
       </div>
     </div>
@@ -79,9 +88,14 @@ interface SettingsNavigationProps {
   activeView: SettingsView;
   onViewChange: (view: SettingsView) => void;
   panelWidth?: number;
+  accentColor: string;
 }
 
-function SettingsNavigation({ activeView, onViewChange, panelWidth = 400 }: SettingsNavigationProps) {
+function SettingsNavigation({ activeView, onViewChange, panelWidth = 400, accentColor }: SettingsNavigationProps) {
+  // Use white theme colors
+  const textColor = '#1d1d1f';
+  const backgroundColor = '#FFFFFF';
+  const getHoverColor = (bg: string) => 'rgba(0, 0, 0, 0.04)';
   // Responsive sizing based on panel width
   const isNarrow = panelWidth < 360;
   const isCompact = panelWidth < 400;
@@ -92,12 +106,22 @@ function SettingsNavigation({ activeView, onViewChange, panelWidth = 400 }: Sett
   const iconSize = isNarrow ? 14 : 16;
   const showLabels = panelWidth >= 360; // Hide labels on very narrow widths
 
+  // Convert accent color to RGB for background with alpha
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  const accentColorBg = hexToRgba(accentColor, 0.03);
+
   return (
     <div
       style={{
         padding: '16px',
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-        backgroundColor: 'rgba(0, 119, 181, 0.03)',
+        backgroundColor: accentColorBg,
       }}
     >
       <div style={{ display: 'flex', gap }}>
@@ -111,6 +135,25 @@ function SettingsNavigation({ activeView, onViewChange, panelWidth = 400 }: Sett
           showLabel={showLabels}
           fontSize={fontSize}
           padding={padding}
+          primaryColor={accentColor}
+          textColor={textColor}
+          backgroundColor={backgroundColor}
+          getHoverColor={getHoverColor}
+        />
+        <SettingsNavButton
+          icon={<Bell size={iconSize} strokeWidth={2} />}
+          label="Notifications"
+          shortLabel="Alerts"
+          isActive={activeView === 'notifications'}
+          onClick={() => onViewChange('notifications')}
+          showIcon={showIcons}
+          showLabel={showLabels}
+          fontSize={fontSize}
+          padding={padding}
+          primaryColor={accentColor}
+          textColor={textColor}
+          backgroundColor={backgroundColor}
+          getHoverColor={getHoverColor}
         />
         <SettingsNavButton
           icon={<User size={iconSize} strokeWidth={2} />}
@@ -122,6 +165,10 @@ function SettingsNavigation({ activeView, onViewChange, panelWidth = 400 }: Sett
           showLabel={showLabels}
           fontSize={fontSize}
           padding={padding}
+          primaryColor={accentColor}
+          textColor={textColor}
+          backgroundColor={backgroundColor}
+          getHoverColor={getHoverColor}
         />
         <SettingsNavButton
           icon={<CreditCard size={iconSize} strokeWidth={2} />}
@@ -133,6 +180,10 @@ function SettingsNavigation({ activeView, onViewChange, panelWidth = 400 }: Sett
           showLabel={showLabels}
           fontSize={fontSize}
           padding={padding}
+          primaryColor={accentColor}
+          textColor={textColor}
+          backgroundColor={backgroundColor}
+          getHoverColor={getHoverColor}
         />
       </div>
     </div>
@@ -150,6 +201,10 @@ interface SettingsNavButtonProps {
   showLabel: boolean;
   fontSize: string;
   padding: string;
+  primaryColor: string;
+  textColor: string;
+  backgroundColor: string;
+  getHoverColor: (bgColor: string) => string;
 }
 
 function SettingsNavButton({
@@ -162,8 +217,13 @@ function SettingsNavButton({
   showLabel,
   fontSize,
   padding,
+  primaryColor,
+  textColor,
+  backgroundColor,
+  getHoverColor,
 }: SettingsNavButtonProps) {
   const displayLabel = shortLabel || label;
+  const hoverColor = getHoverColor(backgroundColor);
 
   return (
     <button
@@ -171,8 +231,9 @@ function SettingsNavButton({
       style={{
         flex: 1,
         padding,
-        backgroundColor: isActive ? '#0077B5' : 'transparent',
-        color: isActive ? '#FFFFFF' : '#6e6e73',
+        backgroundColor: isActive ? primaryColor : 'transparent',
+        color: isActive ? '#FFFFFF' : textColor,
+        opacity: isActive ? 1 : 0.6,
         border: isActive ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
         borderRadius: '8px',
         fontSize,
@@ -187,12 +248,14 @@ function SettingsNavButton({
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
-          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+          e.currentTarget.style.backgroundColor = hoverColor;
+          e.currentTarget.style.opacity = '0.8';
         }
       }}
       onMouseLeave={(e) => {
         if (!isActive) {
           e.currentTarget.style.backgroundColor = 'transparent';
+          e.currentTarget.style.opacity = '0.6';
         }
       }}
     >
@@ -206,46 +269,10 @@ function SettingsNavButton({
   );
 }
 
-// Account Settings Placeholder
-function AccountSettings() {
-  return (
-    <div
-      style={{
-        padding: '40px 24px',
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-      }}
-    >
-      <User size={48} color="#86868b" strokeWidth={1.5} />
-      <h3
-        style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          margin: '16px 0 8px 0',
-          color: '#1d1d1f',
-        }}
-      >
-        Account Settings
-      </h3>
-      <p
-        style={{
-          fontSize: '14px',
-          color: '#6e6e73',
-          margin: 0,
-        }}
-      >
-        Coming soon...
-      </p>
-    </div>
-  );
-}
 
 // Subscription Settings Placeholder
 function SubscriptionSettings() {
+  const { textColor } = useTheme();
   return (
     <div
       style={{
@@ -258,13 +285,13 @@ function SubscriptionSettings() {
         height: '100%',
       }}
     >
-      <CreditCard size={48} color="#86868b" strokeWidth={1.5} />
+      <CreditCard size={48} color={textColor} strokeWidth={1.5} style={{ opacity: 0.5 }} />
       <h3
         style={{
           fontSize: '18px',
           fontWeight: '600',
           margin: '16px 0 8px 0',
-          color: '#1d1d1f',
+          color: textColor,
         }}
       >
         Subscription
@@ -272,7 +299,8 @@ function SubscriptionSettings() {
       <p
         style={{
           fontSize: '14px',
-          color: '#6e6e73',
+          color: textColor,
+          opacity: 0.6,
           margin: 0,
         }}
       >

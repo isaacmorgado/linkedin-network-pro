@@ -18,7 +18,12 @@ export type TabId =
   | 'company'       // Only on company pages
   | 'jobs'          // Only on job pages
   // Special (1 tab)
-  | 'onboarding';   // First-run only
+  | 'onboarding'    // First-run only
+  // Tool tabs (accessed from main tabs)
+  | 'profile-builder'     // Profile builder tool
+  | 'job-analyzer'        // Job description analyzer
+  | 'resume-generator'    // AI resume generator
+  | 'cover-letter';       // AI cover letter generator
 
 export type PageContextType =
   | 'unknown'

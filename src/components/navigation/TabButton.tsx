@@ -41,7 +41,7 @@ export function TabButton({ tab, isActive, onClick, badgeCount, compact = false,
     border: 'none',
     borderRadius: '12px',
     cursor: 'pointer',
-    transition: 'all 250ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+    transition: 'all 150ms ease-in-out',
     outline: 'none',
     WebkitTapHighlightColor: 'transparent',
   };
@@ -107,7 +107,7 @@ export function TabButton({ tab, isActive, onClick, badgeCount, compact = false,
             fontSize: '11px',
             fontWeight: isActive ? '600' : '500',
             color: labelColor,
-            transition: 'color 250ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+            transition: 'color 150ms ease-in-out',
             whiteSpace: 'nowrap',
           }}
         >
