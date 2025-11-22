@@ -150,29 +150,7 @@ export function FloatingPanel() {
   }, [isMinimized, panelPosition.y]); // FIX: Include panelPosition.y in dependency array
 
   return (
-    <>
-      <style>{`
-        .resize-handle {
-          z-index: 2147483648 !important;
-          position: absolute !important;
-        }
-        .resize-handle-top,
-        .resize-handle-bottom {
-          height: 20px !important;
-        }
-        .resize-handle-left,
-        .resize-handle-right {
-          width: 20px !important;
-        }
-        .resize-handle-topRight,
-        .resize-handle-bottomRight,
-        .resize-handle-bottomLeft,
-        .resize-handle-topLeft {
-          width: 20px !important;
-          height: 20px !important;
-        }
-      `}</style>
-      <Rnd
+    <Rnd
       ref={rndRef}
       default={{
         x: panelPosition.x,
@@ -187,8 +165,6 @@ export function FloatingPanel() {
       maxHeight={900}
       bounds="window"
       disableDragging={false}
-      dragHandleClassName="panel-header"
-      cancel="button, input, textarea, select"
       enableResizing={isMinimized ? false : {
         top: true,
         right: true,
@@ -198,16 +174,6 @@ export function FloatingPanel() {
         bottomRight: true,
         bottomLeft: true,
         topLeft: true,
-      }}
-      resizeHandleStyles={{
-        top: { cursor: 'ns-resize', height: '20px', top: '-10px' },
-        right: { cursor: 'ew-resize', width: '20px', right: '-10px' },
-        bottom: { cursor: 'ns-resize', height: '20px', bottom: '-10px' },
-        left: { cursor: 'ew-resize', width: '20px', left: '-10px' },
-        topRight: { cursor: 'ne-resize', width: '20px', height: '20px', top: '-10px', right: '-10px' },
-        bottomRight: { cursor: 'se-resize', width: '20px', height: '20px', bottom: '-10px', right: '-10px' },
-        bottomLeft: { cursor: 'sw-resize', width: '20px', height: '20px', bottom: '-10px', left: '-10px' },
-        topLeft: { cursor: 'nw-resize', width: '20px', height: '20px', top: '-10px', left: '-10px' },
       }}
       size={isMinimized ? { width: panelSize.width, height: 60 } : undefined}
       onDragStop={(_e, data) => {
@@ -264,22 +230,11 @@ export function FloatingPanel() {
         }
       }}
       style={{
-        zIndex: 2147483647, // Max safe z-index value (2^31 - 1)
-        isolation: 'isolate', // Create stacking context to prevent conflicts
+        zIndex: 999999,
         // Bouncy spring animation - only when programmatically repositioning, not during drag
         transition: shouldAnimate
           ? 'all 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55)'
           : 'none',
-      }}
-      resizeHandleClasses={{
-        top: 'resize-handle resize-handle-top',
-        right: 'resize-handle resize-handle-right',
-        bottom: 'resize-handle resize-handle-bottom',
-        left: 'resize-handle resize-handle-left',
-        topRight: 'resize-handle resize-handle-topRight',
-        bottomRight: 'resize-handle resize-handle-bottomRight',
-        bottomLeft: 'resize-handle resize-handle-bottomLeft',
-        topLeft: 'resize-handle resize-handle-topLeft',
       }}
     >
       <div
@@ -299,7 +254,6 @@ export function FloatingPanel() {
       >
         {/* Header - Draggable */}
         <div
-          className="panel-header"
           style={{
             padding: '16px',
             borderBottom: isMinimized ? 'none' : '1px solid rgba(0, 0, 0, 0.08)',
@@ -418,6 +372,5 @@ export function FloatingPanel() {
         )}
       </div>
     </Rnd>
-    </>
   );
 }
