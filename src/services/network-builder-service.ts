@@ -6,7 +6,8 @@
 import { NetworkGraph } from '../lib/graph';
 import type { NetworkNode, NetworkEdge } from '../types';
 import type { LinkedInPersonProfile } from '../types/monitoring';
-import { scrapePersonProfile, getCurrentLinkedInUser } from '../utils/linkedin-scraper';
+import { scrapePersonProfile } from '../utils/linkedin-scraper';
+import { getCurrentUser } from './current-user-service';
 import { calculateProfileSimilarity } from './universal-connection/intermediary-scorer';
 import { log, LogCategory } from '../utils/logger';
 
@@ -217,14 +218,29 @@ export async function addProfileToGraph(
       if (!currentUserNode) {
         log.info(LogCategory.NETWORK, `Current user node not found, creating minimal node: ${currentUserId}`);
 
-        const currentUserProfile = getCurrentLinkedInUser();
+        // Use cached current user (from current-user-service with 7-day TTL)
+        // This is more reliable than live nav bar detection
+        const currentUserProfile = await getCurrentUser();
         if (currentUserProfile) {
-          const currentUserNetworkNode = convertToNetworkNode(currentUserProfile, currentUserId);
+          // Convert LinkedInProfile to LinkedInPersonProfile format
+          const personProfile: LinkedInPersonProfile = {
+            profileUrl: currentUserProfile.id || '',
+            name: currentUserProfile.name || 'LinkedIn User',
+            headline: currentUserProfile.headline || '',
+            currentRole: {
+              title: currentUserProfile.experience?.[0]?.title || '',
+              company: currentUserProfile.experience?.[0]?.company || '',
+            },
+            location: currentUserProfile.location || '',
+            photoUrl: currentUserProfile.avatarUrl,
+          };
+
+          const currentUserNetworkNode = convertToNetworkNode(personProfile, currentUserId);
           graph.addNode(currentUserNetworkNode);
           currentUserNode = currentUserNetworkNode;
-          log.info(LogCategory.NETWORK, `Added current user to graph: ${currentUserId}`);
+          log.info(LogCategory.NETWORK, `Added current user to graph from cache: ${currentUserId}`);
         } else {
-          log.warn(LogCategory.NETWORK, 'Could not detect current user profile for node creation');
+          log.warn(LogCategory.NETWORK, 'Could not get current user profile (cache miss and detection failed)');
         }
       }
 
