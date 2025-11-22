@@ -257,6 +257,17 @@ export default defineBackground(() => {
       return;
     }
 
+    // Only respond to keyboard shortcuts when NOT on LinkedIn
+    // This prevents conflicts with LinkedIn's native shortcuts
+    const isLinkedIn = activeTab.url?.includes('linkedin.com');
+    if (isLinkedIn) {
+      log.info(LogCategory.BACKGROUND, 'Ignoring keyboard shortcut on LinkedIn to avoid conflicts', {
+        command,
+        url: activeTab.url
+      });
+      return;
+    }
+
     try {
       switch (command) {
         case 'toggle-panel':
@@ -270,7 +281,7 @@ export default defineBackground(() => {
           break;
 
         case 'paste-to-generate':
-          log.info(LogCategory.BACKGROUND, 'Executing paste-to-generate command (Alt+Enter)', { tabId: activeTab.id });
+          log.info(LogCategory.BACKGROUND, 'Executing paste-to-generate command (Alt+3)', { tabId: activeTab.id });
           await chrome.tabs.sendMessage(activeTab.id, { type: 'PASTE_TO_GENERATE' });
           break;
 

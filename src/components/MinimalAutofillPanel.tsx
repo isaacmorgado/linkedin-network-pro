@@ -7,10 +7,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { X, Minimize2, Maximize2, Sparkles } from 'lucide-react';
+import { X, Minimize2, Maximize2, Sparkles, FileText, MessageSquare, Copy } from 'lucide-react';
 import { getProfessionalProfile } from '../utils/storage';
 import type { ProfessionalProfile } from '../types/resume';
 import { log, LogCategory } from '../utils/logger';
+
+type AutofillView = 'resume' | 'questions';
 
 export function MinimalAutofillPanel() {
   const [panelSize, setPanelSize] = useState({ width: 400, height: 500 });
@@ -18,6 +20,8 @@ export function MinimalAutofillPanel() {
   const [panelPosition, setPanelPosition] = useState({ x: 100, y: 100 });
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
+  const [activeView, setActiveView] = useState<AutofillView>('resume');
+  const [resumeText, setResumeText] = useState('');
   const rndRef = useRef<Rnd>(null);
 
   // Load profile on mount
@@ -163,6 +167,124 @@ export function MinimalAutofillPanel() {
             overflow-y: auto;
             ${isMinimized ? 'display: none;' : ''}
           }
+
+          /* Resize handle styles - Override react-rnd defaults */
+          .react-resizable-handle {
+            position: absolute !important;
+            z-index: 10 !important;
+          }
+
+          /* Corner handles - 20x20px clickable areas */
+          .react-resizable-handle-se {
+            bottom: 0 !important;
+            right: 0 !important;
+            width: 20px !important;
+            height: 20px !important;
+            cursor: se-resize !important;
+          }
+
+          .react-resizable-handle-sw {
+            bottom: 0 !important;
+            left: 0 !important;
+            width: 20px !important;
+            height: 20px !important;
+            cursor: sw-resize !important;
+          }
+
+          .react-resizable-handle-ne {
+            top: 0 !important;
+            right: 0 !important;
+            width: 20px !important;
+            height: 20px !important;
+            cursor: ne-resize !important;
+          }
+
+          .react-resizable-handle-nw {
+            top: 0 !important;
+            left: 0 !important;
+            width: 20px !important;
+            height: 20px !important;
+            cursor: nw-resize !important;
+          }
+
+          /* Edge handles - 8px wide strips */
+          .react-resizable-handle-e {
+            right: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            width: 8px !important;
+            height: 100% !important;
+            cursor: e-resize !important;
+          }
+
+          .react-resizable-handle-w {
+            left: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            width: 8px !important;
+            height: 100% !important;
+            cursor: w-resize !important;
+          }
+
+          .react-resizable-handle-n {
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 8px !important;
+            width: 100% !important;
+            cursor: n-resize !important;
+          }
+
+          .react-resizable-handle-s {
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 8px !important;
+            width: 100% !important;
+            cursor: s-resize !important;
+          }
+
+          /* Visual indicators for corner handles */
+          .react-resizable-handle-se::after,
+          .react-resizable-handle-sw::after,
+          .react-resizable-handle-ne::after,
+          .react-resizable-handle-nw::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-style: solid;
+            border-color: rgba(0, 119, 181, 0.4);
+            border-width: 2px;
+          }
+
+          .react-resizable-handle-se::after {
+            bottom: 4px;
+            right: 4px;
+            border-top: none;
+            border-left: none;
+          }
+
+          .react-resizable-handle-sw::after {
+            bottom: 4px;
+            left: 4px;
+            border-top: none;
+            border-right: none;
+          }
+
+          .react-resizable-handle-ne::after {
+            top: 4px;
+            right: 4px;
+            border-bottom: none;
+            border-left: none;
+          }
+
+          .react-resizable-handle-nw::after {
+            top: 4px;
+            left: 4px;
+            border-bottom: none;
+            border-right: none;
+          }
         `}
       </style>
 
@@ -191,6 +313,66 @@ export function MinimalAutofillPanel() {
         maxHeight={800}
         bounds="window"
         dragHandleClassName="minimal-panel-header"
+        enableResizing={{
+          top: true,
+          right: true,
+          bottom: true,
+          left: true,
+          topRight: true,
+          bottomRight: true,
+          bottomLeft: true,
+          topLeft: true,
+        }}
+        resizeHandleStyles={{
+          top: {
+            height: '8px',
+            top: 0,
+            left: 0,
+            right: 0
+          },
+          right: {
+            width: '8px',
+            right: 0,
+            top: 0,
+            bottom: 0
+          },
+          bottom: {
+            height: '8px',
+            bottom: 0,
+            left: 0,
+            right: 0
+          },
+          left: {
+            width: '8px',
+            left: 0,
+            top: 0,
+            bottom: 0
+          },
+          topRight: {
+            width: '20px',
+            height: '20px',
+            top: 0,
+            right: 0
+          },
+          bottomRight: {
+            width: '20px',
+            height: '20px',
+            bottom: 0,
+            right: 0
+          },
+          bottomLeft: {
+            width: '20px',
+            height: '20px',
+            bottom: 0,
+            left: 0
+          },
+          topLeft: {
+            width: '20px',
+            height: '20px',
+            top: 0,
+            left: 0
+          },
+        }}
         style={{
           pointerEvents: 'auto',
           ...(shouldAnimate && {
@@ -223,11 +405,30 @@ export function MinimalAutofillPanel() {
             </div>
           </div>
 
-          {/* Content - Generate Tab */}
+          {/* Content - Tabbed Interface */}
           {!isMinimized && (
             <div className="minimal-panel-content">
+              <AutofillTabSwitcher
+                activeView={activeView}
+                onViewChange={setActiveView}
+                panelWidth={panelSize.width}
+              />
+
               {profile ? (
-                <GenerateSection profile={profile} />
+                <>
+                  {activeView === 'resume' && (
+                    <ResumeSection
+                      resumeText={resumeText}
+                      onResumeChange={setResumeText}
+                    />
+                  )}
+                  {activeView === 'questions' && (
+                    <QuestionsSection
+                      profile={profile}
+                      resumeText={resumeText}
+                    />
+                  )}
+                </>
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center' }}>
                   <p style={{ color: '#6e6e73', fontSize: '14px' }}>
@@ -244,17 +445,183 @@ export function MinimalAutofillPanel() {
 }
 
 /**
- * Generate Section - AI Answer Generation
- * (Extracted from ResumeTab GenerateTab)
+ * Tab Switcher Component
  */
-function GenerateSection({ profile }: { profile: ProfessionalProfile }) {
+interface AutofillTabSwitcherProps {
+  activeView: AutofillView;
+  onViewChange: (view: AutofillView) => void;
+  panelWidth: number;
+}
+
+function AutofillTabSwitcher({
+  activeView,
+  onViewChange,
+  panelWidth,
+}: AutofillTabSwitcherProps) {
+  const isCompact = panelWidth < 400;
+  const fontSize = isCompact ? '12px' : '14px';
+  const padding = isCompact ? '8px 12px' : '10px 16px';
+  const gap = isCompact ? '4px' : '8px';
+  const iconSize = isCompact ? 14 : 16;
+
+  return (
+    <div
+      style={{
+        padding: '12px 16px',
+        borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+        backgroundColor: 'rgba(0, 119, 181, 0.03)',
+      }}
+    >
+      <div style={{ display: 'flex', gap }}>
+        {/* Resume Tab */}
+        <button
+          onClick={() => onViewChange('resume')}
+          style={{
+            flex: 1,
+            padding,
+            backgroundColor: activeView === 'resume' ? '#0077B5' : 'transparent',
+            color: activeView === 'resume' ? '#FFFFFF' : '#6e6e73',
+            border: activeView === 'resume' ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
+            borderRadius: '8px',
+            fontSize,
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            transition: 'all 150ms',
+          }}
+          onMouseEnter={(e) => {
+            if (activeView !== 'resume') {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (activeView !== 'resume') {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          <FileText size={iconSize} strokeWidth={2} />
+          Resume
+        </button>
+
+        {/* Questions Tab */}
+        <button
+          onClick={() => onViewChange('questions')}
+          style={{
+            flex: 1,
+            padding,
+            backgroundColor: activeView === 'questions' ? '#0077B5' : 'transparent',
+            color: activeView === 'questions' ? '#FFFFFF' : '#6e6e73',
+            border: activeView === 'questions' ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
+            borderRadius: '8px',
+            fontSize,
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            transition: 'all 150ms',
+          }}
+          onMouseEnter={(e) => {
+            if (activeView !== 'questions') {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (activeView !== 'questions') {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          <MessageSquare size={iconSize} strokeWidth={2} />
+          Questions
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Resume Section - Paste Resume Content
+ */
+interface ResumeSectionProps {
+  resumeText: string;
+  onResumeChange: (text: string) => void;
+}
+
+function ResumeSection({ resumeText, onResumeChange }: ResumeSectionProps) {
+  const [showCopied, setShowCopied] = useState(false);
+
+  const handleCopyResume = () => {
+    if (!resumeText) return;
+
+    navigator.clipboard.writeText(resumeText).then(() => {
+      log.action('Resume copied to clipboard');
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="generate-section-container">
+      <div className="generate-section-header">
+        <div className="generate-section-title-row">
+          <FileText size={20} strokeWidth={2} style={{ color: '#0077B5' }} />
+          <h3 className="generate-section-title">Your Resume</h3>
+        </div>
+        <p className="generate-section-description">
+          Paste your resume here. This will be used to generate personalized answers to application questions.
+        </p>
+      </div>
+
+      <div className="generate-form-group">
+        <label className="generate-label">Resume Text</label>
+        <textarea
+          className="generate-textarea"
+          value={resumeText}
+          onChange={(e) => onResumeChange(e.target.value)}
+          placeholder="Paste your resume content here..."
+          style={{ minHeight: '300px' }}
+        />
+      </div>
+
+      {resumeText && (
+        <button
+          className="generate-button-secondary"
+          onClick={handleCopyResume}
+          style={{ width: '100%' }}
+        >
+          <Copy size={16} style={{ marginRight: '6px' }} />
+          {showCopied ? 'Copied!' : 'Copy Resume'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Questions Section - AI Answer Generation
+ * (Formerly GenerateSection)
+ */
+interface QuestionsSectionProps {
+  profile: ProfessionalProfile;
+  resumeText: string;
+}
+
+function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
   const [jobDescription, setJobDescription] = useState('');
   const [question, setQuestion] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAnswer, setGeneratedAnswer] = useState('');
   const [error, setError] = useState('');
+  const [showCopied, setShowCopied] = useState(false);
+  const [autoCopied, setAutoCopied] = useState(false);
 
-  // Listen for paste event from keyboard shortcut (Alt+Enter)
+  // Listen for paste event from keyboard shortcut (Alt+3, only on non-LinkedIn pages)
   useEffect(() => {
     const handlePasteEvent = (event: Event) => {
       const customEvent = event as CustomEvent<{ question: string }>;
@@ -281,6 +648,7 @@ function GenerateSection({ profile }: { profile: ProfessionalProfile }) {
 
     setIsGenerating(true);
     setError('');
+    setAutoCopied(false);
 
     try {
       log.info(LogCategory.UI, 'Generating AI answer', {
@@ -294,11 +662,16 @@ function GenerateSection({ profile }: { profile: ProfessionalProfile }) {
       // Extract keywords from JD
       const keywords = extractKeywordsFromJobDescription(jobDescription);
 
-      // Generate answer based on profile + keywords
-      const answer = generateAnswerFromProfile(question, keywords, profile);
+      // Generate answer based on profile + keywords (now includes resume text)
+      const answer = generateAnswerFromProfile(question, keywords, profile, resumeText);
 
       setGeneratedAnswer(answer);
-      log.info(LogCategory.UI, 'AI answer generated successfully');
+
+      // Auto-copy to clipboard
+      await navigator.clipboard.writeText(answer);
+      setAutoCopied(true);
+
+      log.info(LogCategory.UI, 'AI answer generated and auto-copied to clipboard');
     } catch (err) {
       log.error(LogCategory.UI, 'Failed to generate answer', err as Error);
       setError('Failed to generate answer. Please try again.');
@@ -311,8 +684,9 @@ function GenerateSection({ profile }: { profile: ProfessionalProfile }) {
     if (!generatedAnswer) return;
 
     navigator.clipboard.writeText(generatedAnswer).then(() => {
-      log.action('Answer copied to clipboard');
-      // Could show a toast notification here
+      log.action('Answer copied to clipboard (manual)');
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
     });
   };
 
@@ -321,6 +695,8 @@ function GenerateSection({ profile }: { profile: ProfessionalProfile }) {
     setQuestion('');
     setGeneratedAnswer('');
     setError('');
+    setShowCopied(false);
+    setAutoCopied(false);
   };
 
   return (
@@ -331,115 +707,201 @@ function GenerateSection({ profile }: { profile: ProfessionalProfile }) {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
+
+          .generate-section-container {
+            padding: 20px;
+          }
+
+          .generate-section-header {
+            margin-bottom: 20px;
+          }
+
+          .generate-section-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+          }
+
+          .generate-section-title {
+            fontSize: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin: 0;
+          }
+
+          .generate-section-description {
+            font-size: 13px;
+            color: #6e6e73;
+            margin: 0;
+            line-height: 1.5;
+          }
+
+          .generate-form-group {
+            margin-bottom: 16px;
+          }
+
+          .generate-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+          }
+
+          .generate-textarea,
+          .generate-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            fontSize: 13px;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+          }
+
+          .generate-textarea:focus,
+          .generate-input:focus {
+            outline: none;
+            border-color: #0077B5;
+          }
+
+          .generate-textarea {
+            min-height: 120px;
+            resize: vertical;
+          }
+
+          .generate-button-primary {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: opacity 0.2s;
+          }
+
+          .generate-button-primary:hover:not(:disabled) {
+            opacity: 0.9;
+          }
+
+          .generate-button-primary:disabled {
+            background: #d2d2d7;
+            cursor: not-allowed;
+          }
+
+          .generate-answer-box {
+            padding: 16px;
+            background-color: #f5f5f7;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          }
+
+          .generate-answer-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin: 0 0 12px 0;
+          }
+
+          .generate-answer-text {
+            font-size: 13px;
+            color: #1d1d1f;
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre-wrap;
+          }
+
+          .generate-button-group {
+            display: flex;
+            gap: 12px;
+          }
+
+          .generate-button-secondary {
+            flex: 1;
+            padding: 12px 16px;
+            background: white;
+            color: #0077B5;
+            border: 1px solid #0077B5;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+          }
+
+          .generate-button-secondary:hover {
+            background-color: #f5f5f7;
+          }
+
+          .generate-error-box {
+            padding: 12px 16px;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          }
+
+          .generate-error-text {
+            font-size: 13px;
+            color: #dc2626;
+            margin: 0;
+          }
         `}
       </style>
-      <div style={{ padding: '20px' }}>
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      <div className="generate-section-container">
+        <div className="generate-section-header">
+          <div className="generate-section-title-row">
             <Sparkles size={20} strokeWidth={2} style={{ color: '#0077B5' }} />
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1d1d1f', margin: 0 }}>
-              AI Answer Generator
-            </h3>
+            <h3 className="generate-section-title">AI Answer Generator</h3>
           </div>
-          <p style={{ fontSize: '13px', color: '#6e6e73', margin: 0 }}>
+          <p className="generate-section-description">
             Paste the job description and enter your question to get an AI-generated answer
           </p>
         </div>
 
         {error && (
-          <div
-            style={{
-              padding: '12px',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              marginBottom: '16px',
-            }}
-          >
-            <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>{error}</p>
+          <div className="generate-error-box">
+            <p className="generate-error-text">{error}</p>
           </div>
         )}
 
         {/* Step 1: Input */}
         {!generatedAnswer && (
           <>
-            <div style={{ marginBottom: '16px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#1d1d1f',
-                  marginBottom: '6px',
-                }}
-              >
-                Job Description
-              </label>
+            <div className="generate-form-group">
+              <label className="generate-label">Job Description</label>
               <textarea
+                className="generate-textarea"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 placeholder="Paste the full job description here..."
-                style={{
-                  width: '100%',
-                  minHeight: '120px',
-                  padding: '12px',
-                  border: '1px solid #d2d2d7',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontFamily: 'inherit',
-                  resize: 'vertical',
-                }}
               />
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#1d1d1f',
-                  marginBottom: '6px',
-                }}
-              >
-                Your Question
-              </label>
+            <div className="generate-form-group">
+              <label className="generate-label">Your Question</label>
               <input
+                className="generate-input"
                 type="text"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="e.g., Why do you want to work here?"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #d2d2d7',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontFamily: 'inherit',
-                }}
               />
             </div>
 
             <button
+              className="generate-button-primary"
               onClick={handleGenerateAnswer}
               disabled={isGenerating}
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: isGenerating
-                  ? '#d2d2d7'
-                  : 'linear-gradient(135deg, #0077B5 0%, #005582 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
             >
               {isGenerating && (
                 <div
@@ -461,53 +923,40 @@ function GenerateSection({ profile }: { profile: ProfessionalProfile }) {
         {/* Step 2: Generated Answer */}
         {generatedAnswer && (
           <>
-            <div
-              style={{
-                padding: '16px',
-                backgroundColor: '#f5f5f7',
+            {autoCopied && (
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: '#d1f4e0',
+                border: '1px solid #4ade80',
                 borderRadius: '8px',
                 marginBottom: '16px',
-              }}
-            >
-              <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1d1d1f', marginBottom: '12px' }}>
-                Generated Answer
-              </h4>
-              <p style={{ fontSize: '13px', color: '#1d1d1f', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
-                {generatedAnswer}
-              </p>
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <Copy size={16} style={{ color: '#16a34a' }} />
+                <p style={{
+                  fontSize: '13px',
+                  color: '#16a34a',
+                  margin: 0,
+                  fontWeight: '600',
+                }}>
+                  ✓ Answer automatically copied to clipboard!
+                </p>
+              </div>
+            )}
+
+            <div className="generate-answer-box">
+              <h4 className="generate-answer-title">Generated Answer</h4>
+              <p className="generate-answer-text">{generatedAnswer}</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={handleCopyAnswer}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'linear-gradient(135deg, #0077B5 0%, #005582 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                }}
-              >
-                Copy Answer
+            <div className="generate-button-group">
+              <button className="generate-button-primary" onClick={handleCopyAnswer}>
+                <Copy size={16} style={{ marginRight: '6px' }} />
+                {showCopied ? 'Copied!' : 'Copy Answer'}
               </button>
-              <button
-                onClick={handleReset}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'white',
-                  color: '#0077B5',
-                  border: '1px solid #0077B5',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                }}
-              >
+              <button className="generate-button-secondary" onClick={handleReset}>
                 New Question
               </button>
             </div>
@@ -525,7 +974,8 @@ function GenerateSection({ profile }: { profile: ProfessionalProfile }) {
 function generateAnswerFromProfile(
   question: string,
   keywords: string[],
-  profile: ProfessionalProfile
+  profile: ProfessionalProfile,
+  resumeText: string
 ): string {
   const questionLower = question.toLowerCase();
 

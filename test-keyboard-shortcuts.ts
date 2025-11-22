@@ -39,7 +39,7 @@ const tests: KeyboardShortcutTest[] = [
   {
     name: 'Paste to Generate',
     command: 'paste-to-generate',
-    shortcut: 'Alt+Enter',
+    shortcut: 'Alt+3',
     messageType: 'PASTE_TO_GENERATE',
     description: 'Paste highlighted question to Generate section',
   },

@@ -46,10 +46,10 @@ export default defineConfig({
       },
       'paste-to-generate': {
         suggested_key: {
-          default: 'Alt+Enter',
-          mac: 'Alt+Enter',
-          windows: 'Alt+Enter',
-          linux: 'Alt+Enter',
+          default: 'Alt+3',
+          mac: 'Alt+3',
+          windows: 'Alt+3',
+          linux: 'Alt+3',
         },
         description: 'Paste highlighted question to Generate section',
       },
@@ -68,11 +68,17 @@ export default defineConfig({
       target: 'esnext',
       minify: 'esbuild',
       sourcemap: process.env.NODE_ENV === 'development',
+      rollupOptions: {
+        external: ['jspdf', 'docx'],
+      },
     },
     resolve: {
       alias: {
         '@': '/src',
       },
+    },
+    optimizeDeps: {
+      include: ['jspdf', 'docx'],
     },
   }),
 
