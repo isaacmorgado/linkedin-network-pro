@@ -293,6 +293,43 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
         networkGraph.import(networkData.networkGraph);
       }
 
+      // Ensure current user is in graph (auto-add if missing)
+      const currentUserNode = networkGraph.getNode(currentUser.email);
+      if (!currentUserNode) {
+        console.log('[Uproot] Current user not in graph, adding minimal node');
+
+        // Convert currentUser to LinkedInProfile format for NetworkNode
+        const currentUserLinkedInProfile = {
+          id: currentUser.email,
+          name: currentUser.name,
+          headline: currentUser.title || '',
+          location: currentUser.location || '',
+          avatarUrl: currentUser.avatarUrl,
+          experience: currentUser.workExperience?.slice(0, 1).map(exp => ({
+            company: exp.company,
+            title: exp.title,
+            location: exp.location || ''
+          })) || [],
+          education: [],
+          skills: [],
+          scrapedAt: new Date().toISOString()
+        };
+
+        const currentUserNetworkNode = {
+          id: currentUser.email,
+          profile: currentUserLinkedInProfile,
+          status: 'not_contacted' as const,
+          degree: 0 as const,
+          matchScore: 0
+        };
+
+        networkGraph.addNode(currentUserNetworkNode);
+
+        // Save updated graph
+        await chrome.storage.local.set({ networkGraph: networkGraph.export() });
+        console.log('[Uproot] Added current user to graph');
+      }
+
       // Check if graph has data - if not, try to add current profile to bootstrap it
       if (networkGraph.getAllNodes().length === 0) {
         throw new Error(
