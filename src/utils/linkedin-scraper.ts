@@ -397,6 +397,85 @@ export function scrapePersonProfile(): LinkedInPersonProfile | null {
   }
 }
 
+/**
+ * Scrape mutual connections from a LinkedIn profile page
+ * Works on: linkedin.com/in/{username}
+ *
+ * Returns list of mutual connections with their profile URLs and names
+ */
+export function scrapeMutualConnections(): LinkedInPersonProfile[] {
+  const mutuals: LinkedInPersonProfile[] = [];
+
+  try {
+    console.log('[Uproot] Scraping mutual connections...');
+
+    // Strategy 1: Check for mutual connections link/button
+    // LinkedIn shows "X mutual connections" near the profile header
+    const mutualLinkSelectors = [
+      'a[href*="/search/results/people/?facetNetwork=%5B%22F%22%5D"]',
+      'a[href*="facetNetwork"]',
+      'button[aria-label*="mutual"]',
+      '.pv-top-card--list-bullet a[href*="mutual"]',
+    ];
+
+    let mutualElement: HTMLElement | null = null;
+    for (const selector of mutualLinkSelectors) {
+      mutualElement = document.querySelector(selector) as HTMLElement;
+      if (mutualElement) break;
+    }
+
+    if (mutualElement) {
+      const mutualText = mutualElement.textContent?.trim() || '';
+      const mutualCount = parseInt(mutualText.match(/(\d+)/)?.[1] || '0');
+
+      console.log(`[Uproot] Found ${mutualCount} mutual connections mentioned`);
+
+      // Try to find mutual connection cards on the page
+      // LinkedIn sometimes shows mutual connections in a section
+      const mutualCards = document.querySelectorAll('[data-view-name="profile-card"], .org-people-profile-card');
+
+      mutualCards.forEach((card) => {
+        try {
+          const linkEl = card.querySelector('a[href*="/in/"]') as HTMLAnchorElement;
+          const nameEl = card.querySelector('.org-people-profile-card__profile-title, [data-anonymize="person-name"]');
+          const headlineEl = card.querySelector('.artdeco-entity-lockup__subtitle, .org-people-profile-card__profile-info');
+          const photoEl = card.querySelector('img') as HTMLImageElement;
+
+          if (linkEl && nameEl) {
+            let profileUrl = linkEl.href;
+
+            // Normalize URL
+            if (profileUrl.startsWith('/')) {
+              profileUrl = window.location.origin + profileUrl;
+            }
+            profileUrl = profileUrl.replace(/\/$/, '');
+
+            mutuals.push({
+              profileUrl,
+              name: nameEl.textContent?.trim() || '',
+              headline: headlineEl?.textContent?.trim() || '',
+              currentRole: {
+                title: headlineEl?.textContent?.trim() || '',
+                company: '',
+              },
+              location: '',
+              photoUrl: photoEl?.src,
+            });
+          }
+        } catch (err) {
+          console.warn('[Uproot] Error extracting mutual connection card:', err);
+        }
+      });
+    }
+
+    console.log(`[Uproot] Scraped ${mutuals.length} mutual connection profiles`);
+    return mutuals;
+  } catch (error) {
+    console.error('[Uproot] Error scraping mutual connections:', error);
+    return [];
+  }
+}
+
 // ============================================================================
 // COMPANY UPDATE SCRAPING
 // ============================================================================

@@ -192,50 +192,6 @@ export function ResumeTab({ panelWidth = 400 }: ResumeTabProps) {
         </p>
       </div>
 
-      {/* Optional Feature Notice */}
-      <div
-        style={{
-          padding: `${SPACING.md}px ${SPACING.lg}px`,
-          backgroundColor: COLORS.status.infoBg,
-          borderBottom: `1px solid ${COLORS.border.lighter}`,
-          display: 'flex',
-          gap: `${SPACING.sm}px`,
-          alignItems: 'flex-start',
-        }}
-      >
-        <Info
-          size={16}
-          strokeWidth={2}
-          style={{
-            color: COLORS.status.info,
-            flexShrink: 0,
-            marginTop: '2px',
-          }}
-        />
-        <div style={{ flex: 1 }}>
-          <p
-            style={{
-              fontSize: `${TYPOGRAPHY.fontSize.base}px`,
-              fontWeight: TYPOGRAPHY.fontWeight.semibold,
-              color: COLORS.status.info,
-              margin: '0 0 4px 0',
-            }}
-          >
-            This tab is optional
-          </p>
-          <p
-            style={{
-              fontSize: `${TYPOGRAPHY.fontSize.sm}px`,
-              color: COLORS.text.secondary,
-              margin: 0,
-              lineHeight: TYPOGRAPHY.lineHeight.normal,
-            }}
-          >
-            Only needed for resume generation features. Connection pathfinding works without this.
-          </p>
-        </div>
-      </div>
-
       {/* Sub-Tab Navigation */}
       <div
         style={{

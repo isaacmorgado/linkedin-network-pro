@@ -6,7 +6,7 @@
 import { NetworkGraph } from '../lib/graph';
 import type { NetworkNode, NetworkEdge } from '../types';
 import type { LinkedInPersonProfile } from '../types/monitoring';
-import { scrapePersonProfile } from '../utils/linkedin-scraper';
+import { scrapePersonProfile, scrapeMutualConnections } from '../utils/linkedin-scraper';
 import { getCurrentUser } from './current-user-service';
 import { calculateProfileSimilarity } from './universal-connection/intermediary-scorer';
 import { log, LogCategory } from '../utils/logger';
@@ -175,6 +175,109 @@ function calculateEdgeWeight(profile1: LinkedInPersonProfile, profile2: LinkedIn
 }
 
 /**
+ * Auto-populate graph with mutual connections
+ * Creates complete paths: You ↔ Mutual ↔ Target
+ */
+async function addMutualConnectionsToGraph(
+  graph: NetworkGraph,
+  currentUserNode: NetworkNode,
+  targetNode: NetworkNode,
+  currentUserId: string,
+  targetProfile: LinkedInPersonProfile
+): Promise<void> {
+  try {
+    log.info(LogCategory.NETWORK, 'Attempting to scrape mutual connections...');
+
+    // Scrape mutual connections from the current LinkedIn profile page
+    const mutualConnections = scrapeMutualConnections();
+
+    if (mutualConnections.length === 0) {
+      log.info(LogCategory.NETWORK, 'No mutual connections found on page');
+      return;
+    }
+
+    log.info(LogCategory.NETWORK, `Found ${mutualConnections.length} mutual connections, adding to graph...`);
+
+    // Get current user profile for edge weight calculation
+    const currentUserProfile = await getCurrentUser();
+    if (!currentUserProfile) {
+      log.warn(LogCategory.NETWORK, 'Cannot calculate edge weights without current user profile');
+      return;
+    }
+
+    // Convert to LinkedInPersonProfile format for edge weight calculation
+    const currentUserPersonProfile: LinkedInPersonProfile = {
+      profileUrl: currentUserProfile.id || '',
+      name: currentUserProfile.name || '',
+      headline: currentUserProfile.headline || '',
+      currentRole: {
+        title: currentUserProfile.experience?.[0]?.title || '',
+        company: currentUserProfile.experience?.[0]?.company || '',
+      },
+      location: currentUserProfile.location || '',
+      photoUrl: currentUserProfile.avatarUrl,
+    };
+
+    for (const mutualProfile of mutualConnections) {
+      try {
+        // Create network node for mutual connection
+        const mutualNode = convertToNetworkNode(mutualProfile, mutualProfile.profileUrl);
+
+        // Add mutual node if not exists
+        if (!graph.getNode(mutualNode.id)) {
+          graph.addNode(mutualNode);
+          log.info(LogCategory.NETWORK, `Added mutual connection to graph: ${mutualNode.id} (${mutualProfile.name})`);
+        }
+
+        // Create edges: Current User ↔ Mutual
+        const weightUserToMutual = calculateEdgeWeight(currentUserPersonProfile, mutualProfile);
+        graph.addEdge({
+          from: currentUserId,
+          to: mutualNode.id,
+          weight: weightUserToMutual,
+          relationshipType: 'mutual'
+        });
+        graph.addEdge({
+          from: mutualNode.id,
+          to: currentUserId,
+          weight: weightUserToMutual,
+          relationshipType: 'mutual'
+        });
+
+        // Create edges: Mutual ↔ Target
+        const weightMutualToTarget = calculateEdgeWeight(mutualProfile, targetProfile);
+        graph.addEdge({
+          from: mutualNode.id,
+          to: targetNode.id,
+          weight: weightMutualToTarget,
+          relationshipType: 'mutual'
+        });
+        graph.addEdge({
+          from: targetNode.id,
+          to: mutualNode.id,
+          weight: weightMutualToTarget,
+          relationshipType: 'mutual'
+        });
+
+        log.info(
+          LogCategory.NETWORK,
+          `Created path: ${currentUserId} ↔ ${mutualNode.id} ↔ ${targetNode.id}`
+        );
+      } catch (err) {
+        log.warn(LogCategory.NETWORK, `Failed to add mutual connection: ${mutualProfile.name}`, err as Error);
+      }
+    }
+
+    log.info(
+      LogCategory.NETWORK,
+      `Successfully added ${mutualConnections.length} mutual connections to graph`
+    );
+  } catch (error) {
+    log.error(LogCategory.NETWORK, 'Error adding mutual connections to graph', error as Error);
+  }
+}
+
+/**
  * Add profile to network graph
  */
 export async function addProfileToGraph(
@@ -264,6 +367,10 @@ export async function addProfileToGraph(
           relationshipType: 'mutual'
         });
         log.info(LogCategory.NETWORK, `Added reverse edge: ${node.id} -> ${currentUserId} (weight: ${weight})`);
+
+        // NEW: Auto-populate graph with mutual connections
+        // This creates complete paths: You ↔ Mutual ↔ Target
+        await addMutualConnectionsToGraph(graph, currentUserNode, node, currentUserId, profileData);
       }
     }
 
