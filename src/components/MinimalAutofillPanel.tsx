@@ -12,7 +12,7 @@ import { getProfessionalProfile } from '../utils/storage';
 import type { ProfessionalProfile } from '../types/resume';
 import { log, LogCategory } from '../utils/logger';
 
-type AutofillView = 'resume' | 'questions';
+type AutofillView = 'job-description' | 'questions';
 
 export function MinimalAutofillPanel() {
   const [panelSize, setPanelSize] = useState({ width: 400, height: 500 });
@@ -20,8 +20,8 @@ export function MinimalAutofillPanel() {
   const [panelPosition, setPanelPosition] = useState({ x: 100, y: 100 });
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
-  const [activeView, setActiveView] = useState<AutofillView>('resume');
-  const [resumeText, setResumeText] = useState('');
+  const [activeView, setActiveView] = useState<AutofillView>('job-description');
+  const [jobDescription, setJobDescription] = useState('');
   const rndRef = useRef<Rnd>(null);
 
   // Load profile on mount
@@ -416,16 +416,16 @@ export function MinimalAutofillPanel() {
 
               {profile ? (
                 <>
-                  {activeView === 'resume' && (
-                    <ResumeSection
-                      resumeText={resumeText}
-                      onResumeChange={setResumeText}
+                  {activeView === 'job-description' && (
+                    <JobDescriptionSection
+                      jobDescription={jobDescription}
+                      onJobDescriptionChange={setJobDescription}
                     />
                   )}
                   {activeView === 'questions' && (
                     <QuestionsSection
                       profile={profile}
-                      resumeText={resumeText}
+                      jobDescription={jobDescription}
                     />
                   )}
                 </>
@@ -473,15 +473,15 @@ function AutofillTabSwitcher({
       }}
     >
       <div style={{ display: 'flex', gap }}>
-        {/* Resume Tab */}
+        {/* Job Description Tab */}
         <button
-          onClick={() => onViewChange('resume')}
+          onClick={() => onViewChange('job-description')}
           style={{
             flex: 1,
             padding,
-            backgroundColor: activeView === 'resume' ? '#0077B5' : 'transparent',
-            color: activeView === 'resume' ? '#FFFFFF' : '#6e6e73',
-            border: activeView === 'resume' ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
+            backgroundColor: activeView === 'job-description' ? '#0077B5' : 'transparent',
+            color: activeView === 'job-description' ? '#FFFFFF' : '#6e6e73',
+            border: activeView === 'job-description' ? 'none' : '1px solid rgba(0, 0, 0, 0.12)',
             borderRadius: '8px',
             fontSize,
             fontWeight: '600',
@@ -493,18 +493,18 @@ function AutofillTabSwitcher({
             transition: 'all 150ms',
           }}
           onMouseEnter={(e) => {
-            if (activeView !== 'resume') {
+            if (activeView !== 'job-description') {
               e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
             }
           }}
           onMouseLeave={(e) => {
-            if (activeView !== 'resume') {
+            if (activeView !== 'job-description') {
               e.currentTarget.style.backgroundColor = 'transparent';
             }
           }}
         >
           <FileText size={iconSize} strokeWidth={2} />
-          Resume
+          Job Description
         </button>
 
         {/* Questions Tab */}
@@ -546,58 +546,54 @@ function AutofillTabSwitcher({
 }
 
 /**
- * Resume Section - Paste Resume Content
+ * Job Description Section - Paste Job Description
  */
-interface ResumeSectionProps {
-  resumeText: string;
-  onResumeChange: (text: string) => void;
+interface JobDescriptionSectionProps {
+  jobDescription: string;
+  onJobDescriptionChange: (text: string) => void;
 }
 
-function ResumeSection({ resumeText, onResumeChange }: ResumeSectionProps) {
-  const [showCopied, setShowCopied] = useState(false);
-
-  const handleCopyResume = () => {
-    if (!resumeText) return;
-
-    navigator.clipboard.writeText(resumeText).then(() => {
-      log.action('Resume copied to clipboard');
-      setShowCopied(true);
-      setTimeout(() => setShowCopied(false), 2000);
-    });
-  };
-
+function JobDescriptionSection({ jobDescription, onJobDescriptionChange }: JobDescriptionSectionProps) {
   return (
     <div className="generate-section-container">
       <div className="generate-section-header">
         <div className="generate-section-title-row">
           <FileText size={20} strokeWidth={2} style={{ color: '#0077B5' }} />
-          <h3 className="generate-section-title">Your Resume</h3>
+          <h3 className="generate-section-title">Job Description</h3>
         </div>
         <p className="generate-section-description">
-          Paste your resume here. This will be used to generate personalized answers to application questions.
+          Paste the job description here. This will be analyzed to generate personalized answers based on your profile.
         </p>
       </div>
 
       <div className="generate-form-group">
-        <label className="generate-label">Resume Text</label>
+        <label className="generate-label">Full Job Description</label>
         <textarea
           className="generate-textarea"
-          value={resumeText}
-          onChange={(e) => onResumeChange(e.target.value)}
-          placeholder="Paste your resume content here..."
-          style={{ minHeight: '300px' }}
+          value={jobDescription}
+          onChange={(e) => onJobDescriptionChange(e.target.value)}
+          placeholder="Paste the complete job description here..."
+          style={{ minHeight: '350px' }}
         />
       </div>
 
-      {resumeText && (
-        <button
-          className="generate-button-secondary"
-          onClick={handleCopyResume}
-          style={{ width: '100%' }}
-        >
-          <Copy size={16} style={{ marginRight: '6px' }} />
-          {showCopied ? 'Copied!' : 'Copy Resume'}
-        </button>
+      {jobDescription && (
+        <div style={{
+          padding: '12px 16px',
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #bfdbfe',
+          borderRadius: '8px',
+          marginTop: '12px',
+        }}>
+          <p style={{
+            fontSize: '13px',
+            color: '#1e40af',
+            margin: 0,
+            lineHeight: '1.5',
+          }}>
+            ✓ Job description saved. Switch to the Questions tab to generate personalized answers.
+          </p>
+        </div>
       )}
     </div>
   );
@@ -605,15 +601,14 @@ function ResumeSection({ resumeText, onResumeChange }: ResumeSectionProps) {
 
 /**
  * Questions Section - AI Answer Generation
- * (Formerly GenerateSection)
+ * Uses the user's actual profile data (no hallucination) + job description to generate answers
  */
 interface QuestionsSectionProps {
   profile: ProfessionalProfile;
-  resumeText: string;
+  jobDescription: string;
 }
 
-function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
-  const [jobDescription, setJobDescription] = useState('');
+function QuestionsSection({ profile, jobDescription }: QuestionsSectionProps) {
   const [question, setQuestion] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAnswer, setGeneratedAnswer] = useState('');
@@ -641,8 +636,13 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
   }, []);
 
   const handleGenerateAnswer = async () => {
-    if (!jobDescription.trim() || !question.trim()) {
-      setError('Please paste the job description and enter a question');
+    if (!question.trim()) {
+      setError('Please enter a question');
+      return;
+    }
+
+    if (!jobDescription.trim()) {
+      setError('Please paste a job description in the Job Description tab first');
       return;
     }
 
@@ -651,9 +651,10 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
     setAutoCopied(false);
 
     try {
-      log.info(LogCategory.UI, 'Generating AI answer', {
+      log.info(LogCategory.UI, 'Generating AI answer from profile data', {
         questionLength: question.length,
         jdLength: jobDescription.length,
+        hasProfile: !!profile,
       });
 
       // Import keyword extractor
@@ -662,8 +663,8 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
       // Extract keywords from JD
       const keywords = extractKeywordsFromJobDescription(jobDescription);
 
-      // Generate answer based on profile + keywords (now includes resume text)
-      const answer = generateAnswerFromProfile(question, keywords, profile, resumeText);
+      // Generate answer based on user's ACTUAL profile data + keywords (no hallucination)
+      const answer = generateAnswerFromProfile(question, keywords, profile);
 
       setGeneratedAnswer(answer);
 
@@ -671,7 +672,7 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
       await navigator.clipboard.writeText(answer);
       setAutoCopied(true);
 
-      log.info(LogCategory.UI, 'AI answer generated and auto-copied to clipboard');
+      log.info(LogCategory.UI, 'AI answer generated from profile and auto-copied to clipboard');
     } catch (err) {
       log.error(LogCategory.UI, 'Failed to generate answer', err as Error);
       setError('Failed to generate answer. Please try again.');
@@ -691,7 +692,6 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
   };
 
   const handleReset = () => {
-    setJobDescription('');
     setQuestion('');
     setGeneratedAnswer('');
     setError('');
@@ -860,11 +860,11 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
       <div className="generate-section-container">
         <div className="generate-section-header">
           <div className="generate-section-title-row">
-            <Sparkles size={20} strokeWidth={2} style={{ color: '#0077B5' }} />
+            <MessageSquare size={20} strokeWidth={2} style={{ color: '#0077B5' }} />
             <h3 className="generate-section-title">AI Answer Generator</h3>
           </div>
           <p className="generate-section-description">
-            Paste the job description and enter your question to get an AI-generated answer
+            Enter a question to get a personalized answer based on your profile and the job description
           </p>
         </div>
 
@@ -874,19 +874,28 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
           </div>
         )}
 
+        {!jobDescription && (
+          <div style={{
+            padding: '12px 16px',
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fbbf24',
+            borderRadius: '8px',
+            marginBottom: '16px',
+          }}>
+            <p style={{
+              fontSize: '13px',
+              color: '#92400e',
+              margin: 0,
+              lineHeight: '1.5',
+            }}>
+              ⚠️ Please paste a job description in the Job Description tab first
+            </p>
+          </div>
+        )}
+
         {/* Step 1: Input */}
         {!generatedAnswer && (
           <>
-            <div className="generate-form-group">
-              <label className="generate-label">Job Description</label>
-              <textarea
-                className="generate-textarea"
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the full job description here..."
-              />
-            </div>
-
             <div className="generate-form-group">
               <label className="generate-label">Your Question</label>
               <input
@@ -901,7 +910,7 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
             <button
               className="generate-button-primary"
               onClick={handleGenerateAnswer}
-              disabled={isGenerating}
+              disabled={isGenerating || !jobDescription}
             >
               {isGenerating && (
                 <div
@@ -968,14 +977,13 @@ function QuestionsSection({ profile, resumeText }: QuestionsSectionProps) {
 }
 
 /**
- * Generate answer from profile and keywords
- * (Simplified version - could be enhanced with OpenAI API)
+ * Generate answer from user's ACTUAL profile and keywords
+ * No hallucination - uses real data from ProfessionalProfile
  */
 function generateAnswerFromProfile(
   question: string,
   keywords: string[],
-  profile: ProfessionalProfile,
-  resumeText: string
+  profile: ProfessionalProfile
 ): string {
   const questionLower = question.toLowerCase();
 
