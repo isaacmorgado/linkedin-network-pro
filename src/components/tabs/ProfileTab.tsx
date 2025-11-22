@@ -279,9 +279,13 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
         networkGraph.import(networkData.networkGraph);
       }
 
-      // Check if graph has data
+      // Check if graph has data - if not, try to add current profile to bootstrap it
       if (networkGraph.getAllNodes().length === 0) {
-        throw new Error('Network graph not built yet. Visit some LinkedIn profiles to build your network first.');
+        throw new Error(
+          'Network graph is empty. The extension will automatically build your network as you visit LinkedIn profiles. ' +
+          'Please visit a few LinkedIn profiles first, then try again. ' +
+          'Tip: Visit profiles of your connections to build your network graph.'
+        );
       }
 
       // Create adapter for universal pathfinder Graph interface

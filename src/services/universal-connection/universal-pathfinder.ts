@@ -15,7 +15,7 @@
  * - B2B outreach benchmarks
  */
 
-import type { UserProfile } from '../chat-abc62d98/linkedin-network-pro/src/types/resume-tailoring';
+import type { UserProfile } from '../../types/resume-tailoring';
 import type {
   ConnectionStrategy,
   ProfileSimilarity,

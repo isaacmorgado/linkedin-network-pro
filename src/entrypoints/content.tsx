@@ -12,6 +12,7 @@ import { isJobPage, scrapeJobData, waitForJobDetails } from '@/services/linkedin
 import { log, LogCategory } from '../utils/logger';
 import { detectPageContext, getPanelType } from '../utils/page-context';
 import { getCurrentLinkedInUser } from '@/utils/linkedin-scraper';
+import { addProfileToGraph } from '@/services/network-builder-service';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -164,11 +165,26 @@ export default defineContentScript({
           // Detect new page type
           detectLinkedInPage();
 
-          // Wait for page to settle, then monitor
+          // Wait for page to settle, then monitor and build network
           log.debug(LogCategory.CONTENT_SCRIPT, 'Waiting for page to settle before monitoring');
-          setTimeout(() => {
+          setTimeout(async () => {
             // NO floating widgets
             startMonitoring();
+
+            // Auto-build network graph when visiting LinkedIn profiles
+            if (currentUrl.includes('linkedin.com/in/') && !currentUrl.includes('/edit/')) {
+              try {
+                log.info(LogCategory.NETWORK, 'LinkedIn profile detected, adding to network graph');
+                const result = await addProfileToGraph(currentUrl);
+                if (result.success) {
+                  log.info(LogCategory.NETWORK, result.message);
+                } else {
+                  log.warn(LogCategory.NETWORK, `Failed to add profile: ${result.message}`);
+                }
+              } catch (error) {
+                log.error(LogCategory.NETWORK, 'Error building network graph', error as Error);
+              }
+            }
           }, 2000);
         } else {
           // Log DOM mutations at debug level (can be frequent)
