@@ -478,6 +478,28 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
         }
       };
 
+      // Log source and target for debugging
+      console.log('[Uproot] Pathfinding Setup:', {
+        source: {
+          name: currentUser.name,
+          email: currentUser.email,
+          description: 'YOU (logged-in user)'
+        },
+        target: {
+          name: targetProfile.name,
+          email: targetProfile.email,
+          description: 'Profile you are viewing'
+        }
+      });
+
+      // CRITICAL: Validate we're not searching for ourselves
+      if (currentUser.email === targetProfile.email) {
+        throw new Error(
+          `You are viewing your own profile (${currentUser.name}). ` +
+          'Please navigate to another LinkedIn profile to find connection paths.'
+        );
+      }
+
       // Find universal connection
       const result = await findUniversalConnection(
         currentUser,

@@ -12,7 +12,7 @@
  */
 
 import type { LinkedInProfile } from '@/types';
-import { scrapeProfileData } from '@/lib/scrapers';
+import { getCurrentLinkedInUser } from '@/utils/linkedin-scraper';
 import { log, LogCategory } from '@/utils/logger';
 
 // ============================================================================
@@ -71,32 +71,54 @@ function isCacheValid(cachedData: CachedUserData | null): boolean {
 }
 
 /**
- * Scrape current user profile with retry logic
+ * Get current logged-in user profile with retry logic
+ * CRITICAL: Gets logged-in user from nav bar, NOT from the page being viewed
  */
 async function scrapeCurrentUserWithRetry(attemptNumber = 1): Promise<Partial<LinkedInProfile> | null> {
   log.info(
     LogCategory.SERVICE,
-    `Scraping current user profile (attempt ${attemptNumber}/${MAX_RETRY_ATTEMPTS})`
+    `Getting current logged-in user profile (attempt ${attemptNumber}/${MAX_RETRY_ATTEMPTS})`
   );
 
   try {
-    const profileData = await scrapeProfileData();
+    // Get logged-in user from LinkedIn nav bar (top right profile menu)
+    // This returns the LOGGED-IN user, not the profile page being viewed
+    const profileData = getCurrentLinkedInUser();
 
-    if (!profileData || !profileData.id) {
-      throw new Error('Scraped profile data is incomplete or missing ID');
+    if (!profileData || !profileData.profileUrl) {
+      throw new Error('Could not detect logged-in user from nav bar');
     }
+
+    // Convert to LinkedInProfile format
+    const linkedInProfile: Partial<LinkedInProfile> = {
+      id: profileData.profileUrl,
+      publicId: profileData.profileUrl.match(/\/in\/([^\/]+)/)?.[1],
+      name: profileData.name,
+      headline: profileData.headline,
+      location: profileData.location,
+      avatarUrl: profileData.photoUrl,
+      experience: profileData.currentRole?.title ? [{
+        company: profileData.currentRole.company || '',
+        title: profileData.currentRole.title,
+        duration: undefined,
+        location: profileData.location
+      }] : [],
+      education: [],
+      skills: [],
+      scrapedAt: new Date().toISOString(),
+    };
 
     log.info(
       LogCategory.SERVICE,
-      'Successfully scraped current user profile',
+      'Successfully detected current logged-in user',
       {
-        profileId: profileData.id,
-        name: profileData.name,
-        headline: profileData.headline,
+        profileId: linkedInProfile.id,
+        name: linkedInProfile.name,
+        headline: linkedInProfile.headline,
       }
     );
 
-    return profileData;
+    return linkedInProfile;
   } catch (error) {
     log.error(
       LogCategory.SERVICE,
