@@ -132,8 +132,19 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
       // Method 1: Try Resume tab storage first
       const currentUserData = await chrome.storage.local.get(['userProfile']);
       if (currentUserData.userProfile) {
-        console.log('[Uproot] Using current user from Resume tab');
-        return currentUserData.userProfile;
+        const profile = currentUserData.userProfile;
+
+        // Normalize old profile format (publicId-only) to full URL
+        if (profile.email && !profile.email.startsWith('http')) {
+          console.warn('[Uproot] Normalizing old profile format:', profile.email);
+          profile.email = `https://www.linkedin.com/in/${profile.email}`;
+
+          // Save normalized version back to storage
+          await chrome.storage.local.set({ userProfile: profile });
+        }
+
+        console.log('[Uproot] Using current user from Resume tab:', profile.email);
+        return profile;
       }
 
       console.log('[Uproot] No Resume tab data, trying LinkedIn detection...');
@@ -184,13 +195,14 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
 
       // Convert to UserProfile format and store in chrome.storage
       // so it's available for the next pathfinding attempt
+      const profileUrl = `https://www.linkedin.com/in/${freshProfile.publicId || freshProfile.id || ''}`;
       const userProfile: UserProfile = {
         name: freshProfile.name || 'LinkedIn User',
-        email: freshProfile.publicId || freshProfile.id,
+        email: profileUrl, // Use full URL as email/ID for graph consistency
         location: freshProfile.location || '',
         title: freshProfile.headline || '',
         avatarUrl: freshProfile.avatarUrl,
-        url: `https://www.linkedin.com/in/${freshProfile.publicId || ''}`,
+        url: profileUrl,
         workExperience: (freshProfile.experience || []).map(exp => ({
           id: `${exp.company}-${exp.title}`,
           company: exp.company || '',
