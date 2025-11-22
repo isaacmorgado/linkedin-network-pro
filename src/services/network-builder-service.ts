@@ -6,7 +6,7 @@
 import { NetworkGraph } from '../lib/graph';
 import type { NetworkNode, NetworkEdge } from '../types';
 import type { LinkedInPersonProfile } from '../types/monitoring';
-import { scrapePersonProfile } from '../utils/linkedin-scraper';
+import { scrapePersonProfile, getCurrentLinkedInUser } from '../utils/linkedin-scraper';
 import { calculateProfileSimilarity } from './universal-connection/intermediary-scorer';
 import { log, LogCategory } from '../utils/logger';
 
@@ -211,7 +211,23 @@ export async function addProfileToGraph(
 
     // If current user is known, add bidirectional edges for mutual connection
     if (currentUserId) {
-      const currentUserNode = graph.getNode(currentUserId);
+      let currentUserNode = graph.getNode(currentUserId);
+
+      // Auto-add current user if not exists (prevents NotFoundGraphError)
+      if (!currentUserNode) {
+        log.info(LogCategory.NETWORK, `Current user node not found, creating minimal node: ${currentUserId}`);
+
+        const currentUserProfile = getCurrentLinkedInUser();
+        if (currentUserProfile) {
+          const currentUserNetworkNode = convertToNetworkNode(currentUserProfile, currentUserId);
+          graph.addNode(currentUserNetworkNode);
+          currentUserNode = currentUserNetworkNode;
+          log.info(LogCategory.NETWORK, `Added current user to graph: ${currentUserId}`);
+        } else {
+          log.warn(LogCategory.NETWORK, 'Could not detect current user profile for node creation');
+        }
+      }
+
       if (currentUserNode) {
         const weight = calculateEdgeWeight(currentUserNode.profile, profileData);
 
