@@ -81,11 +81,13 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
    */
   const convertLinkedInToUserProfile = (linkedInProfile: any): UserProfile => {
     return {
+      id: linkedInProfile.profileUrl, // CRITICAL: Use full URL as ID to match graph nodes
       name: linkedInProfile.name || 'LinkedIn User',
       email: linkedInProfile.profileUrl,
       location: linkedInProfile.location || '',
       title: linkedInProfile.headline || linkedInProfile.currentRole?.title || '',
       avatarUrl: linkedInProfile.photoUrl,
+      publicId: linkedInProfile.publicId,
       url: linkedInProfile.profileUrl,
       workExperience: linkedInProfile.currentRole?.title
         ? [
@@ -406,10 +408,13 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
       // Note: LinkedIn's basic profileData doesn't include experience/education/skills
       // These would need to be scraped separately for full similarity matching
       const targetProfile: UserProfile = {
+        id: profileData.profileUrl, // CRITICAL: Use full URL as ID to match graph nodes
         name: profileData.name || 'Unknown',
         email: profileData.profileUrl,
         location: '',
         title: profileData.headline || '',
+        publicId: profileData.publicId,
+        url: profileData.profileUrl,
         workExperience: [],
         education: [],
         projects: [],
