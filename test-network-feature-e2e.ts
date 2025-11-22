@@ -13,7 +13,7 @@
 
 import type { UserProfile } from './src/types/resume-tailoring';
 import type { LinkedInProfile, NetworkNode, NetworkEdge } from './src/types';
-import type { SavedNetwork } from './src/types/watchlist';
+import type { ConnectionPath } from './src/types/watchlist';
 import { findUniversalConnection } from './src/services/universal-connection/universal-pathfinder';
 import { NetworkGraph } from './src/lib/graph';
 
@@ -611,63 +611,64 @@ async function test4_NoPathFound() {
 // =============================================================================
 
 console.log('\n================================================================================');
-console.log('TEST 5: Storage Integration (SavedNetwork Format)');
+console.log('TEST 5: Storage Integration (ConnectionPath Format)');
 console.log('================================================================================\n');
 
 function test5_StorageFormat() {
-  console.log('Scenario: Verify saved network data structure matches WatchlistTab expectations\n');
+  console.log('Scenario: Verify connection path data structure matches WatchlistTab expectations\n');
 
   // Simulate what ProfileTab would save
-  const mockSavedNetwork: SavedNetwork = {
-    id: `network-${Date.now()}`,
-    targetPerson: {
-      id: 'jeff-bezos',
-      name: 'Jeff Bezos',
-      headline: 'Founder & Executive Chairman at Amazon',
-      avatarUrl: undefined,
-      location: 'Seattle, WA',
-      status: 'target',
-      degree: 3,
-      matchScore: 45
-    },
-    path: {
-      type: 'mutual',
-      confidence: 0.72,
-      estimatedAcceptanceRate: 0.35,
-      reasoning: 'Found path via 2 intermediaries',
-      nextSteps: [
-        'Message Sarah Chen (mutual connection)',
-        'Ask Sarah to introduce you to Mark Johnson',
-        'Have Mark introduce you to Jeff Bezos'
-      ]
-    },
-    savedAt: new Date().toISOString(),
-    strategy: 'mutual',
-    estimatedAcceptance: 0.35
+  const mockConnectionPath: Omit<ConnectionPath, 'addedAt' | 'lastUpdated'> = {
+    id: 'https://linkedin.com/in/jeff-bezos',
+    targetName: 'Jeff Bezos',
+    targetProfileUrl: 'https://linkedin.com/in/jeff-bezos',
+    targetProfileImage: null,
+    targetHeadline: 'Founder & Executive Chairman at Amazon',
+    path: [
+      {
+        name: 'Sarah Chen',
+        profileUrl: 'https://linkedin.com/in/sarah-chen',
+        profileImage: null,
+        degree: 1,
+        connected: false,
+      },
+      {
+        name: 'Mark Johnson',
+        profileUrl: 'https://linkedin.com/in/mark-johnson',
+        profileImage: null,
+        degree: 2,
+        connected: false,
+      },
+    ],
+    totalSteps: 2,
+    completedSteps: 0,
+    isComplete: false,
+    notes: 'Strategy: mutual, Estimated acceptance: 35%',
   };
 
   // Validate structure
-  assert(typeof mockSavedNetwork.id === 'string', 'Has unique ID');
-  assert(typeof mockSavedNetwork.targetPerson.name === 'string', 'Has target name');
-  assert(typeof mockSavedNetwork.strategy === 'string', 'Has strategy type');
-  assert(typeof mockSavedNetwork.estimatedAcceptance === 'number', 'Has acceptance rate');
-  assert(mockSavedNetwork.path.nextSteps.length > 0, 'Has next steps');
-  assert(mockSavedNetwork.savedAt.includes('T'), 'Has ISO timestamp');
+  assert(typeof mockConnectionPath.id === 'string', 'Has unique ID');
+  assert(typeof mockConnectionPath.targetName === 'string', 'Has target name');
+  assert(Array.isArray(mockConnectionPath.path), 'Has path array');
+  assert(mockConnectionPath.path.length > 0, 'Path has intermediaries');
+  assert(mockConnectionPath.totalSteps === mockConnectionPath.path.length, 'Total steps matches path length');
+  assert(mockConnectionPath.completedSteps === 0, 'Starts with 0 completed steps');
+  assert(mockConnectionPath.isComplete === false, 'Is not complete initially');
 
-  console.log(`\n  📊 Saved Network Structure:`);
-  console.log(`     ID: ${mockSavedNetwork.id}`);
-  console.log(`     Target: ${mockSavedNetwork.targetPerson.name}`);
-  console.log(`     Strategy: ${mockSavedNetwork.strategy}`);
-  console.log(`     Acceptance: ${(mockSavedNetwork.estimatedAcceptance * 100).toFixed(0)}%`);
-  console.log(`     Saved At: ${new Date(mockSavedNetwork.savedAt).toLocaleString()}`);
+  console.log(`\n  📊 Connection Path Structure:`);
+  console.log(`     ID: ${mockConnectionPath.id}`);
+  console.log(`     Target: ${mockConnectionPath.targetName}`);
+  console.log(`     Total Steps: ${mockConnectionPath.totalSteps}`);
+  console.log(`     Completed: ${mockConnectionPath.completedSteps}/${mockConnectionPath.totalSteps}`);
+  console.log(`     Notes: ${mockConnectionPath.notes}`);
 
   // Simulate storage
   console.log(`\n  💾 Storage Simulation:`);
   const storageData = {
-    savedNetworks: [mockSavedNetwork]
+    uproot_connection_paths: [mockConnectionPath]
   };
-  console.log(`     Key: "savedNetworks"`);
-  console.log(`     Count: ${storageData.savedNetworks.length}`);
+  console.log(`     Key: "uproot_connection_paths"`);
+  console.log(`     Count: ${storageData.uproot_connection_paths.length}`);
   console.log(`     Size: ~${JSON.stringify(storageData).length} bytes`);
 }
 

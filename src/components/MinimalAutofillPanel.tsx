@@ -60,6 +60,7 @@ export function MinimalAutofillPanel() {
     log.action('Minimize/Maximize button clicked', {
       component: 'MinimalAutofillPanel',
       willBeMinimized,
+      currentPosition: panelPosition
     });
 
     // If we're MAXIMIZING (currently minimized, about to expand)
@@ -68,22 +69,85 @@ export function MinimalAutofillPanel() {
       const fullPanelHeight = panelSize.height;
       const currentY = panelPosition.y;
 
-      // Check if full panel would go past the bottom
-      const wouldGoPastBottom = currentY + fullPanelHeight > viewportHeight - 40;
+      // Step 1: Calculate where the bottom edge of the minimized panel currently is
+      const currentBottomY = currentY + 60; // 60px is minimized height
 
-      if (wouldGoPastBottom) {
-        const newY = Math.max(20, viewportHeight - fullPanelHeight - 40);
+      // Step 2: Calculate where the top of the full panel should be to keep bottom edge in same place
+      const targetY = currentBottomY - fullPanelHeight;
+
+      // Step 3: Smart clamp - keep panel within safe bounds
+      const newY = Math.max(20, Math.min(targetY, viewportHeight - fullPanelHeight - 40));
+
+      // Step 4: Only reposition if the change is significant (> 5px)
+      const shouldReposition = Math.abs(newY - currentY) > 5;
+
+      if (shouldReposition) {
+        // Step 5: Log the repositioning reason
+        log.action('Repositioning panel on maximize', {
+          reason: targetY < 20 ? 'would go above viewport' : targetY > viewportHeight - fullPanelHeight - 40 ? 'would go below viewport' : 'normal expansion',
+          currentY,
+          currentBottomY,
+          targetY,
+          newY,
+          adjustment: newY - currentY
+        });
+
+        // Enable animation, reposition, then disable after animation completes
         setShouldAnimate(true);
         setTimeout(() => {
           rndRef.current?.updatePosition({ x: panelPosition.x, y: newY });
           setPanelPosition({ x: panelPosition.x, y: newY });
-          setTimeout(() => setShouldAnimate(false), 600);
-        }, 50);
+          console.log('[Uproot] Repositioned on maximize:', { from: currentY, to: newY, reason: targetY < 20 ? 'too high' : 'too low' });
+
+          // Disable animation after it completes
+          setTimeout(() => setShouldAnimate(false), 500);
+        }, 50); // Small delay to let minimize animation start
+      } else {
+        log.debug(LogCategory.UI, 'Skipping reposition - adjustment too small', {
+          currentY,
+          targetY,
+          difference: Math.abs(newY - currentY)
+        });
       }
     }
 
     setIsMinimized(willBeMinimized);
   };
+
+  // Auto-reposition when minimized and at bottom of viewport
+  useEffect(() => {
+    if (!isMinimized || !rndRef.current) return;
+
+    const checkPosition = () => {
+      const viewportHeight = window.innerHeight;
+      const panelHeight = 60; // Minimized height
+      const currentY = panelPosition.y;
+
+      // If panel is below 80% of viewport height when minimized, animate it back up
+      const maxAllowedY = viewportHeight - panelHeight - 20; // 20px padding from bottom
+
+      if (currentY > maxAllowedY) {
+        const newY = Math.max(20, maxAllowedY); // At least 20px from top
+
+        // Enable animation, reposition, then disable
+        setShouldAnimate(true);
+        rndRef.current?.updatePosition({ x: panelPosition.x, y: newY });
+        setPanelPosition({ x: panelPosition.x, y: newY });
+
+        log.debug(LogCategory.UI, 'Auto-repositioned minimized panel', { from: currentY, to: newY });
+
+        // Disable animation after it completes (match CSS transition time)
+        setTimeout(() => setShouldAnimate(false), 500);
+      }
+    };
+
+    // Check immediately when minimized
+    checkPosition();
+
+    // Also check on window resize
+    window.addEventListener('resize', checkPosition);
+    return () => window.removeEventListener('resize', checkPosition);
+  }, [isMinimized, panelPosition.y]);
 
   return (
     <>
@@ -111,6 +175,11 @@ export function MinimalAutofillPanel() {
             }
           }
 
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+
           .minimal-panel-container {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: white;
@@ -129,8 +198,10 @@ export function MinimalAutofillPanel() {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            cursor: move;
-            user-select: none;
+            cursor: move !important;
+            user-select: none !important;
+            position: relative;
+            z-index: 1;
           }
 
           .minimal-panel-title {
@@ -171,7 +242,10 @@ export function MinimalAutofillPanel() {
           /* Resize handle styles - Override react-rnd defaults */
           .react-resizable-handle {
             position: absolute !important;
-            z-index: 10 !important;
+            z-index: 2147483648 !important;
+            background-color: transparent !important;
+            pointer-events: auto !important;
+            touch-action: none !important;
           }
 
           /* Corner handles - 20x20px clickable areas */
@@ -207,13 +281,12 @@ export function MinimalAutofillPanel() {
             cursor: nw-resize !important;
           }
 
-          /* Edge handles - 8px wide strips */
+          /* Edge handles - 12px wide strips for better clickability */
           .react-resizable-handle-e {
             right: 0 !important;
             top: 0 !important;
             bottom: 0 !important;
-            width: 8px !important;
-            height: 100% !important;
+            width: 12px !important;
             cursor: e-resize !important;
           }
 
@@ -221,8 +294,7 @@ export function MinimalAutofillPanel() {
             left: 0 !important;
             top: 0 !important;
             bottom: 0 !important;
-            width: 8px !important;
-            height: 100% !important;
+            width: 12px !important;
             cursor: w-resize !important;
           }
 
@@ -230,8 +302,7 @@ export function MinimalAutofillPanel() {
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            height: 8px !important;
-            width: 100% !important;
+            height: 12px !important;
             cursor: n-resize !important;
           }
 
@@ -239,8 +310,7 @@ export function MinimalAutofillPanel() {
             bottom: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            height: 8px !important;
-            width: 100% !important;
+            height: 12px !important;
             cursor: s-resize !important;
           }
 
@@ -256,6 +326,7 @@ export function MinimalAutofillPanel() {
             border-style: solid;
             border-color: rgba(0, 119, 181, 0.4);
             border-width: 2px;
+            filter: drop-shadow(0 0 2px rgba(0, 119, 181, 0.6));
           }
 
           .react-resizable-handle-se::after {
@@ -285,18 +356,209 @@ export function MinimalAutofillPanel() {
             border-bottom: none;
             border-right: none;
           }
+
+          /* Shared styles for both Job Description and Questions sections */
+          .generate-section-container {
+            padding: 20px;
+          }
+
+          .generate-section-header {
+            margin-bottom: 20px;
+          }
+
+          .generate-section-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+          }
+
+          .generate-section-title {
+            fontSize: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin: 0;
+          }
+
+          .generate-section-description {
+            font-size: 13px;
+            color: #6e6e73;
+            margin: 0;
+            line-height: 1.5;
+          }
+
+          .generate-form-group {
+            margin-bottom: 16px;
+          }
+
+          .generate-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+          }
+
+          .generate-textarea,
+          .generate-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            fontSize: 13px;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+          }
+
+          .generate-textarea:focus,
+          .generate-input:focus {
+            outline: none;
+            border-color: #0077B5;
+          }
+
+          .generate-textarea {
+            min-height: 120px;
+            resize: vertical;
+          }
+
+          .generate-button-primary {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: opacity 0.2s;
+          }
+
+          .generate-button-primary:hover:not(:disabled) {
+            opacity: 0.9;
+          }
+
+          .generate-button-primary:disabled {
+            background: #d2d2d7;
+            cursor: not-allowed;
+          }
+
+          .generate-answer-box {
+            padding: 16px;
+            background-color: #f5f5f7;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          }
+
+          .generate-answer-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin: 0 0 12px 0;
+          }
+
+          .generate-answer-text {
+            font-size: 13px;
+            color: #1d1d1f;
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre-wrap;
+          }
+
+          .generate-button-group {
+            display: flex;
+            gap: 12px;
+          }
+
+          .generate-button-secondary {
+            flex: 1;
+            padding: 12px 16px;
+            background: white;
+            color: #0077B5;
+            border: 1px solid #0077B5;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+          }
+
+          .generate-button-secondary:hover {
+            background-color: #f5f5f7;
+          }
+
+          .generate-error-box {
+            padding: 12px 16px;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          }
+
+          .generate-error-text {
+            font-size: 13px;
+            color: #dc2626;
+            margin: 0;
+          }
         `}
       </style>
 
       <Rnd
         ref={rndRef}
-        size={panelSize}
-        position={panelPosition}
-        onDragStop={(e, d) => {
-          setPanelPosition({ x: d.x, y: d.y });
-          log.debug(LogCategory.UI, 'Panel dragged', { x: d.x, y: d.y });
+        default={{
+          x: panelPosition.x,
+          y: panelPosition.y,
+          width: panelSize.width,
+          height: panelSize.height,
         }}
-        onResizeStop={(e, direction, ref, delta, position) => {
+        size={isMinimized ? { width: panelSize.width, height: 60 } : undefined}
+        position={panelPosition}
+        onDragStop={(_e, d) => {
+          log.debug(LogCategory.UI, 'Panel dragged', { x: d.x, y: d.y });
+
+          // Check if panel was dragged to bottom edge (within 20px) when minimized
+          if (isMinimized) {
+            const viewportHeight = window.innerHeight;
+            const panelHeight = 60; // Minimized height
+            const bottomThreshold = viewportHeight - panelHeight - 20;
+
+            // If dragged to bottom edge, trigger animation to reposition
+            if (d.y > bottomThreshold) {
+              const newY = Math.max(20, bottomThreshold);
+              setShouldAnimate(true);
+              setTimeout(() => {
+                rndRef.current?.updatePosition({ x: d.x, y: newY });
+                setPanelPosition({ x: d.x, y: newY });
+                log.debug(LogCategory.UI, 'Repositioned after drag to bottom', { from: d.y, to: newY });
+                setTimeout(() => setShouldAnimate(false), 500);
+              }, 50);
+              return;
+            }
+          }
+
+          setPanelPosition({ x: d.x, y: d.y });
+        }}
+        onResize={(_e, _direction, ref, _delta, position) => {
+          if (!isMinimized) {
+            // FIX: Clamp position to prevent negative values when resizing from left/top edges
+            const newSize = {
+              width: parseInt(ref.style.width),
+              height: parseInt(ref.style.height),
+            };
+            const clampedPosition = {
+              x: Math.max(0, Math.min(position.x, window.innerWidth - newSize.width)),
+              y: Math.max(0, Math.min(position.y, window.innerHeight - newSize.height))
+            };
+            setPanelSize(newSize);
+            setPanelPosition(clampedPosition);
+          }
+        }}
+        onResizeStop={(_e, _direction, ref, _delta, position) => {
           setPanelSize({
             width: parseInt(ref.style.width),
             height: parseInt(ref.style.height),
@@ -308,12 +570,14 @@ export function MinimalAutofillPanel() {
           });
         }}
         minWidth={350}
-        minHeight={400}
+        minHeight={isMinimized ? 60 : 400}
         maxWidth={600}
         maxHeight={800}
         bounds="window"
         dragHandleClassName="minimal-panel-header"
-        enableResizing={{
+        cancel=".react-resizable-handle"
+        disableDragging={false}
+        enableResizing={isMinimized ? false : {
           top: true,
           right: true,
           bottom: true,
@@ -374,10 +638,13 @@ export function MinimalAutofillPanel() {
           },
         }}
         style={{
+          zIndex: 2147483647, // Max safe z-index value (2^31 - 1)
+          isolation: 'isolate', // Create stacking context to prevent conflicts
           pointerEvents: 'auto',
-          ...(shouldAnimate && {
-            transition: 'all 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)',
-          }),
+          // Bouncy spring animation - only when programmatically repositioning, not during drag
+          transition: shouldAnimate
+            ? 'all 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            : 'none',
         }}
       >
         <div className="minimal-panel-container">
@@ -700,164 +967,7 @@ function QuestionsSection({ profile, jobDescription }: QuestionsSectionProps) {
   };
 
   return (
-    <>
-      <style>
-        {`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-
-          .generate-section-container {
-            padding: 20px;
-          }
-
-          .generate-section-header {
-            margin-bottom: 20px;
-          }
-
-          .generate-section-title-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-          }
-
-          .generate-section-title {
-            fontSize: 16px;
-            font-weight: 600;
-            color: #1d1d1f;
-            margin: 0;
-          }
-
-          .generate-section-description {
-            font-size: 13px;
-            color: #6e6e73;
-            margin: 0;
-            line-height: 1.5;
-          }
-
-          .generate-form-group {
-            margin-bottom: 16px;
-          }
-
-          .generate-label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #1d1d1f;
-            margin-bottom: 8px;
-          }
-
-          .generate-textarea,
-          .generate-input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #d2d2d7;
-            border-radius: 8px;
-            fontSize: 13px;
-            font-family: inherit;
-            box-sizing: border-box;
-            transition: border-color 0.2s;
-          }
-
-          .generate-textarea:focus,
-          .generate-input:focus {
-            outline: none;
-            border-color: #0077B5;
-          }
-
-          .generate-textarea {
-            min-height: 120px;
-            resize: vertical;
-          }
-
-          .generate-button-primary {
-            width: 100%;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, #0077B5 0%, #005582 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: opacity 0.2s;
-          }
-
-          .generate-button-primary:hover:not(:disabled) {
-            opacity: 0.9;
-          }
-
-          .generate-button-primary:disabled {
-            background: #d2d2d7;
-            cursor: not-allowed;
-          }
-
-          .generate-answer-box {
-            padding: 16px;
-            background-color: #f5f5f7;
-            border-radius: 8px;
-            margin-bottom: 16px;
-          }
-
-          .generate-answer-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #1d1d1f;
-            margin: 0 0 12px 0;
-          }
-
-          .generate-answer-text {
-            font-size: 13px;
-            color: #1d1d1f;
-            line-height: 1.6;
-            margin: 0;
-            white-space: pre-wrap;
-          }
-
-          .generate-button-group {
-            display: flex;
-            gap: 12px;
-          }
-
-          .generate-button-secondary {
-            flex: 1;
-            padding: 12px 16px;
-            background: white;
-            color: #0077B5;
-            border: 1px solid #0077B5;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-          }
-
-          .generate-button-secondary:hover {
-            background-color: #f5f5f7;
-          }
-
-          .generate-error-box {
-            padding: 12px 16px;
-            background-color: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: 8px;
-            margin-bottom: 16px;
-          }
-
-          .generate-error-text {
-            font-size: 13px;
-            color: #dc2626;
-            margin: 0;
-          }
-        `}
-      </style>
-      <div className="generate-section-container">
+    <div className="generate-section-container">
         <div className="generate-section-header">
           <div className="generate-section-title-row">
             <MessageSquare size={20} strokeWidth={2} style={{ color: '#0077B5' }} />
@@ -972,7 +1082,6 @@ function QuestionsSection({ profile, jobDescription }: QuestionsSectionProps) {
           </>
         )}
       </div>
-    </>
   );
 }
 

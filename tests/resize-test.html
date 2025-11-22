@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aggressive 3rd Party CSS Test - Chrome Extension Resize Handle</title>
+    <style>
+        /* ========================================
+           AGGRESSIVE 3RD PARTY CSS SIMULATION
+           Simulates Workday, Greenhouse, and similar platforms
+           ======================================== */
+
+        /* 1. NUCLEAR CSS RESET - Disables pointer events globally */
+        * {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+
+        /* 2. High specificity resets that override defaults */
+        *,
+        *::before,
+        *::after {
+            box-sizing: content-box !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 3. Body and container overrides */
+        body {
+            margin: 20px !important;
+            padding: 20px !important;
+            font-family: Arial, sans-serif !important;
+            background: #f5f5f5 !important;
+            overflow: hidden !important;
+        }
+
+        /* 4. High z-index overlays (common in enterprise apps) */
+        .enterprise-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 60px !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            z-index: 9999 !important;
+            pointer-events: auto !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+        }
+
+        .enterprise-sidebar {
+            position: fixed !important;
+            top: 60px !important;
+            left: 0 !important;
+            width: 250px !important;
+            height: calc(100vh - 60px) !important;
+            background: #2c3e50 !important;
+            z-index: 9998 !important;
+            pointer-events: auto !important;
+        }
+
+        /* 5. Floating help widget (high z-index) */
+        .floating-help {
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            width: 60px !important;
+            height: 60px !important;
+            background: #e74c3c !important;
+            border-radius: 50% !important;
+            z-index: 99999 !important;
+            pointer-events: auto !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: white !important;
+            font-size: 24px !important;
+            cursor: pointer !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+        }
+
+        /* 6. Content area with restrictive positioning */
+        .content-wrapper {
+            margin-left: 270px !important;
+            margin-top: 80px !important;
+            padding: 20px !important;
+            pointer-events: auto !important;
+            max-width: 1200px !important;
+        }
+
+        /* 7. Form styling that might interfere */
+        .test-form {
+            background: white !important;
+            padding: 30px !important;
+            border-radius: 8px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+            margin-bottom: 30px !important;
+        }
+
+        .form-group {
+            margin-bottom: 20px !important;
+            pointer-events: auto !important;
+        }
+
+        .form-group label {
+            display: block !important;
+            margin-bottom: 8px !important;
+            font-weight: bold !important;
+            color: #333 !important;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100% !important;
+            padding: 10px !important;
+            border: 2px solid #ddd !important;
+            border-radius: 4px !important;
+            font-size: 14px !important;
+            pointer-events: auto !important;
+            box-sizing: border-box !important;
+        }
+
+        /* 8. Chrome Extension Simulation Area */
+        .extension-test-area {
+            background: #fff !important;
+            padding: 30px !important;
+            border-radius: 8px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+            position: relative !important;
+        }
+
+        /* 9. Simulated Chrome Extension Popup */
+        .simulated-extension {
+            position: fixed !important;
+            top: 150px !important;
+            right: 50px !important;
+            width: 400px !important;
+            height: 300px !important;
+            background: white !important;
+            border: 1px solid #ccc !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+            z-index: 100000 !important;
+            pointer-events: auto !important;
+            resize: both !important;
+            overflow: auto !important;
+        }
+
+        .extension-header {
+            background: #4CAF50 !important;
+            color: white !important;
+            padding: 15px !important;
+            font-weight: bold !important;
+            border-radius: 8px 8px 0 0 !important;
+        }
+
+        .extension-content {
+            padding: 20px !important;
+        }
+
+        /* 10. Resize handle simulation */
+        .resize-handle {
+            position: absolute !important;
+            bottom: 0 !important;
+            right: 0 !important;
+            width: 20px !important;
+            height: 20px !important;
+            background: linear-gradient(135deg, transparent 0%, transparent 50%, #999 50%, #999 100%) !important;
+            cursor: nwse-resize !important;
+            z-index: 100001 !important;
+            pointer-events: auto !important;
+        }
+
+        /* 11. Instructions panel */
+        .instructions {
+            background: #fffbeb !important;
+            border-left: 4px solid #f59e0b !important;
+            padding: 20px !important;
+            margin-bottom: 30px !important;
+            border-radius: 4px !important;
+        }
+
+        .instructions h2 {
+            color: #d97706 !important;
+            margin-top: 0 !important;
+            margin-bottom: 15px !important;
+        }
+
+        .instructions h3 {
+            color: #92400e !important;
+            margin-top: 15px !important;
+            margin-bottom: 10px !important;
+        }
+
+        .instructions ul,
+        .instructions ol {
+            margin: 10px 0 !important;
+            padding-left: 25px !important;
+        }
+
+        .instructions li {
+            margin-bottom: 8px !important;
+            color: #78350f !important;
+        }
+
+        .instructions code {
+            background: #fef3c7 !important;
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
+            font-family: monospace !important;
+            color: #92400e !important;
+        }
+
+        .test-result {
+            background: #f0f9ff !important;
+            border-left: 4px solid #3b82f6 !important;
+            padding: 15px !important;
+            margin-top: 15px !important;
+            border-radius: 4px !important;
+        }
+
+        .test-result.pass {
+            background: #f0fdf4 !important;
+            border-left-color: #22c55e !important;
+        }
+
+        .test-result.fail {
+            background: #fef2f2 !important;
+            border-left-color: #ef4444 !important;
+        }
+
+        /* 12. Additional interference patterns */
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: 3px solid #667eea !important;
+            border-color: #667eea !important;
+        }
+
+        /* 13. Cursor overrides */
+        .content-wrapper * {
+            cursor: default !important;
+        }
+
+        /* 14. Transform interference */
+        .transform-interference {
+            transform: translateZ(0) !important;
+            will-change: transform !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Enterprise app header overlay -->
+    <div class="enterprise-overlay">
+        <div style="padding: 15px !important; color: white !important; font-size: 20px !important; font-weight: bold !important;">
+            Enterprise Application Simulator (Workday/Greenhouse Style)
+        </div>
+    </div>
+
+    <!-- Enterprise app sidebar -->
+    <div class="enterprise-sidebar"></div>
+
+    <!-- Floating help widget -->
+    <div class="floating-help">?</div>
+
+    <!-- Main content area -->
+    <div class="content-wrapper">
+        <!-- Instructions Section -->
+        <div class="instructions">
+            <h2>Resize Handle Test - Aggressive CSS Interference</h2>
+
+            <h3>Purpose</h3>
+            <p>This test file simulates aggressive 3rd party CSS commonly found in enterprise applications like Workday, Greenhouse, and similar platforms. It tests whether Chrome extension resize handles work correctly under extreme CSS interference.</p>
+
+            <h3>CSS Interference Patterns Simulated</h3>
+            <ol>
+                <li><strong>Nuclear Pointer Events Reset:</strong> <code>* { pointer-events: none !important; }</code></li>
+                <li><strong>Global User-Select Disable:</strong> <code>* { user-select: none !important; }</code></li>
+                <li><strong>Box-Sizing Override:</strong> Forces <code>content-box</code> globally</li>
+                <li><strong>High Z-Index Layers:</strong> Multiple overlays with z-index from 9999 to 99999</li>
+                <li><strong>Margin/Padding Resets:</strong> All elements reset to 0</li>
+                <li><strong>Cursor Overrides:</strong> Forces default cursor on all elements</li>
+                <li><strong>Transform Interference:</strong> GPU-accelerated layers</li>
+                <li><strong>Focus Outline Overrides:</strong> Custom focus styles with !important</li>
+            </ol>
+
+            <h3>Test Scenarios</h3>
+            <ol>
+                <li><strong>Extension Popup Resize (Below):</strong> Try to resize the simulated extension popup using the resize handle in the bottom-right corner</li>
+                <li><strong>Form Field Interaction:</strong> Test that form fields still work despite pointer-events: none</li>
+                <li><strong>Z-Index Conflicts:</strong> Verify extension elements appear above enterprise overlays</li>
+                <li><strong>Cursor Changes:</strong> Check if resize cursor (nwse-resize) appears over the handle</li>
+            </ol>
+
+            <h3>Manual Testing Instructions</h3>
+            <ol>
+                <li>Open this HTML file in Chrome browser</li>
+                <li>Install your Chrome extension</li>
+                <li>Activate the extension on this page</li>
+                <li>Try to interact with the extension's resize handles</li>
+                <li>Fill out the test form below to verify form functionality</li>
+                <li>Check the console for any errors</li>
+                <li>Verify all test scenarios below</li>
+            </ol>
+
+            <h3>Expected Results</h3>
+            <ul>
+                <li><strong>PASS:</strong> Resize handle responds to mouse events (hover, drag)</li>
+                <li><strong>PASS:</strong> Cursor changes to resize cursor over handle</li>
+                <li><strong>PASS:</strong> Extension popup can be resized smoothly</li>
+                <li><strong>PASS:</strong> Extension appears above all enterprise overlays</li>
+                <li><strong>PASS:</strong> Form fields remain functional</li>
+                <li><strong>FAIL:</strong> Resize handle does not respond to clicks</li>
+                <li><strong>FAIL:</strong> Cursor remains default over resize handle</li>
+                <li><strong>FAIL:</strong> Extension hidden behind enterprise overlays</li>
+            </ul>
+        </div>
+
+        <!-- Simulated Extension Popup -->
+        <div class="simulated-extension">
+            <div class="extension-header">
+                Simulated Chrome Extension Popup
+            </div>
+            <div class="extension-content">
+                <p><strong>This simulates your extension popup.</strong></p>
+                <p>Try to resize this window using the handle in the bottom-right corner.</p>
+                <p>The resize handle should work despite the aggressive CSS resets on this page.</p>
+
+                <div class="test-result">
+                    <strong>Test Checklist:</strong>
+                    <ul style="margin-top: 10px !important;">
+                        <li>Can you see a resize handle? (bottom-right corner)</li>
+                        <li>Does the cursor change to resize cursor?</li>
+                        <li>Can you click and drag to resize?</li>
+                        <li>Does the resize feel smooth?</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="resize-handle" title="Drag to resize"></div>
+        </div>
+
+        <!-- Test Form -->
+        <div class="test-form">
+            <h2 style="margin-top: 0 !important; margin-bottom: 20px !important; color: #333 !important;">Test Form - Verify Functionality</h2>
+            <p style="margin-bottom: 20px !important; color: #666 !important;">
+                Fill out this form to verify that pointer-events: auto correctly overrides the global pointer-events: none.
+            </p>
+
+            <div class="form-group">
+                <label for="fullname">Full Name</label>
+                <input type="text" id="fullname" placeholder="Enter your full name">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" placeholder="Enter your email">
+            </div>
+
+            <div class="form-group">
+                <label for="position">Position Applied For</label>
+                <select id="position">
+                    <option value="">Select a position</option>
+                    <option value="frontend">Frontend Developer</option>
+                    <option value="backend">Backend Developer</option>
+                    <option value="fullstack">Full Stack Developer</option>
+                    <option value="devops">DevOps Engineer</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="experience">Years of Experience</label>
+                <input type="number" id="experience" min="0" max="50" placeholder="0-50">
+            </div>
+
+            <div class="form-group">
+                <label for="coverletter">Cover Letter</label>
+                <textarea id="coverletter" rows="6" placeholder="Tell us why you're a great fit..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="terms" style="width: auto !important; margin-right: 8px !important;">
+                    I agree to the terms and conditions
+                </label>
+            </div>
+
+            <button style="background: #4CAF50 !important; color: white !important; padding: 12px 24px !important; border: none !important; border-radius: 4px !important; cursor: pointer !important; font-size: 16px !important; pointer-events: auto !important;">
+                Submit Application
+            </button>
+        </div>
+
+        <!-- Extension Integration Test Area -->
+        <div class="extension-test-area">
+            <h2 style="margin-top: 0 !important; margin-bottom: 20px !important; color: #333 !important;">Chrome Extension Integration Area</h2>
+            <p style="margin-bottom: 20px !important; color: #666 !important;">
+                Activate your Chrome extension here. The extension should:
+            </p>
+            <ul style="margin-bottom: 20px !important; padding-left: 25px !important; color: #666 !important;">
+                <li style="margin-bottom: 8px !important;">Inject its UI elements successfully</li>
+                <li style="margin-bottom: 8px !important;">Render above all page elements (z-index test)</li>
+                <li style="margin-bottom: 8px !important;">Have functional resize handles that respond to mouse events</li>
+                <li style="margin-bottom: 8px !important;">Properly handle cursor changes on resize handles</li>
+                <li style="margin-bottom: 8px !important;">Not be affected by the global pointer-events: none</li>
+            </ul>
+
+            <div class="test-result">
+                <strong>Debug Information:</strong>
+                <ul style="margin-top: 10px !important;">
+                    <li>Open DevTools (F12)</li>
+                    <li>Check Console for errors</li>
+                    <li>Inspect the resize handle element</li>
+                    <li>Verify computed styles show pointer-events: auto</li>
+                    <li>Check z-index values are higher than 100000</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Additional Test Cases -->
+        <div style="background: white !important; padding: 30px !important; border-radius: 8px !important; margin-top: 30px !important;">
+            <h2 style="margin-top: 0 !important; color: #333 !important;">Additional Edge Cases</h2>
+
+            <h3 style="color: #555 !important; margin-top: 20px !important;">1. Nested Pointer Events Test</h3>
+            <div style="pointer-events: none !important; padding: 15px !important; border: 2px dashed #ccc !important;">
+                <p style="color: #999 !important;">This container has pointer-events: none</p>
+                <button style="pointer-events: auto !important; background: #2196F3 !important; color: white !important; padding: 10px 20px !important; border: none !important; border-radius: 4px !important; cursor: pointer !important;">
+                    Clickable Button (pointer-events: auto)
+                </button>
+            </div>
+
+            <h3 style="color: #555 !important; margin-top: 20px !important;">2. Z-Index Stacking Test</h3>
+            <div style="position: relative !important; height: 100px !important; margin-top: 15px !important;">
+                <div style="position: absolute !important; width: 150px !important; height: 80px !important; background: rgba(255,0,0,0.5) !important; z-index: 1 !important; top: 0 !important; left: 0 !important;">z-index: 1</div>
+                <div style="position: absolute !important; width: 150px !important; height: 80px !important; background: rgba(0,255,0,0.5) !important; z-index: 9999 !important; top: 20px !important; left: 40px !important;">z-index: 9999</div>
+                <div style="position: absolute !important; width: 150px !important; height: 80px !important; background: rgba(0,0,255,0.5) !important; z-index: 99999 !important; top: 40px !important; left: 80px !important;">z-index: 99999</div>
+                <p style="position: absolute !important; top: 85px !important; color: #666 !important; font-size: 12px !important;">
+                    Your extension should render above z-index: 99999
+                </p>
+            </div>
+
+            <h3 style="color: #555 !important; margin-top: 20px !important;">3. Transform/GPU Layer Test</h3>
+            <div class="transform-interference" style="padding: 15px !important; border: 2px solid #9C27B0 !important; background: #f3e5f5 !important; margin-top: 15px !important;">
+                <p style="color: #4A148C !important;">This element has transform: translateZ(0) creating a GPU layer</p>
+                <p style="color: #6A1B9A !important; font-size: 14px !important;">Extension elements should still render correctly over GPU-accelerated layers</p>
+            </div>
+        </div>
+
+        <!-- Results Checklist -->
+        <div style="background: white !important; padding: 30px !important; border-radius: 8px !important; margin-top: 30px !important;">
+            <h2 style="margin-top: 0 !important; color: #333 !important;">Test Results Checklist</h2>
+            <p style="color: #666 !important; margin-bottom: 20px !important;">Mark each test as you complete it:</p>
+
+            <div class="test-result">
+                <strong>Core Functionality Tests:</strong>
+                <ul style="margin-top: 10px !important;">
+                    <li>[ ] Extension loads and injects UI successfully</li>
+                    <li>[ ] Resize handles are visible</li>
+                    <li>[ ] Resize cursor appears on hover</li>
+                    <li>[ ] Click and drag works on resize handles</li>
+                    <li>[ ] Resize is smooth without jumps</li>
+                    <li>[ ] Extension stays above all page elements</li>
+                    <li>[ ] Form fields remain functional</li>
+                    <li>[ ] No console errors appear</li>
+                </ul>
+            </div>
+
+            <div class="test-result" style="margin-top: 15px !important;">
+                <strong>CSS Interference Tests:</strong>
+                <ul style="margin-top: 10px !important;">
+                    <li>[ ] Resize handle works despite global pointer-events: none</li>
+                    <li>[ ] Extension not affected by box-sizing overrides</li>
+                    <li>[ ] Z-index properly beats enterprise overlays (9999+)</li>
+                    <li>[ ] Cursor overrides don't affect resize handle</li>
+                    <li>[ ] Transform layers don't cause rendering issues</li>
+                    <li>[ ] Margin/padding resets don't break layout</li>
+                </ul>
+            </div>
+
+            <div class="test-result" style="margin-top: 15px !important;">
+                <strong>Browser Compatibility:</strong>
+                <ul style="margin-top: 10px !important;">
+                    <li>[ ] Works in Chrome (latest version)</li>
+                    <li>[ ] DevTools shows correct computed styles</li>
+                    <li>[ ] No performance issues during resize</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Debug Console -->
+        <div style="background: #1e1e1e !important; color: #d4d4d4 !important; padding: 20px !important; border-radius: 8px !important; margin-top: 30px !important; font-family: monospace !important;">
+            <h3 style="color: #4EC9B0 !important; margin-top: 0 !important;">Debug Console</h3>
+            <p style="color: #9CDCFE !important;">Open browser DevTools and run these commands:</p>
+            <pre style="background: #2d2d2d !important; padding: 15px !important; border-radius: 4px !important; overflow-x: auto !important; margin-top: 10px !important;">
+// Check if pointer events work on a specific element
+const handle = document.querySelector('.your-extension-resize-handle');
+console.log('Pointer Events:', window.getComputedStyle(handle).pointerEvents);
+console.log('Z-Index:', window.getComputedStyle(handle).zIndex);
+console.log('Cursor:', window.getComputedStyle(handle).cursor);
+
+// Verify element is above enterprise overlays
+const allElements = document.querySelectorAll('*');
+const zIndexes = Array.from(allElements).map(el => ({
+  element: el.tagName,
+  zIndex: window.getComputedStyle(el).zIndex
+})).filter(item => item.zIndex !== 'auto').sort((a, b) => b.zIndex - a.zIndex);
+console.table(zIndexes.slice(0, 10));
+            </pre>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactivity to verify pointer events work
+        document.addEventListener('DOMContentLoaded', function() {
+            const simulatedExtension = document.querySelector('.simulated-extension');
+            const resizeHandle = document.querySelector('.resize-handle');
+
+            if (resizeHandle) {
+                let isResizing = false;
+                let startX, startY, startWidth, startHeight;
+
+                resizeHandle.addEventListener('mousedown', function(e) {
+                    isResizing = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = parseInt(window.getComputedStyle(simulatedExtension).width, 10);
+                    startHeight = parseInt(window.getComputedStyle(simulatedExtension).height, 10);
+
+                    console.log('✅ Resize started - pointer events working!');
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', function(e) {
+                    if (!isResizing) return;
+
+                    const width = startWidth + (e.clientX - startX);
+                    const height = startHeight + (e.clientY - startY);
+
+                    simulatedExtension.style.width = Math.max(200, width) + 'px';
+                    simulatedExtension.style.height = Math.max(150, height) + 'px';
+                });
+
+                document.addEventListener('mouseup', function() {
+                    if (isResizing) {
+                        console.log('✅ Resize completed successfully!');
+                    }
+                    isResizing = false;
+                });
+
+                // Log hover events
+                resizeHandle.addEventListener('mouseenter', function() {
+                    console.log('✅ Mouse entered resize handle - hover working!');
+                });
+            }
+
+            // Test form submission
+            const submitButton = document.querySelector('button');
+            if (submitButton) {
+                submitButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('✅ Form button click working!');
+                    alert('Form submission working! Pointer events are functioning correctly.');
+                });
+            }
+
+            // Log page load completion
+            console.log('='.repeat(60));
+            console.log('AGGRESSIVE CSS TEST PAGE LOADED');
+            console.log('='.repeat(60));
+            console.log('CSS Interference Patterns Active:');
+            console.log('  ✓ Global pointer-events: none');
+            console.log('  ✓ Global user-select: none');
+            console.log('  ✓ High z-index overlays (9999-99999)');
+            console.log('  ✓ Box-sizing overrides');
+            console.log('  ✓ Cursor overrides');
+            console.log('  ✓ Transform GPU layers');
+            console.log('='.repeat(60));
+            console.log('Load your Chrome extension and test resize functionality!');
+            console.log('='.repeat(60));
+        });
+    </script>
+</body>
+</html>

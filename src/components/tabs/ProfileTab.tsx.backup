@@ -18,7 +18,6 @@ import type { UserProfile } from '../../types/resume-tailoring';
 import { NetworkGraph } from '../../lib/graph';
 import { scrapePersonProfile, getCurrentLinkedInUser, scrapeOwnProfile } from '../../utils/linkedin-scraper';
 import { RouteResultCard } from '../shared/RouteResultCard';
-import { refreshCurrentUser } from '../../services/current-user-service';
 
 interface ProfileTabProps {
   panelWidth?: number;
@@ -36,7 +35,6 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
   const [connectionPath, setConnectionPath] = useState<ConnectionStrategy | null>(null);
   const [pathError, setPathError] = useState<string | null>(null);
   const [isDetectingUser, setIsDetectingUser] = useState(false);
-  const [isRefreshingProfile, setIsRefreshingProfile] = useState(false);
 
   // Extract profile data from context
   const profileData = pageContext.profileData;
@@ -158,84 +156,6 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
     } catch (error) {
       console.error('[Uproot] Error getting current user:', error);
       return null;
-    }
-  };
-
-  /**
-   * Manually refresh current user profile from LinkedIn
-   * Used when auto-detection fails in profile pathfinding
-   */
-  const handleRefreshProfile = async () => {
-    setIsRefreshingProfile(true);
-    setPathError(null);
-
-    try {
-      // Call refreshCurrentUser from current-user-service
-      // This will scrape fresh profile data and cache it
-      const freshProfile = await refreshCurrentUser();
-
-      if (!freshProfile) {
-        throw new Error('Failed to refresh profile. Please ensure you are logged into LinkedIn.');
-      }
-
-      console.log('[Uproot] Profile refreshed successfully:', freshProfile.name);
-
-      // Convert to UserProfile format and store in chrome.storage
-      // so it's available for the next pathfinding attempt
-      const userProfile: UserProfile = {
-        name: freshProfile.name || 'LinkedIn User',
-        email: freshProfile.publicId || freshProfile.id,
-        location: freshProfile.location || '',
-        title: freshProfile.headline || '',
-        avatarUrl: freshProfile.avatarUrl,
-        url: `https://www.linkedin.com/in/${freshProfile.publicId || ''}`,
-        workExperience: (freshProfile.experience || []).map(exp => ({
-          id: `${exp.company}-${exp.title}`,
-          company: exp.company || '',
-          title: exp.title || '',
-          startDate: '',
-          endDate: null,
-          location: exp.location || '',
-          description: '',
-          industry: '',
-          achievements: [],
-          skills: [],
-          domains: [],
-          responsibilities: []
-        })),
-        education: (freshProfile.education || []).map(edu => ({
-          id: `${edu.school}-${edu.degree || 'degree'}`,
-          school: edu.school || '',
-          degree: edu.degree || '',
-          field: edu.field || '',
-          startDate: '',
-          endDate: null
-        })),
-        projects: [],
-        skills: (freshProfile.skills || []).map(skill => ({
-          name: skill,
-          level: 'intermediate' as const,
-          yearsOfExperience: 1,
-          category: 'Technical'
-        })),
-        metadata: {
-          totalYearsExperience: 0,
-          domains: [],
-          seniority: 'entry' as const,
-          careerStage: 'professional' as const
-        }
-      };
-
-      await chrome.storage.local.set({ userProfile });
-
-      // Automatically retry the pathfinding now that profile is refreshed
-      handleFindConnectionPath();
-
-    } catch (error) {
-      console.error('[Uproot] Error refreshing profile:', error);
-      setPathError(error instanceof Error ? error.message : 'Failed to refresh profile');
-    } finally {
-      setIsRefreshingProfile(false);
     }
   };
 
@@ -644,98 +564,35 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
             >
               <strong>Error:</strong> {pathError}
             </p>
-            <div
+            <button
+              onClick={() => {
+                setPathError(null);
+                handleFindConnectionPath();
+              }}
               style={{
                 display: 'flex',
+                alignItems: 'center',
                 gap: '8px',
+                padding: '8px 12px',
+                backgroundColor: '#991B1B',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'background-color 150ms',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#7F1D1D';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#991B1B';
               }}
             >
-              <button
-                onClick={() => {
-                  setPathError(null);
-                  handleFindConnectionPath();
-                }}
-                disabled={isRefreshingProfile}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '8px 12px',
-                  backgroundColor: isRefreshingProfile ? '#8e8e93' : '#991B1B',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: isRefreshingProfile ? 'not-allowed' : 'pointer',
-                  transition: 'background-color 150ms',
-                  opacity: isRefreshingProfile ? 0.7 : 1,
-                }}
-                onMouseEnter={(e) => {
-                  if (!isRefreshingProfile) {
-                    e.currentTarget.style.backgroundColor = '#7F1D1D';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isRefreshingProfile) {
-                    e.currentTarget.style.backgroundColor = '#991B1B';
-                  }
-                }}
-              >
-                <RefreshCw size={14} />
-                Try Again
-              </button>
-              <button
-                onClick={handleRefreshProfile}
-                disabled={isRefreshingProfile}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '8px 12px',
-                  backgroundColor: isRefreshingProfile ? '#8e8e93' : '#0077B5',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: isRefreshingProfile ? 'not-allowed' : 'pointer',
-                  transition: 'background-color 150ms',
-                  opacity: isRefreshingProfile ? 0.7 : 1,
-                }}
-                onMouseEnter={(e) => {
-                  if (!isRefreshingProfile) {
-                    e.currentTarget.style.backgroundColor = '#005582';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isRefreshingProfile) {
-                    e.currentTarget.style.backgroundColor = '#0077B5';
-                  }
-                }}
-              >
-                {isRefreshingProfile ? (
-                  <>
-                    <Loader2
-                      size={14}
-                      style={{
-                        animation: 'spin 1s linear infinite',
-                      }}
-                    />
-                    Refreshing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw size={14} />
-                    Refresh Profile
-                  </>
-                )}
-              </button>
-            </div>
+              <RefreshCw size={14} />
+              Try Again
+            </button>
           </div>
         )}
 

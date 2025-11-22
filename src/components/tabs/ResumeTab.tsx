@@ -1,6 +1,7 @@
 /**
  * Professional Profile Builder Tab
- * Build comprehensive career profile for AI-powered resume generation
+ * Optional: Build comprehensive career profile for AI-powered resume generation
+ * Note: This tab is only needed for resume generation features. Connection pathfinding works without it.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -23,6 +24,7 @@ import {
   CheckCircle2,
   TrendingUp,
   RefreshCw,
+  Info,
 } from 'lucide-react';
 import type {
   ProfessionalProfile,
@@ -60,6 +62,7 @@ import {
   addProject,
   deleteProject,
 } from '../../utils/storage';
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../../styles/tokens';
 
 interface ResumeTabProps {
   panelWidth?: number;
@@ -109,8 +112,45 @@ export function ResumeTab({ panelWidth = 400 }: ResumeTabProps) {
 
   if (!profile) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p style={{ color: '#dc2626' }}>Failed to load profile</p>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px 20px',
+          gap: '16px',
+        }}
+      >
+        <p style={{ color: '#991B1B', fontSize: '14px', fontWeight: '600', margin: 0 }}>
+          Unable to load your profile
+        </p>
+        <button
+          onClick={loadProfile}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 16px',
+            backgroundColor: '#0077B5',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'background-color 150ms',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#005885';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#0077B5';
+          }}
+        >
+          <RefreshCw size={16} />
+          Try Again
+        </button>
       </div>
     );
   }
@@ -148,8 +188,52 @@ export function ResumeTab({ panelWidth = 400 }: ResumeTabProps) {
             margin: 0,
           }}
         >
-          Build your career database for AI resume generation
+          Optional: Build your career database for AI resume generation
         </p>
+      </div>
+
+      {/* Optional Feature Notice */}
+      <div
+        style={{
+          padding: `${SPACING.md}px ${SPACING.lg}px`,
+          backgroundColor: COLORS.status.infoBg,
+          borderBottom: `1px solid ${COLORS.border.lighter}`,
+          display: 'flex',
+          gap: `${SPACING.sm}px`,
+          alignItems: 'flex-start',
+        }}
+      >
+        <Info
+          size={16}
+          strokeWidth={2}
+          style={{
+            color: COLORS.status.info,
+            flexShrink: 0,
+            marginTop: '2px',
+          }}
+        />
+        <div style={{ flex: 1 }}>
+          <p
+            style={{
+              fontSize: `${TYPOGRAPHY.fontSize.base}px`,
+              fontWeight: TYPOGRAPHY.fontWeight.semibold,
+              color: COLORS.status.info,
+              margin: '0 0 4px 0',
+            }}
+          >
+            This tab is optional
+          </p>
+          <p
+            style={{
+              fontSize: `${TYPOGRAPHY.fontSize.sm}px`,
+              color: COLORS.text.secondary,
+              margin: 0,
+              lineHeight: TYPOGRAPHY.lineHeight.normal,
+            }}
+          >
+            Only needed for resume generation features. Connection pathfinding works without this.
+          </p>
+        </div>
       </div>
 
       {/* Sub-Tab Navigation */}

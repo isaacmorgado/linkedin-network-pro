@@ -11,11 +11,15 @@ import type { ExtractedKeyword } from './resume';
  */
 export interface UserProfile {
   // Core identity
+  id?: string; // LinkedIn profile ID or internal ID (for pathfinding)
   name: string;
   email?: string;
   phone?: string;
   location?: string;
   title: string; // Current/desired title
+  avatarUrl?: string; // Profile image URL (for UI display in pathfinding)
+  publicId?: string; // LinkedIn public identifier (for pathfinding)
+  url?: string; // LinkedIn profile URL (for pathfinding and UI links)
 
   // Professional experience
   workExperience: WorkExperience[];

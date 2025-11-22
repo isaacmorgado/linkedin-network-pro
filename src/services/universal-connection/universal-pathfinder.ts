@@ -100,7 +100,7 @@ export async function findUniversalConnection(
 
       if (!sourceId || !targetId) {
         throw new Error(
-          'User not found in network graph. Please visit some LinkedIn profiles first to build your network graph.'
+          'Unable to find profile in your network. Please visit some LinkedIn profiles to build your network graph, then try again.'
         );
       }
 
@@ -165,7 +165,7 @@ export async function findUniversalConnection(
     // If either user isn't found, skip intermediary matching
     // (fall through to similarity-based strategies)
     if (!sourceId) {
-      throw new Error('Source user not found in network graph');
+      throw new Error('Unable to load your profile from the network. Please ensure you are logged into LinkedIn or have completed your profile in the Resume tab.');
     }
 
     const sourceConnections = await graph.getConnections(sourceId);
@@ -508,7 +508,7 @@ export async function compareStrategies(
 
       if (!sourceId || !targetId) {
         throw new Error(
-          'User not found in network graph for alternative strategy search'
+          'Unable to find profiles in your network. Please visit more LinkedIn profiles to expand your network graph.'
         );
       }
 

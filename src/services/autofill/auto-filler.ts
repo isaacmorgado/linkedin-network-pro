@@ -382,7 +382,8 @@ export class AutoFiller {
       font-size: 14px;
       font-weight: 500;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 999999;
+      z-index: 2147483646;
+      isolation: isolate;
       max-width: 400px;
       animation: slideIn 0.3s ease-out;
     `;
@@ -390,28 +391,11 @@ export class AutoFiller {
     notification.textContent = message;
     document.body.appendChild(notification);
 
-    // Add slide-in animation
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes slideIn {
-        from {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
     // Remove after 3 seconds
     setTimeout(() => {
       notification.style.animation = 'slideOut 0.3s ease-out';
       setTimeout(() => {
         notification.remove();
-        style.remove();
       }, 300);
     }, 3000);
   }

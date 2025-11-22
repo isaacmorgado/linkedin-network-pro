@@ -69,45 +69,23 @@ export function FloatingPanel() {
       const fullPanelHeight = panelSize.height;
       const currentY = panelPosition.y;
 
-      // Step 1: Calculate where the bottom edge of the minimized panel currently is
-      const currentBottomY = currentY + 60; // 60px is minimized height
+      // Check if full panel would go past the bottom (Windows taskbar)
+      const wouldGoPastBottom = currentY + fullPanelHeight > viewportHeight - 40; // 40px for taskbar
 
-      // Step 2: Calculate where the top of the full panel should be to keep bottom edge in same place
-      const targetY = currentBottomY - fullPanelHeight;
-
-      // Step 3: Smart clamp - keep panel within safe bounds
-      const newY = Math.max(20, Math.min(targetY, viewportHeight - fullPanelHeight - 40));
-
-      // Step 4: Only reposition if the change is significant (> 5px)
-      const shouldReposition = Math.abs(newY - currentY) > 5;
-
-      if (shouldReposition) {
-        // Step 5: Log the repositioning reason
-        log.action('Repositioning panel on maximize', {
-          reason: targetY < 20 ? 'would go above viewport' : targetY > viewportHeight - fullPanelHeight - 40 ? 'would go below viewport' : 'normal expansion',
-          currentY,
-          currentBottomY,
-          targetY,
-          newY,
-          adjustment: newY - currentY
-        });
+      if (wouldGoPastBottom) {
+        // Reposition so bottom of panel is 40px from bottom
+        const newY = Math.max(20, viewportHeight - fullPanelHeight - 40);
 
         // Enable animation, reposition, then disable after animation completes
         setShouldAnimate(true);
         setTimeout(() => {
           rndRef.current?.updatePosition({ x: panelPosition.x, y: newY });
           setPanelPosition({ x: panelPosition.x, y: newY });
-          console.log('[Uproot] Repositioned on maximize:', { from: currentY, to: newY, reason: targetY < 20 ? 'too high' : 'too low' });
+          console.log('[Uproot] Repositioned on maximize:', { from: currentY, to: newY });
 
           // Disable animation after it completes
           setTimeout(() => setShouldAnimate(false), 600);
         }, 50); // Small delay to let minimize animation start
-      } else {
-        log.debug(LogCategory.UI, 'Skipping reposition - adjustment too small', {
-          currentY,
-          targetY,
-          difference: Math.abs(newY - currentY)
-        });
       }
     }
 

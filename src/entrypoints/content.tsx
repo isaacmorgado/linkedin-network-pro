@@ -11,6 +11,7 @@ import { getCompanyWatchlist, getWatchlist, getOnboardingState } from '@/utils/s
 import { isJobPage, scrapeJobData, waitForJobDetails } from '@/services/linkedin-job-scraper';
 import { log, LogCategory } from '../utils/logger';
 import { detectPageContext, getPanelType } from '../utils/page-context';
+import { getCurrentLinkedInUser } from '@/utils/linkedin-scraper';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -205,7 +206,7 @@ export default defineContentScript({
         // Create container
         const container = document.createElement('div');
         container.id = containerId;
-        container.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999999;';
+        container.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2147483647; isolation: isolate;';
 
         // Add to page
         document.body.appendChild(container);
@@ -371,7 +372,8 @@ export default defineContentScript({
                 font-size: 14px;
                 font-weight: 600;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                z-index: 999999;
+                z-index: 2147483646;
+                isolation: isolate;
                 animation: slideIn 0.3s ease-out;
               `;
               document.body.appendChild(notification);
@@ -418,6 +420,43 @@ export default defineContentScript({
 
           sendResponse({ success: true });
           return true;
+        }
+
+        if (message.type === 'GET_CURRENT_USER') {
+          log.info(LogCategory.CONTENT_SCRIPT, 'Processing GET_CURRENT_USER message');
+
+          try {
+            // Call getCurrentLinkedInUser to scrape current user data
+            const userProfile = getCurrentLinkedInUser();
+
+            if (!userProfile) {
+              log.warn(LogCategory.CONTENT_SCRIPT, 'Could not detect current LinkedIn user', {
+                url: window.location.href,
+                isLinkedIn: window.location.hostname.includes('linkedin.com')
+              });
+              sendResponse({
+                success: false,
+                error: 'Could not detect current LinkedIn user. Make sure you are logged in to LinkedIn.'
+              });
+              return true;
+            }
+
+            log.info(LogCategory.CONTENT_SCRIPT, 'Current user detected successfully', {
+              name: userProfile.name,
+              hasPhotoUrl: !!userProfile.photoUrl,
+              hasHeadline: !!userProfile.headline
+            });
+
+            sendResponse({ success: true, data: userProfile });
+          } catch (error) {
+            log.error(LogCategory.CONTENT_SCRIPT, 'Failed to get current user', error as Error);
+            sendResponse({
+              success: false,
+              error: (error as Error).message || 'Unknown error occurred while detecting current user'
+            });
+          }
+
+          return true; // Keep message channel open for async response
         }
 
         log.debug(LogCategory.CONTENT_SCRIPT, 'Unknown message type, ignoring', {

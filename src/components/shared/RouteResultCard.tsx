@@ -4,12 +4,13 @@
  * Displays connection path results with visual step-by-step guide.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ChevronRight, Check, User, BookmarkPlus, X } from 'lucide-react';
 import type { ConnectionRoute } from '../../types';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS, ICON } from '../../styles/tokens';
 import { ProgressBar } from './ProgressBar';
 import { Button } from './Button';
+import { MessageGenerator } from './MessageGenerator';
 
 export interface RouteResultCardProps {
   route: ConnectionRoute;
@@ -26,6 +27,21 @@ export function RouteResultCard({
 }: RouteResultCardProps) {
   const totalSteps = route.nodes.length - 1; // Exclude yourself
   const degreeOfSeparation = route.nodes.length - 1;
+
+  // Track which nodes have expanded message generators
+  const [expandedMessages, setExpandedMessages] = useState<Set<number>>(new Set());
+
+  const toggleMessageGenerator = (index: number) => {
+    setExpandedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <div
@@ -161,23 +177,52 @@ export function RouteResultCard({
                     border: isFirst || isLast ? `2px solid ${COLORS.accent.default}` : `1px solid ${COLORS.border.light}`,
                   }}
                 >
-                  {/* Avatar placeholder */}
+                  {/* Avatar with image or gradient fallback */}
+                  {node.profile?.avatarUrl ? (
+                    <img
+                      src={node.profile.avatarUrl}
+                      alt={node.profile.name || 'Profile'}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        flexShrink: 0,
+                      }}
+                      onError={(e) => {
+                        // If image fails to load, replace with gradient fallback
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) {
+                          fallback.style.display = 'flex';
+                        }
+                      }}
+                    />
+                  ) : null}
                   <div
                     style={{
                       width: '32px',
                       height: '32px',
                       borderRadius: '50%',
-                      backgroundColor: COLORS.accent.lighter,
-                      display: 'flex',
+                      background: isFirst
+                        ? 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)'
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      display: node.profile?.avatarUrl ? 'none' : 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: 600,
                     }}
                   >
                     {isFirst ? (
-                      <Check size={16} color={COLORS.accent.default} />
+                      <Check size={16} color="white" />
+                    ) : node.profile?.name ? (
+                      node.profile.name.charAt(0).toUpperCase()
                     ) : (
-                      <User size={16} color={COLORS.accent.default} />
+                      <User size={16} color="white" />
                     )}
                   </div>
 
@@ -226,6 +271,58 @@ export function RouteResultCard({
                     </div>
                   )}
                 </div>
+
+                {/* Message Generator - Show for all hops except yourself */}
+                {!isFirst && (
+                  <div
+                    style={{
+                      marginTop: `${SPACING.xs}px`,
+                      marginBottom: `${SPACING.xs}px`,
+                      marginLeft: '44px', // Align with node content (32px avatar + 12px gap)
+                    }}
+                  >
+                    {expandedMessages.has(index) ? (
+                      <MessageGenerator
+                        senderProfile={route.nodes[index - 1].profile}
+                        recipientProfile={node.profile}
+                        degreeOfSeparation={node.degree}
+                        mutualConnections={[]} // Could be populated from graph data
+                        isDirectConnection={index === 1}
+                        referralFrom={index > 1 ? route.nodes[index - 1].profile : undefined}
+                        targetGoal="networking"
+                        variant="full"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => toggleMessageGenerator(index)}
+                        style={{
+                          background: 'none',
+                          border: `1px solid ${COLORS.border.light}`,
+                          borderRadius: `${RADIUS.sm}px`,
+                          padding: `${SPACING.xs}px ${SPACING.sm}px`,
+                          fontSize: `${TYPOGRAPHY.fontSize.xs}px`,
+                          color: COLORS.accent.default,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          transition: 'all 150ms ease-out',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = COLORS.accent.lighter;
+                          e.currentTarget.style.borderColor = COLORS.accent.default;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.borderColor = COLORS.border.light;
+                        }}
+                      >
+                        <span style={{ fontSize: '12px' }}>✨</span>
+                        Generate Message
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Connector arrow */}
                 {showConnector && (

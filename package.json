@@ -12,6 +12,8 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
+    "test": "vitest",
+    "test:stress": "vitest run src/services/universal-connection/universal-pathfinder.stress.test.ts",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -55,6 +57,7 @@
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.1",
+    "vitest": "^4.0.13",
     "wxt": "^0.19.15"
   },
   "engines": {

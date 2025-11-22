@@ -1,150 +1,101 @@
-# Testing Guide - Feature by Feature
+# Quick Testing Guide - Extension Sizing Fixes
 
-## 🧪 Phase 1: Verify Extension Loads
+## ⚡ Quick Start
 
-### Step 1: Load Extension in Chrome
-
-1. **Build the extension** (if not already done):
-   ```bash
-   cd /home/imorgado/Documents/agent-girl/chat-1341ae5d/linkedin-extension
-   npm run build
-   ```
-
-2. **Open Chrome** and navigate to:
-   ```
-   chrome://extensions
-   ```
-
-3. **Enable Developer Mode** (toggle in top-right corner)
-
-4. **Click "Load unpacked"**
-
-5. **Select folder**:
-   ```
-   /home/imorgado/Documents/agent-girl/chat-1341ae5d/linkedin-extension/.output/chrome-mv3
-   ```
-
-6. **Expected Result**: Extension loads without errors
-   - ✅ Green badge with "Service worker (Active)"
-   - ✅ No error messages
-   - ✅ Extension icon appears in toolbar
-
-### Step 2: Test on LinkedIn
-
-1. **Navigate to** https://www.linkedin.com
-
-2. **Open DevTools** (F12 or Right-click → Inspect)
-
-3. **Check Console** for:
-   ```
-   LinkedIn Extension content script loaded
-   Initializing LinkedIn extension content script
-   Floating panel injected
-   ```
-
-4. **Look for the floating panel** on the page
-   - Should appear as a draggable window
-   - Should show "LinkedIn Network Pro" header
-   - Should display "Sign in with Google" / "Sign in with Email" buttons
-
-5. **Try clicking the extension icon** in toolbar
-   - Should open a small popup
-   - Popup should have "Open Panel" button
-
-### Step 3: Debug Any Issues
-
-**If extension doesn't load:**
-- Check for error messages in `chrome://extensions`
-- Look at "Errors" button next to the extension
-
-**If content script doesn't inject:**
-- Open Console on LinkedIn page
-- Look for any error messages
-- Check if content script is blocked by CSP
-
-**If panel doesn't appear:**
-- Check Console for "Floating panel injected" message
-- Inspect page DOM for element with id `linkedin-extension-root`
-- Check if Shadow DOM is attached
+### Load Extension
+1. Open Chrome
+2. Navigate to `chrome://extensions`
+3. Enable "Developer mode" (top right)
+4. Click "Load unpacked"
+5. Select: `/home/imorgado/Documents/agent-girl/chat-abc62d98/linkedin-network-pro/.output/chrome-mv3/`
 
 ---
 
-## ✅ Current Testing Checklist
+## 🎯 Priority Tests (5 minutes)
 
-### Phase 1: Basic Loading
-- [ ] Extension loads in chrome://extensions
-- [ ] No errors in extension page
-- [ ] Service worker is active
-- [ ] Content script logs appear on LinkedIn
-- [ ] Floating panel renders on page
-- [ ] Panel is visible and draggable
-- [ ] Popup opens when clicking icon
-- [ ] Login screen displays correctly
+### Test 1: Edge Boundary Protection
+**What to test:** Panels can't go off-screen
+**How:**
+1. Open LinkedIn (https://linkedin.com/feed)
+2. Press `Alt+1` to open extension
+3. Try to resize panel from **left edge** - drag left edge to the left
+   - ✅ Panel should stop at X=0, not go off-screen
+4. Try to resize panel from **top edge** - drag top edge upward
+   - ✅ Panel should stop at Y=0, not go off-screen
+5. Try to drag panel **past left edge** of screen
+   - ✅ Panel should snap back to visible area
 
-### What Should Work Now:
-1. ✅ Extension loads and installs
-2. ✅ Content script injects into LinkedIn pages
-3. ✅ Floating panel appears with Apple-like design
-4. ✅ Panel shows login screen (not functional yet)
-5. ✅ Tab navigation displays (6 tabs)
-6. ✅ Extension icon popup works
-
-### What Won't Work Yet:
-1. ❌ Authentication (Phase 2)
-2. ❌ LinkedIn scraping (Phase 3)
-3. ❌ AI features (Phase 4)
-4. ❌ Graph algorithms (Phase 5)
-5. ❌ Resume tools (Phase 6)
+**Expected:** Panel always stays within viewport boundaries
 
 ---
 
-## 📋 Report Format
+### Test 2: Z-Index on 3rd Party Sites
+**What to test:** Extension appears on top of website elements
+**How:**
+1. Go to YouTube.com and play a video
+2. Press `Alt+1` to open extension
+3. Try to interact with extension panel
+   - ✅ Panel should be on top of video player
+   - ✅ Can click buttons and drag panel
+   - ✅ Video controls still accessible
 
-After testing Phase 1, please report:
-
-**Working:**
-- List what works
-
-**Not Working:**
-- List any errors or issues
-- Include console errors
-- Include screenshots if helpful
-
-**Next Steps:**
-- What should we fix/build next?
+**Expected:** Extension panel visible and interactive
 
 ---
 
-## 🐛 Common Issues & Fixes
+### Test 3: Minimize/Maximize Animation
+**What to test:** Smooth animations without glitches
+**How:**
+1. Open extension on LinkedIn
+2. Click minimize button (- icon)
+3. Click maximize button (□ icon)
+4. Repeat 5-10 times rapidly
 
-### Issue: "Manifest file is missing or unreadable"
-**Fix**: Make sure you selected the `.output/chrome-mv3` folder, not the parent folder
-
-### Issue: Content script not injecting
-**Fix**: Check that you're on `https://www.linkedin.com/*` (not HTTP)
-
-### Issue: Panel doesn't show
-**Fix**: Check Console for React errors. Shadow DOM might be blocking styles.
-
-### Issue: Extension icon does nothing
-**Fix**: The popup should open. If not, check for popup.html errors.
-
----
-
-## 🔄 Rebuild After Changes
-
-Whenever we make code changes:
-
-```bash
-npm run build
-```
-
-Then in Chrome:
-1. Go to `chrome://extensions`
-2. Click the 🔄 reload button on the extension
-3. Refresh the LinkedIn page (Ctrl+R)
-4. Check Console for new logs
+**Expected:**
+- ✅ Smooth 500ms animation
+- ✅ No visual glitches or jumps
+- ✅ Panel repositions if at bottom of screen
 
 ---
 
-**Ready to test? Follow Step 1 above and let me know what you see!**
+### Test 4: Memory Leak Check
+**What to test:** Memory stays stable during heavy use
+**How:**
+1. Open Chrome Task Manager (`Shift+Esc`)
+2. Find your extension process
+3. Note initial memory usage
+4. Resize panel 50 times from different edges
+5. Minimize/maximize 50 times
+6. Check memory usage again
+
+**Expected:**
+- ✅ Memory increase < 10MB
+- ✅ No continuous growth pattern
+
+---
+
+### Test 5: 3rd Party Job Site (Minimal Panel)
+**What to test:** MinimalAutofillPanel works on non-LinkedIn sites
+**How:**
+1. Visit any Workday/Greenhouse job application site
+2. Extension should auto-inject MinimalAutofillPanel
+3. Test all 4 edge resizes
+4. Test all 4 corner resizes
+5. Try to drag panel off-screen
+
+**Expected:**
+- ✅ Panel constrained to viewport
+- ✅ All resize handles work
+- ✅ Z-index above site modals
+
+---
+
+## ✅ Success Criteria
+
+Extension passes if:
+- ✅ All edge resizes stay within viewport
+- ✅ All corner resizes work without off-screen movement
+- ✅ Z-index keeps panel visible on all tested sites
+- ✅ Animations are smooth with no visual glitches
+- ✅ Memory usage remains stable during stress tests
+- ✅ Works on both LinkedIn (full panel) and 3rd party sites (minimal panel)

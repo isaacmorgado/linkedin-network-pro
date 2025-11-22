@@ -9,6 +9,7 @@ import type {
   LinkedInCompanyUpdate,
 } from '../types/monitoring';
 import type { ExperienceLevel, WorkLocationType } from '../types/onboarding';
+import type { UserProfile, WorkExperience, ProfileMetadata } from '../types/resume-tailoring';
 
 // ============================================================================
 // JOB SCRAPING
@@ -178,6 +179,146 @@ function inferExperienceLevel(title: string): ExperienceLevel | undefined {
 
   // Default to mid-level if no indicators
   return 'mid';
+}
+
+// ============================================================================
+// CURRENT USER DETECTION
+// ============================================================================
+
+/**
+ * Detect currently logged-in LinkedIn user
+ * Works on any LinkedIn page where user is logged in
+ * Does NOT require being on the user's profile page
+ */
+export function getCurrentLinkedInUser(): LinkedInPersonProfile | null {
+  try {
+    // Try multiple selectors for user identification
+    let profileUrl = '';
+    let name = '';
+    let headline = '';
+    let photoUrl: string | undefined;
+
+    // Method 1: Extract from global navigation bar
+    const navProfileLink = document.querySelector('a[href*="/in/me/"], a[data-control-name="identity_profile_photo"]') as HTMLAnchorElement;
+    if (navProfileLink) {
+      profileUrl = navProfileLink.href.replace('/in/me/', '/in/').replace(/\/$/, '');
+    }
+
+    // Method 2: Extract from profile photo in nav
+    const navPhoto = document.querySelector('.global-nav__me-photo, img.global-nav__me-photo') as HTMLImageElement;
+    if (navPhoto) {
+      photoUrl = navPhoto.src;
+      // Alt text often contains the user's name
+      if (navPhoto.alt && navPhoto.alt !== 'Photo') {
+        name = navPhoto.alt.trim();
+      }
+    }
+
+    // Method 3: Extract from user menu trigger
+    const menuTrigger = document.querySelector('.global-nav__primary-link-me-menu-trigger span.t-12.break-words, [data-control-name="identity_profile_photo"] + span');
+    if (menuTrigger && !name) {
+      const menuText = menuTrigger.textContent?.trim();
+      if (menuText && menuText !== 'Me') {
+        name = menuText;
+      }
+    }
+
+    // Method 4: Try to extract from JSON-LD structured data
+    const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of jsonLdScripts) {
+      try {
+        const data = JSON.parse(script.textContent || '');
+        if (data['@type'] === 'Person' || data['@type'] === 'ProfilePage') {
+          if (data.name && !name) name = data.name;
+          if (data.image && !photoUrl) photoUrl = data.image;
+          if (data.jobTitle && !headline) headline = data.jobTitle;
+          if (data.url && !profileUrl) profileUrl = data.url;
+        }
+      } catch (e) {
+        // Skip invalid JSON
+      }
+    }
+
+    // Method 5: Try meta tags
+    if (!name) {
+      const ogTitle = document.querySelector('meta[property="og:title"]') as HTMLMetaElement;
+      if (ogTitle && ogTitle.content) {
+        name = ogTitle.content.split('|')[0].trim();
+      }
+    }
+
+    if (!photoUrl) {
+      const ogImage = document.querySelector('meta[property="og:image"]') as HTMLMetaElement;
+      if (ogImage && ogImage.content) {
+        photoUrl = ogImage.content;
+      }
+    }
+
+    // Method 6: Extract from expanded user menu (if open)
+    const expandedMenu = document.querySelector('.global-nav__me-content');
+    if (expandedMenu) {
+      const menuNameElement = expandedMenu.querySelector('.text-heading-xlarge, .t-16.t-black.t-bold');
+      if (menuNameElement && !name) {
+        name = menuNameElement.textContent?.trim() || '';
+      }
+
+      const menuHeadlineElement = expandedMenu.querySelector('.text-body-small.t-black--light, .t-12.t-black--light.t-normal');
+      if (menuHeadlineElement && !headline) {
+        headline = menuHeadlineElement.textContent?.trim() || '';
+      }
+    }
+
+    // Method 7: Try to get from page state data (LinkedIn's client-side data)
+    try {
+      // LinkedIn sometimes stores user data in window.__RELAY_BOOTSTRAP_DATA__ or similar
+      const windowAny = window as any;
+      if (windowAny.__RELAY_BOOTSTRAP_DATA__) {
+        const relayData = windowAny.__RELAY_BOOTSTRAP_DATA__;
+        // Navigate through the data structure to find current user info
+        for (const key in relayData) {
+          const entry = relayData[key];
+          if (entry?.data?.me || entry?.data?.currentUser) {
+            const userData = entry.data.me || entry.data.currentUser;
+            if (userData.miniProfile) {
+              if (userData.miniProfile.firstName && userData.miniProfile.lastName && !name) {
+                name = `${userData.miniProfile.firstName} ${userData.miniProfile.lastName}`;
+              }
+              if (userData.miniProfile.headline && !headline) {
+                headline = userData.miniProfile.headline;
+              }
+              if (userData.miniProfile.picture && !photoUrl) {
+                photoUrl = userData.miniProfile.picture.rootUrl;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Skip if we can't access window data
+    }
+
+    // Validate we have at least minimal data
+    if (!name && !profileUrl) {
+      console.warn('[Uproot] Could not detect current LinkedIn user - user may not be logged in');
+      return null;
+    }
+
+    // Return profile with available data
+    return {
+      profileUrl: profileUrl || window.location.origin + '/in/me/',
+      name: name || 'LinkedIn User',
+      headline: headline || '',
+      currentRole: {
+        title: headline || '',
+        company: '',
+      },
+      location: '',
+      photoUrl,
+    };
+  } catch (error) {
+    console.error('[Uproot] Error detecting current LinkedIn user:', error);
+    return null;
+  }
 }
 
 // ============================================================================
@@ -365,4 +506,259 @@ export function getCompanyIdFromUrl(url: string): string | null {
 export function getProfileUsernameFromUrl(url: string): string | null {
   const match = url.match(/\/in\/([^/]+)/);
   return match ? match[1] : null;
+}
+
+// ============================================================================
+// CURRENT USER PROFILE SCRAPING
+// ============================================================================
+
+/**
+ * Storage key for cached current user profile
+ */
+export const CURRENT_USER_PROFILE_KEY = 'uproot_current_user';
+
+/**
+ * TTL for cached profile: 7 days in milliseconds
+ */
+const PROFILE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/**
+ * Cached profile data with timestamp
+ */
+interface CachedProfile {
+  profile: UserProfile;
+  cachedAt: number;
+  expiresAt: number;
+}
+
+/**
+ * Minimal user profile for fallback when scraping fails
+ */
+function getMinimalProfile(): UserProfile {
+  return {
+    name: 'LinkedIn User',
+    title: '',
+    workExperience: [],
+    education: [],
+    projects: [],
+    skills: [],
+    metadata: {
+      totalYearsExperience: 0,
+      domains: [],
+      seniority: 'entry',
+      careerStage: 'professional',
+    },
+  };
+}
+
+/**
+ * Check if cached profile is still valid
+ */
+async function getCachedProfile(): Promise<UserProfile | null> {
+  try {
+    const result = await chrome.storage.local.get(CURRENT_USER_PROFILE_KEY);
+    const cached = result[CURRENT_USER_PROFILE_KEY] as CachedProfile | undefined;
+
+    if (!cached) {
+      console.log('[Uproot] No cached profile found');
+      return null;
+    }
+
+    const now = Date.now();
+    if (now >= cached.expiresAt) {
+      console.log('[Uproot] Cached profile expired');
+      return null;
+    }
+
+    console.log('[Uproot] Using cached profile (expires in', Math.round((cached.expiresAt - now) / (1000 * 60 * 60)), 'hours)');
+    return cached.profile;
+  } catch (error) {
+    console.error('[Uproot] Error reading cached profile:', error);
+    return null;
+  }
+}
+
+/**
+ * Save profile to cache with TTL
+ */
+async function cacheProfile(profile: UserProfile): Promise<void> {
+  try {
+    const now = Date.now();
+    const cached: CachedProfile = {
+      profile,
+      cachedAt: now,
+      expiresAt: now + PROFILE_CACHE_TTL,
+    };
+
+    await chrome.storage.local.set({ [CURRENT_USER_PROFILE_KEY]: cached });
+    console.log('[Uproot] Profile cached successfully (TTL: 7 days)');
+  } catch (error) {
+    console.error('[Uproot] Error caching profile:', error);
+  }
+}
+
+/**
+ * Convert LinkedInPersonProfile to UserProfile format
+ */
+function convertLinkedInProfileToUserProfile(
+  linkedInProfile: LinkedInPersonProfile
+): UserProfile {
+  // Parse current role into work experience
+  const workExperience: WorkExperience[] = [];
+  if (linkedInProfile.currentRole && linkedInProfile.currentRole.title) {
+    workExperience.push({
+      id: 'current-role',
+      company: linkedInProfile.currentRole.company || '',
+      title: linkedInProfile.currentRole.title,
+      startDate: linkedInProfile.currentRole.startDate || new Date().toISOString(),
+      endDate: null, // Current role
+      location: linkedInProfile.location,
+      achievements: [],
+      skills: [],
+      domains: [],
+      responsibilities: [],
+    });
+  }
+
+  // Calculate metadata
+  const metadata: ProfileMetadata = {
+    totalYearsExperience: 0, // Would need more data to calculate
+    domains: [],
+    seniority: inferSeniority(linkedInProfile.currentRole?.title || ''),
+    careerStage: 'professional',
+  };
+
+  return {
+    name: linkedInProfile.name,
+    title: linkedInProfile.headline || linkedInProfile.currentRole?.title || '',
+    location: linkedInProfile.location,
+    avatarUrl: linkedInProfile.photoUrl,
+    url: linkedInProfile.profileUrl,
+    workExperience,
+    education: [],
+    projects: [],
+    skills: [],
+    metadata,
+  };
+}
+
+/**
+ * Infer seniority level from job title
+ */
+function inferSeniority(title: string): 'entry' | 'mid' | 'senior' | 'staff' | 'principal' {
+  const lower = title.toLowerCase();
+
+  if (lower.includes('principal') || lower.includes('distinguished')) return 'principal';
+  if (lower.includes('staff') || lower.includes('lead')) return 'staff';
+  if (lower.includes('senior') || lower.includes('sr.')) return 'senior';
+  if (lower.includes('junior') || lower.includes('jr.') || lower.includes('associate')) return 'entry';
+
+  return 'mid';
+}
+
+/**
+ * Scrape the current user's own LinkedIn profile
+ *
+ * This function:
+ * 1. Checks cache first (7-day TTL)
+ * 2. Navigates to /me to get current user's profile
+ * 3. Uses existing profile scraper
+ * 4. Converts to UserProfile format
+ * 5. Caches result
+ * 6. Returns minimal profile on error
+ *
+ * @returns Promise<UserProfile> - The current user's profile
+ */
+export async function scrapeOwnProfile(): Promise<UserProfile> {
+  try {
+    console.log('[Uproot] Fetching current user profile...');
+
+    // Check cache first
+    const cachedProfile = await getCachedProfile();
+    if (cachedProfile) {
+      return cachedProfile;
+    }
+
+    console.log('[Uproot] Cache miss, scraping fresh profile...');
+
+    // Get current URL to restore later
+    const currentUrl = window.location.href;
+    const isOnOwnProfile = currentUrl.includes('/in/') &&
+                           (currentUrl.includes('/me') ||
+                            document.querySelector('.pv-top-card__edit-profile-button') !== null);
+
+    let linkedInProfile: LinkedInPersonProfile | null = null;
+
+    if (isOnOwnProfile) {
+      // Already on own profile, scrape directly
+      console.log('[Uproot] Already on own profile, scraping...');
+      linkedInProfile = scrapePersonProfile();
+    } else {
+      // Navigate to /me to get own profile
+      console.log('[Uproot] Navigating to /me...');
+
+      // Store original URL
+      const returnUrl = window.location.href;
+
+      // Navigate to profile page
+      window.location.href = 'https://www.linkedin.com/in/me/';
+
+      // Wait for navigation and page load
+      await new Promise<void>((resolve) => {
+        const checkReady = setInterval(() => {
+          if (window.location.href.includes('/in/') &&
+              document.querySelector('.pv-top-card')) {
+            clearInterval(checkReady);
+            resolve();
+          }
+        }, 500);
+
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          clearInterval(checkReady);
+          resolve();
+        }, 10000);
+      });
+
+      // Scrape profile
+      linkedInProfile = scrapePersonProfile();
+
+      // Navigate back to original page if different
+      if (returnUrl !== 'https://www.linkedin.com/in/me/' &&
+          !returnUrl.includes('/in/me')) {
+        window.location.href = returnUrl;
+      }
+    }
+
+    // Convert to UserProfile format
+    if (linkedInProfile) {
+      console.log('[Uproot] Successfully scraped profile:', linkedInProfile.name);
+      const userProfile = convertLinkedInProfileToUserProfile(linkedInProfile);
+
+      // Cache the profile
+      await cacheProfile(userProfile);
+
+      return userProfile;
+    } else {
+      throw new Error('Failed to scrape profile data');
+    }
+  } catch (error) {
+    console.error('[Uproot] Error scraping own profile:', error);
+
+    // Return minimal profile on error
+    console.log('[Uproot] Returning minimal profile due to error');
+    return getMinimalProfile();
+  }
+}
+
+/**
+ * Clear cached profile (useful for testing or manual refresh)
+ */
+export async function clearCachedProfile(): Promise<void> {
+  try {
+    await chrome.storage.local.remove(CURRENT_USER_PROFILE_KEY);
+    console.log('[Uproot] Cached profile cleared');
+  } catch (error) {
+    console.error('[Uproot] Error clearing cached profile:', error);
+  }
 }
