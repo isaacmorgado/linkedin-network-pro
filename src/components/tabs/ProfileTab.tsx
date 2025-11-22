@@ -296,6 +296,7 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
           const nodes = networkGraph.getConnections(userId);
           // Convert NetworkNode[] to UserProfile[]
           return nodes.map(node => ({
+            id: node.id,
             name: node.profile.name || 'Unknown',
             email: node.id,
             location: node.profile.location || '',
@@ -344,6 +345,7 @@ export function ProfileTab({ panelWidth = 400 }: ProfileTabProps) {
           // Convert NetworkNode[] to UserProfile[]
           return {
             path: result.path.map(node => ({
+              id: node.id,
               name: node.profile.name || 'Unknown',
               email: node.id,
               location: node.profile.location || '',

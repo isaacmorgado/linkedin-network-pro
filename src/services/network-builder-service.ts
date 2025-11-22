@@ -184,18 +184,29 @@ export async function addProfileToGraph(
     graph.addNode(node);
     log.info(LogCategory.NETWORK, `Added node to graph: ${node.id}`);
 
-    // If current user is known, add edge
+    // If current user is known, add bidirectional edges for mutual connection
     if (currentUserId) {
       const currentUserNode = graph.getNode(currentUserId);
       if (currentUserNode) {
         const weight = calculateEdgeWeight(currentUserNode.profile, profileData);
+
+        // Forward edge: current user -> profile
         graph.addEdge({
           from: currentUserId,
           to: node.id,
           weight,
-          relationshipType: 'unknown'
+          relationshipType: 'mutual'
         });
         log.info(LogCategory.NETWORK, `Added edge: ${currentUserId} -> ${node.id} (weight: ${weight})`);
+
+        // Reverse edge: profile -> current user (for bidirectional mutual connection)
+        graph.addEdge({
+          from: node.id,
+          to: currentUserId,
+          weight,
+          relationshipType: 'mutual'
+        });
+        log.info(LogCategory.NETWORK, `Added reverse edge: ${node.id} -> ${currentUserId} (weight: ${weight})`);
       }
     }
 

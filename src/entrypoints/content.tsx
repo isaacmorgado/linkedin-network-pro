@@ -95,7 +95,12 @@ export default defineContentScript({
           if (currentUrl.includes('linkedin.com/in/') && !currentUrl.includes('/edit/')) {
             try {
               log.info(LogCategory.NETWORK, 'LinkedIn profile detected on page load, adding to network graph');
-              const result = await addProfileToGraph(currentUrl);
+
+              // Get current user's profile URL for edge creation
+              const currentUserProfile = getCurrentLinkedInUser();
+              const currentUserId = currentUserProfile?.profileUrl;
+
+              const result = await addProfileToGraph(currentUrl, currentUserId);
               if (result.success) {
                 log.info(LogCategory.NETWORK, result.message);
               } else {
@@ -191,7 +196,12 @@ export default defineContentScript({
             if (currentUrl.includes('linkedin.com/in/') && !currentUrl.includes('/edit/')) {
               try {
                 log.info(LogCategory.NETWORK, 'LinkedIn profile detected, adding to network graph');
-                const result = await addProfileToGraph(currentUrl);
+
+                // Get current user's profile URL for edge creation
+                const currentUserProfile = getCurrentLinkedInUser();
+                const currentUserId = currentUserProfile?.profileUrl;
+
+                const result = await addProfileToGraph(currentUrl, currentUserId);
                 if (result.success) {
                   log.info(LogCategory.NETWORK, result.message);
                 } else {
