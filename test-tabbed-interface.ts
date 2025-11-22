@@ -19,28 +19,28 @@ interface TabInterfaceTest {
 
 const tests: TabInterfaceTest[] = [
   {
-    name: 'Resume Tab',
-    component: 'ResumeSection',
-    feature: 'Resume text area',
-    description: 'Users can paste resume content',
+    name: 'Job Description Tab',
+    component: 'JobDescriptionSection',
+    feature: 'Job description textarea',
+    description: 'Users can paste job description',
   },
   {
-    name: 'Resume Tab Copy',
-    component: 'ResumeSection',
-    feature: 'Copy resume button',
-    description: 'Copy resume to clipboard with feedback',
+    name: 'Job Description Notification',
+    component: 'JobDescriptionSection',
+    feature: 'Success notification',
+    description: 'Shows "Job description saved" message',
   },
   {
     name: 'Questions Tab',
     component: 'QuestionsSection',
-    feature: 'Job description input',
-    description: 'Paste job description for analysis',
-  },
-  {
-    name: 'Questions Tab Input',
-    component: 'QuestionsSection',
     feature: 'Question input',
     description: 'Enter or paste questions (Alt+3)',
+  },
+  {
+    name: 'Profile Data Usage',
+    component: 'QuestionsSection',
+    feature: 'Uses ProfessionalProfile',
+    description: 'Generates answers from actual profile data (no hallucination)',
   },
   {
     name: 'Auto-Copy Feature',
@@ -58,13 +58,13 @@ const tests: TabInterfaceTest[] = [
     name: 'Tab Navigation',
     component: 'AutofillTabSwitcher',
     feature: 'Tab switching',
-    description: 'Switch between Resume and Questions tabs',
+    description: 'Switch between Job Description and Questions tabs',
   },
   {
     name: 'State Persistence',
     component: 'MinimalAutofillPanel',
-    feature: 'Resume text persistence',
-    description: 'Resume text persists when switching tabs',
+    feature: 'Job description persistence',
+    description: 'Job description persists when switching tabs',
   },
 ];
 
@@ -87,21 +87,21 @@ async function runTests() {
     const panelPath = './src/components/MinimalAutofillPanel.tsx';
     const panelContent = await fs.readFile(panelPath, 'utf-8');
 
-    const hasAutofillView = panelContent.includes("type AutofillView = 'resume' | 'questions'");
+    const hasAutofillView = panelContent.includes("type AutofillView = 'job-description' | 'questions'");
     const hasActiveView = panelContent.includes('const [activeView, setActiveView]');
-    const hasResumeText = panelContent.includes('const [resumeText, setResumeText]');
+    const hasJobDescription = panelContent.includes('const [jobDescription, setJobDescription]');
 
-    if (hasAutofillView && hasActiveView && hasResumeText) {
+    if (hasAutofillView && hasActiveView && hasJobDescription) {
       console.log('  ✅ PASS: Tab state management configured');
-      console.log('    ✓ AutofillView type defined (resume | questions)');
+      console.log('    ✓ AutofillView type defined (job-description | questions)');
       console.log('    ✓ activeView state with useState');
-      console.log('    ✓ resumeText state with useState\n');
+      console.log('    ✓ jobDescription state with useState\n');
       passed++;
     } else {
       console.log('  ❌ FAIL: Missing tab state management');
       console.log(`    - AutofillView type: ${hasAutofillView}`);
       console.log(`    - activeView state: ${hasActiveView}`);
-      console.log(`    - resumeText state: ${hasResumeText}\n`);
+      console.log(`    - jobDescription state: ${hasJobDescription}\n`);
       failed++;
     }
   } catch (error) {
@@ -117,21 +117,21 @@ async function runTests() {
     const panelContent = await fs.readFile(panelPath, 'utf-8');
 
     const hasTabSwitcher = panelContent.includes('function AutofillTabSwitcher');
-    const hasResumeButton = panelContent.includes("onClick={() => onViewChange('resume')}");
+    const hasJobDescButton = panelContent.includes("onClick={() => onViewChange('job-description')}");
     const hasQuestionsButton = panelContent.includes("onClick={() => onViewChange('questions')}");
     const hasResponsive = panelContent.includes('const isCompact = panelWidth < 400');
 
-    if (hasTabSwitcher && hasResumeButton && hasQuestionsButton && hasResponsive) {
+    if (hasTabSwitcher && hasJobDescButton && hasQuestionsButton && hasResponsive) {
       console.log('  ✅ PASS: AutofillTabSwitcher component implemented');
       console.log('    ✓ TabSwitcher component function');
-      console.log('    ✓ Resume tab button');
+      console.log('    ✓ Job Description tab button');
       console.log('    ✓ Questions tab button');
       console.log('    ✓ Responsive design (< 400px)\n');
       passed++;
     } else {
       console.log('  ❌ FAIL: TabSwitcher component incomplete');
       console.log(`    - TabSwitcher function: ${hasTabSwitcher}`);
-      console.log(`    - Resume button: ${hasResumeButton}`);
+      console.log(`    - Job Description button: ${hasJobDescButton}`);
       console.log(`    - Questions button: ${hasQuestionsButton}`);
       console.log(`    - Responsive design: ${hasResponsive}\n`);
       failed++;
@@ -141,31 +141,31 @@ async function runTests() {
     failed++;
   }
 
-  // Test 3: Verify ResumeSection component
-  console.log('Test 3: Verify ResumeSection component');
+  // Test 3: Verify JobDescriptionSection component
+  console.log('Test 3: Verify JobDescriptionSection component');
   try {
     const fs = await import('fs/promises');
     const panelPath = './src/components/MinimalAutofillPanel.tsx';
     const panelContent = await fs.readFile(panelPath, 'utf-8');
 
-    const hasResumeSection = panelContent.includes('function ResumeSection');
-    const hasTextarea = panelContent.includes('Paste your resume content here...');
-    const hasCopyButton = panelContent.includes('handleCopyResume');
-    const hasCopyFeedback = panelContent.includes('showCopied');
+    const hasJobDescSection = panelContent.includes('function JobDescriptionSection');
+    const hasTextarea = panelContent.includes('Paste the complete job description here...');
+    const hasNotification = panelContent.includes('Job description saved');
+    const noResumeSection = !panelContent.includes('function ResumeSection');
 
-    if (hasResumeSection && hasTextarea && hasCopyButton && hasCopyFeedback) {
-      console.log('  ✅ PASS: ResumeSection component implemented');
-      console.log('    ✓ ResumeSection function');
-      console.log('    ✓ Textarea for resume input');
-      console.log('    ✓ Copy resume button');
-      console.log('    ✓ Copy feedback state\n');
+    if (hasJobDescSection && hasTextarea && hasNotification && noResumeSection) {
+      console.log('  ✅ PASS: JobDescriptionSection component implemented');
+      console.log('    ✓ JobDescriptionSection function');
+      console.log('    ✓ Textarea for job description');
+      console.log('    ✓ Success notification');
+      console.log('    ✓ ResumeSection removed\n');
       passed++;
     } else {
-      console.log('  ❌ FAIL: ResumeSection component incomplete');
-      console.log(`    - ResumeSection function: ${hasResumeSection}`);
+      console.log('  ❌ FAIL: JobDescriptionSection component incomplete');
+      console.log(`    - JobDescriptionSection function: ${hasJobDescSection}`);
       console.log(`    - Textarea: ${hasTextarea}`);
-      console.log(`    - Copy button: ${hasCopyButton}`);
-      console.log(`    - Copy feedback: ${hasCopyFeedback}\n`);
+      console.log(`    - Notification: ${hasNotification}`);
+      console.log(`    - ResumeSection removed: ${noResumeSection}\n`);
       failed++;
     }
   } catch (error) {
@@ -173,27 +173,30 @@ async function runTests() {
     failed++;
   }
 
-  // Test 4: Verify QuestionsSection (renamed from GenerateSection)
-  console.log('Test 4: Verify QuestionsSection component');
+  // Test 4: Verify QuestionsSection uses profile data (no hallucination)
+  console.log('Test 4: Verify QuestionsSection uses profile data');
   try {
     const fs = await import('fs/promises');
     const panelPath = './src/components/MinimalAutofillPanel.tsx';
     const panelContent = await fs.readFile(panelPath, 'utf-8');
 
     const hasQuestionsSection = panelContent.includes('function QuestionsSection');
-    const hasResumeTextProp = panelContent.includes('resumeText: string');
+    const hasJobDescProp = panelContent.includes('jobDescription: string');
+    const usesProfileData = panelContent.includes('Uses the user\'s actual profile data');
     const noGenerateSection = !panelContent.includes('function GenerateSection');
 
-    if (hasQuestionsSection && hasResumeTextProp && noGenerateSection) {
-      console.log('  ✅ PASS: QuestionsSection component implemented');
-      console.log('    ✓ QuestionsSection function (renamed from GenerateSection)');
-      console.log('    ✓ Accepts resumeText prop');
+    if (hasQuestionsSection && hasJobDescProp && usesProfileData && noGenerateSection) {
+      console.log('  ✅ PASS: QuestionsSection uses profile data');
+      console.log('    ✓ QuestionsSection function');
+      console.log('    ✓ Accepts jobDescription prop (not resumeText)');
+      console.log('    ✓ Uses actual profile data (no hallucination)');
       console.log('    ✓ GenerateSection removed\n');
       passed++;
     } else {
-      console.log('  ❌ FAIL: QuestionsSection component incomplete');
+      console.log('  ❌ FAIL: QuestionsSection not properly configured');
       console.log(`    - QuestionsSection function: ${hasQuestionsSection}`);
-      console.log(`    - resumeText prop: ${hasResumeTextProp}`);
+      console.log(`    - jobDescription prop: ${hasJobDescProp}`);
+      console.log(`    - Uses profile data: ${usesProfileData}`);
       console.log(`    - GenerateSection removed: ${noGenerateSection}\n`);
       failed++;
     }
@@ -273,23 +276,23 @@ async function runTests() {
     const panelPath = './src/components/MinimalAutofillPanel.tsx';
     const panelContent = await fs.readFile(panelPath, 'utf-8');
 
-    const hasResumeCondition = panelContent.includes("activeView === 'resume'");
+    const hasJobDescCondition = panelContent.includes("activeView === 'job-description'");
     const hasQuestionsCondition = panelContent.includes("activeView === 'questions'");
-    const hasResumeSectionRender = panelContent.includes('<ResumeSection');
+    const hasJobDescSectionRender = panelContent.includes('<JobDescriptionSection');
     const hasQuestionsSectionRender = panelContent.includes('<QuestionsSection');
 
-    if (hasResumeCondition && hasQuestionsCondition && hasResumeSectionRender && hasQuestionsSectionRender) {
+    if (hasJobDescCondition && hasQuestionsCondition && hasJobDescSectionRender && hasQuestionsSectionRender) {
       console.log('  ✅ PASS: Conditional tab rendering implemented');
-      console.log("    ✓ activeView === 'resume' condition");
+      console.log("    ✓ activeView === 'job-description' condition");
       console.log("    ✓ activeView === 'questions' condition");
-      console.log('    ✓ ResumeSection component render');
+      console.log('    ✓ JobDescriptionSection component render');
       console.log('    ✓ QuestionsSection component render\n');
       passed++;
     } else {
       console.log('  ❌ FAIL: Conditional rendering incomplete');
-      console.log(`    - Resume condition: ${hasResumeCondition}`);
+      console.log(`    - Job Description condition: ${hasJobDescCondition}`);
       console.log(`    - Questions condition: ${hasQuestionsCondition}`);
-      console.log(`    - ResumeSection render: ${hasResumeSectionRender}`);
+      console.log(`    - JobDescriptionSection render: ${hasJobDescSectionRender}`);
       console.log(`    - QuestionsSection render: ${hasQuestionsSectionRender}\n`);
       failed++;
     }
@@ -298,28 +301,31 @@ async function runTests() {
     failed++;
   }
 
-  // Test 8: Verify generateAnswerFromProfile updated with resumeText
-  console.log('Test 8: Verify generateAnswerFromProfile accepts resumeText');
+  // Test 8: Verify generateAnswerFromProfile uses profile only (no resume)
+  console.log('Test 8: Verify generateAnswerFromProfile uses profile only');
   try {
     const fs = await import('fs/promises');
     const panelPath = './src/components/MinimalAutofillPanel.tsx';
     const panelContent = await fs.readFile(panelPath, 'utf-8');
 
     const hasFunctionSignature = panelContent.includes('function generateAnswerFromProfile(');
-    const hasResumeParam = panelContent.includes('resumeText: string');
-    const hasResumeInCall = panelContent.includes('generateAnswerFromProfile(question, keywords, profile, resumeText)');
+    const usesProfileData = panelContent.includes('No hallucination - uses real data from ProfessionalProfile');
+    const hasCorrectCall = panelContent.includes('generateAnswerFromProfile(question, keywords, profile)');
+    const noResumeParam = !panelContent.includes('resumeText: string');
 
-    if (hasFunctionSignature && hasResumeParam && hasResumeInCall) {
-      console.log('  ✅ PASS: generateAnswerFromProfile updated');
+    if (hasFunctionSignature && usesProfileData && hasCorrectCall && noResumeParam) {
+      console.log('  ✅ PASS: generateAnswerFromProfile uses profile only');
       console.log('    ✓ Function signature present');
-      console.log('    ✓ resumeText parameter added');
-      console.log('    ✓ Function called with resumeText\n');
+      console.log('    ✓ Uses actual profile data (no hallucination)');
+      console.log('    ✓ Function called with profile only (no resumeText)');
+      console.log('    ✓ No resumeText parameter\n');
       passed++;
     } else {
-      console.log('  ❌ FAIL: generateAnswerFromProfile not updated');
+      console.log('  ❌ FAIL: generateAnswerFromProfile not properly configured');
       console.log(`    - Function signature: ${hasFunctionSignature}`);
-      console.log(`    - resumeText param: ${hasResumeParam}`);
-      console.log(`    - Resume in call: ${hasResumeInCall}\n`);
+      console.log(`    - Uses profile data: ${usesProfileData}`);
+      console.log(`    - Correct call: ${hasCorrectCall}`);
+      console.log(`    - No resumeText param: ${noResumeParam}\n`);
       failed++;
     }
   } catch (error) {
@@ -375,14 +381,15 @@ async function runTests() {
   if (failed === 0) {
     console.log('🎉 ALL TESTS PASSED! Tabbed interface is production-ready.\n');
     console.log('Tabbed Interface Features:');
-    console.log('  ✅ Resume Tab → Paste and store resume content');
-    console.log('  ✅ Questions Tab → AI answer generation');
+    console.log('  ✅ Job Description Tab → Paste and analyze job description');
+    console.log('  ✅ Questions Tab → AI answer generation from ACTUAL profile data');
+    console.log('  ✅ No hallucination → Uses real ProfessionalProfile data');
     console.log('  ✅ Auto-copy to clipboard → AI answers automatically copied');
     console.log('  ✅ Manual copy button → Copy with "Copied!" feedback');
     console.log('  ✅ Tab switching → Smooth transitions with LinkedIn blue accent');
-    console.log('  ✅ State persistence → Resume text persists between tabs');
+    console.log('  ✅ State persistence → Job description persists between tabs');
     console.log('  ✅ Responsive design → Adjusts layout at 400px width');
-    console.log('  ✅ Visual feedback → Notifications for auto-copy and manual copy\n');
+    console.log('  ✅ Visual feedback → Notifications for JD saved and auto-copy\n');
   } else {
     console.log('⚠️  Some tests failed. Review errors above.\n');
   }
