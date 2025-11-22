@@ -4,7 +4,8 @@
  */
 
 import { NetworkGraph } from '../lib/graph';
-import type { NetworkNode, NetworkEdge, LinkedInProfile } from '../types';
+import type { NetworkNode, NetworkEdge } from '../types';
+import type { LinkedInPersonProfile } from '../types/monitoring';
 import { scrapePersonProfile } from '../utils/linkedin-scraper';
 import { calculateProfileSimilarity } from './universal-connection/intermediary-scorer';
 import { log, LogCategory } from '../utils/logger';
@@ -104,19 +105,43 @@ async function markProfileScraped(profileUrl: string): Promise<void> {
 }
 
 /**
+ * Convert LinkedInPersonProfile to LinkedInProfile format
+ */
+function convertToLinkedInProfile(profile: LinkedInPersonProfile): any {
+  return {
+    id: profile.profileUrl,
+    name: profile.name,
+    headline: profile.headline,
+    location: profile.location,
+    avatarUrl: profile.photoUrl,
+    experience: profile.currentRole ? [{
+      company: profile.currentRole.company,
+      title: profile.currentRole.title,
+      location: profile.location,
+    }] : [],
+    education: [],
+    skills: [],
+    scrapedAt: new Date().toISOString(),
+  };
+}
+
+/**
  * Convert LinkedIn profile to NetworkNode
  */
-function convertToNetworkNode(profile: LinkedInProfile, currentUserId?: string): NetworkNode {
+function convertToNetworkNode(profile: LinkedInPersonProfile, currentUserId?: string): NetworkNode {
   // Use profile URL as ID (most stable)
-  const id = profile.profileUrl || profile.publicId || profile.name;
+  const id = profile.profileUrl || profile.name;
 
   // Determine degree (1st, 2nd, or 3rd degree connection)
   // For now, assume all are 2nd degree unless it's the current user
   const degree = id === currentUserId ? 0 : 2;
 
+  // Convert to LinkedInProfile format
+  const linkedInProfile = convertToLinkedInProfile(profile);
+
   return {
     id,
-    profile,
+    profile: linkedInProfile,
     status: 'not_contacted',
     degree: degree as 1 | 2 | 3,
     matchScore: 0, // Will be calculated when finding paths
@@ -126,7 +151,7 @@ function convertToNetworkNode(profile: LinkedInProfile, currentUserId?: string):
 /**
  * Calculate edge weight between two profiles
  */
-function calculateEdgeWeight(profile1: LinkedInProfile, profile2: LinkedInProfile): number {
+function calculateEdgeWeight(profile1: LinkedInPersonProfile, profile2: LinkedInPersonProfile): number {
   // Base weight
   let weight = 1.0;
 

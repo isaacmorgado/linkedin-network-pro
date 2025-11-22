@@ -201,7 +201,17 @@ export function getCurrentLinkedInUser(): LinkedInPersonProfile | null {
     // Method 1: Extract from global navigation bar
     const navProfileLink = document.querySelector('a[href*="/in/me/"], a[data-control-name="identity_profile_photo"]') as HTMLAnchorElement;
     if (navProfileLink) {
-      profileUrl = navProfileLink.href.replace('/in/me/', '/in/').replace(/\/$/, '');
+      let href = navProfileLink.href;
+
+      // Ensure full URL (in case href is relative or malformed)
+      if (href.startsWith('/')) {
+        href = window.location.origin + href;
+      } else if (!href.startsWith('http')) {
+        // If it's just "dmartell" or similar, construct full URL
+        href = `${window.location.origin}/in/${href}`;
+      }
+
+      profileUrl = href.replace('/in/me/', '/in/').replace(/\/$/, '');
     }
 
     // Method 2: Extract from profile photo in nav
