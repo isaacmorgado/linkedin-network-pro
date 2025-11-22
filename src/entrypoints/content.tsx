@@ -74,7 +74,7 @@ export default defineContentScript({
       });
 
       // Wait a bit for page to finish loading
-      setTimeout(() => {
+      setTimeout(async () => {
         log.debug(LogCategory.CONTENT_SCRIPT, 'Starting post-load initialization', { panelType });
 
         // Inject appropriate panel
@@ -89,6 +89,22 @@ export default defineContentScript({
           const linkedInPageType = detectLinkedInPage();
           log.debug(LogCategory.CONTENT_SCRIPT, 'LinkedIn page type', { linkedInPageType });
           startMonitoring();
+
+          // ALSO trigger network building on initial page load
+          const currentUrl = window.location.href;
+          if (currentUrl.includes('linkedin.com/in/') && !currentUrl.includes('/edit/')) {
+            try {
+              log.info(LogCategory.NETWORK, 'LinkedIn profile detected on page load, adding to network graph');
+              const result = await addProfileToGraph(currentUrl);
+              if (result.success) {
+                log.info(LogCategory.NETWORK, result.message);
+              } else {
+                log.warn(LogCategory.NETWORK, `Failed to add profile: ${result.message}`);
+              }
+            } catch (error) {
+              log.error(LogCategory.NETWORK, 'Error building network graph on page load', error as Error);
+            }
+          }
         }
       }, 1000);
 
