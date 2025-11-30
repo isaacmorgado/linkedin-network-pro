@@ -1,0 +1,212 @@
+/**
+ * Shared Animations - Uproot Design System
+ *
+ * Centralized keyframe animations to avoid duplication.
+ * Import this file in components that need animations.
+ */
+
+/* Spinning animation for loading indicators */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fade out animation */
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Slide up animation */
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Slide down animation */
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Slide in from right */
+@keyframes slideInRight {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Slide in from left */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Scale up animation */
+@keyframes scaleUp {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Bounce animation */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Shake animation */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
+}
+
+/* Slide in animation (from right) */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Slide out animation (to right) */
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+/* Apply spinning animation */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Apply fade in animation */
+.animate-fadeIn {
+  animation: fadeIn 300ms ease-out;
+}
+
+/* Apply fade out animation */
+.animate-fadeOut {
+  animation: fadeOut 300ms ease-in;
+}
+
+/* Apply slide up animation */
+.animate-slideUp {
+  animation: slideUp 300ms ease-out;
+}
+
+/* Apply slide down animation */
+.animate-slideDown {
+  animation: slideDown 300ms ease-out;
+}
+
+/* Apply slide in from right */
+.animate-slideInRight {
+  animation: slideInRight 300ms ease-out;
+}
+
+/* Apply slide in from left */
+.animate-slideInLeft {
+  animation: slideInLeft 300ms ease-out;
+}
+
+/* Apply scale up animation */
+.animate-scaleUp {
+  animation: scaleUp 300ms ease-out;
+}
+
+/* Apply pulse animation */
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Apply bounce animation */
+.animate-bounce {
+  animation: bounce 0.5s ease-in-out infinite;
+}
+
+/* Apply shake animation */
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}

@@ -1,0 +1,9 @@
+node_modules/
+.output/
+.wxt/
+dist/
+linkedin-network-pro
+*.log
+.DS_Store
+.env.local
+.env
