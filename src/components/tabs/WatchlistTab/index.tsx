@@ -10,14 +10,8 @@ import { PersonCard } from './PersonCard';
 import { CompanyCard } from './CompanyCard';
 import { PathCard } from './PathCard';
 import { TabSwitcher } from './TabSwitcher';
-import { UniversalSearch } from './UniversalSearch';
-import { SearchResults } from './SearchResults';
-import { ConnectionPathView } from './ConnectionPathView';
-import { MessageComposer } from './MessageComposer';
 import { CompanyJobPreferences } from './CompanyJobPreferences';
-import { apiClient } from '../../../services/api';
 import type { WatchlistView } from './types';
-import type { SearchResult, EnhancedConnectionRoute } from '../../../services/universal-connection/universal-connection-types';
 import type { WatchlistCompany } from '../../../types/watchlist';
 
 interface WatchlistTabProps {
@@ -39,17 +33,6 @@ export function WatchlistTab({ panelWidth = 400 }: WatchlistTabProps) {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<WatchlistView>('network');
   const [editingPreferencesId, setEditingPreferencesId] = useState<string | null>(null);
-
-  // Search state
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedPath, setSelectedPath] = useState<EnhancedConnectionRoute | null>(null);
-  const [generatedMessage, setGeneratedMessage] = useState<{
-    message: string;
-    alternatives: string[];
-    reasoning: string[];
-  } | null>(null);
-  const [searchError, setSearchError] = useState<string | null>(null);
 
   const handleRemovePerson = async (id: string, name: string) => {
     setRemovingId(id);
@@ -126,113 +109,6 @@ export function WatchlistTab({ panelWidth = 400 }: WatchlistTabProps) {
     window.open(url, '_blank');
   };
 
-  // Search handlers
-  const handleSearchResults = (results: SearchResult[]) => {
-    setSearchResults(results);
-    setSearchError(null);
-    setActiveView('search');
-  };
-
-  const handleSearchError = (error: Error) => {
-    console.error('[WatchlistTab] Search error:', error);
-    setSearchError(error.message || 'Failed to search network');
-  };
-
-  const handleFindPath = async (result: SearchResult) => {
-    try {
-      setIsSearching(true);
-      // TODO: Get current user ID from storage
-      const userId = 'current-user-id'; // Replace with actual user ID
-
-      const route = await apiClient.findPath({
-        userId,
-        sourceProfileId: userId,
-        targetProfileId: result.profile.id,
-      });
-
-      setSelectedPath(route);
-    } catch (error) {
-      console.error('[WatchlistTab] Failed to find path:', error);
-      setSearchError('Failed to find connection path');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleGenerateMessage = async (result: SearchResult) => {
-    try {
-      setIsSearching(true);
-      // TODO: Get current user profile from storage
-      const userId = 'current-user-id';
-      const currentUserProfile = {
-        id: userId,
-        name: 'Current User',
-        // Add other profile fields
-      };
-
-      const response = await apiClient.generateMessage({
-        userId,
-        targetProfile: result.profile,
-        sourceProfile: currentUserProfile as any,
-        context: {
-          purpose: 'networking',
-        },
-        tone: 'professional',
-      });
-
-      setGeneratedMessage({
-        message: response.message,
-        alternatives: response.alternatives || [],
-        reasoning: response.reasoning || [],
-      });
-    } catch (error) {
-      console.error('[WatchlistTab] Failed to generate message:', error);
-      setSearchError('Failed to generate message');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleGenerateMessageFromPath = async () => {
-    if (!selectedPath) return;
-
-    try {
-      setIsSearching(true);
-      const userId = 'current-user-id';
-      const currentUserProfile = {
-        id: userId,
-        name: 'Current User',
-      };
-
-      const targetProfile = selectedPath.path[selectedPath.path.length - 1];
-
-      const response = await apiClient.generateMessage({
-        userId,
-        targetProfile,
-        sourceProfile: currentUserProfile as any,
-        context: {
-          purpose: 'networking',
-          pathInfo: selectedPath as any,
-        },
-        tone: 'professional',
-      });
-
-      setGeneratedMessage({
-        message: response.message,
-        alternatives: response.alternatives || [],
-        reasoning: response.reasoning || [],
-      });
-
-      // Close path view
-      setSelectedPath(null);
-    } catch (error) {
-      console.error('[WatchlistTab] Failed to generate message:', error);
-      setSearchError('Failed to generate message');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <div
@@ -276,8 +152,7 @@ export function WatchlistTab({ panelWidth = 400 }: WatchlistTabProps) {
   const currentList = activeView === 'network' ? connectionPaths : activeView === 'people' ? watchlist : companyWatchlist;
   const isEmpty = currentList.length === 0;
 
-  // Don't show empty state for search view - it has its own UI
-  if (isEmpty && activeView !== 'search') {
+  if (isEmpty) {
     return (
       <div
         style={{
@@ -294,7 +169,6 @@ export function WatchlistTab({ panelWidth = 400 }: WatchlistTabProps) {
           pathCount={connectionPaths.length}
           peopleCount={watchlist.length}
           companyCount={companyWatchlist.length}
-          searchCount={searchResults.length}
           panelWidth={panelWidth}
         />
 
@@ -404,100 +278,54 @@ export function WatchlistTab({ panelWidth = 400 }: WatchlistTabProps) {
         pathCount={connectionPaths.length}
         peopleCount={watchlist.length}
         companyCount={companyWatchlist.length}
-        searchCount={searchResults.length}
         panelWidth={panelWidth}
       />
 
       {/* Content by View */}
-      {activeView === 'search' ? (
-        <>
-          <UniversalSearch onSearchResults={handleSearchResults} onError={handleSearchError} />
-          <SearchResults
-            results={searchResults}
-            onFindPath={handleFindPath}
-            onGenerateMessage={handleGenerateMessage}
-            isLoading={isSearching}
-          />
-          {searchError && (
-            <div
-              style={{
-                margin: '16px',
-                padding: '12px 16px',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                color: '#EF4444',
-                borderRadius: '8px',
-                fontSize: '13px',
-              }}
-            >
-              {searchError}
-            </div>
-          )}
-        </>
-      ) : (
-        /* List */
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {activeView === 'network' ? (
-            connectionPaths.map((path) => (
-              <PathCard
-                key={path.id}
-                path={path}
-                onRemove={() => handleRemovePath(path.id, path.targetName)}
-                onViewProfile={() => handleViewProfile(path.targetProfileUrl)}
-                onMarkStepConnected={handleMarkStepConnected}
-                isRemoving={removingId === path.id}
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {activeView === 'network' ? (
+          connectionPaths.map((path) => (
+            <PathCard
+              key={path.id}
+              path={path}
+              onRemove={() => handleRemovePath(path.id, path.targetName)}
+              onViewProfile={() => handleViewProfile(path.targetProfileUrl)}
+              onMarkStepConnected={handleMarkStepConnected}
+              isRemoving={removingId === path.id}
+            />
+          ))
+        ) : activeView === 'people' ? (
+          watchlist.map((person) => (
+            <PersonCard
+              key={person.id}
+              person={person}
+              onRemove={() => handleRemovePerson(person.id, person.name)}
+              onViewProfile={() => handleViewProfile(person.profileUrl)}
+              isRemoving={removingId === person.id}
+            />
+          ))
+        ) : (
+          companyWatchlist.map((company) => (
+            <div key={company.id}>
+              <CompanyCard
+                company={company}
+                onRemove={() => handleRemoveCompany(company.id, company.name)}
+                onViewCompany={() => handleViewProfile(company.companyUrl)}
+                onToggleJobAlerts={() => handleToggleJobAlerts(company)}
+                onEditPreferences={() => setEditingPreferencesId(company.id)}
+                isRemoving={removingId === company.id}
               />
-            ))
-          ) : activeView === 'people' ? (
-            watchlist.map((person) => (
-              <PersonCard
-                key={person.id}
-                person={person}
-                onRemove={() => handleRemovePerson(person.id, person.name)}
-                onViewProfile={() => handleViewProfile(person.profileUrl)}
-                isRemoving={removingId === person.id}
-              />
-            ))
-          ) : (
-            companyWatchlist.map((company) => (
-              <div key={company.id}>
-                <CompanyCard
+              {editingPreferencesId === company.id && (
+                <CompanyJobPreferences
                   company={company}
-                  onRemove={() => handleRemoveCompany(company.id, company.name)}
-                  onViewCompany={() => handleViewProfile(company.companyUrl)}
-                  onToggleJobAlerts={() => handleToggleJobAlerts(company)}
-                  onEditPreferences={() => setEditingPreferencesId(company.id)}
-                  isRemoving={removingId === company.id}
+                  onSave={(prefs) => handleSavePreferences(company.id, prefs)}
+                  onCancel={() => setEditingPreferencesId(null)}
                 />
-                {editingPreferencesId === company.id && (
-                  <CompanyJobPreferences
-                    company={company}
-                    onSave={(prefs) => handleSavePreferences(company.id, prefs)}
-                    onCancel={() => setEditingPreferencesId(null)}
-                  />
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Modals */}
-      {selectedPath && (
-        <ConnectionPathView
-          path={selectedPath}
-          onGenerateMessage={handleGenerateMessageFromPath}
-          onClose={() => setSelectedPath(null)}
-        />
-      )}
-
-      {generatedMessage && (
-        <MessageComposer
-          message={generatedMessage.message}
-          alternatives={generatedMessage.alternatives}
-          reasoning={generatedMessage.reasoning}
-          onClose={() => setGeneratedMessage(null)}
-        />
-      )}
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

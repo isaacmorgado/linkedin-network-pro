@@ -7,7 +7,7 @@
 import {
   Activity,
   BookmarkCheck,
-
+  Search,
   FileText,
 
   Settings2,
@@ -20,7 +20,7 @@ import type { TabConfig } from '../types/navigation';
 
 export const TAB_CONFIGS: TabConfig[] = [
   // ========================================
-  // ALWAYS VISIBLE (4 core tabs)
+  // ALWAYS VISIBLE (5 core tabs)
   // ========================================
 
   {
@@ -34,10 +34,19 @@ export const TAB_CONFIGS: TabConfig[] = [
   },
 
   {
+    id: 'search',
+    label: 'Search',
+    icon: Search,
+    shortcut: 2,
+    alwaysVisible: true,
+    badge: false,
+  },
+
+  {
     id: 'watchlist',
     label: 'Watchlist',
     icon: BookmarkCheck,
-    shortcut: 2,
+    shortcut: 3,
     alwaysVisible: true,
     badge: false,
   },
@@ -46,7 +55,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'resume',
     label: 'Resume',
     icon: FileText,
-    shortcut: 3,
+    shortcut: 4,
     alwaysVisible: true,
     badge: false,
   },
@@ -55,7 +64,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'jobs',
     label: 'Jobs',
     icon: Briefcase,
-    shortcut: 4,
+    shortcut: 5,
     alwaysVisible: false,
     visibleOn: ['job'], // Only on LinkedIn job pages
     badge: true, // Show count of analyzed jobs
@@ -66,7 +75,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'settings',
     label: 'Settings',
     icon: Settings2,
-    shortcut: 5,
+    shortcut: 6,
     alwaysVisible: true,
     badge: false,
   },
@@ -79,7 +88,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'profile',
     label: 'Profile',
     icon: UserCircle,
-    shortcut: 6,
+    shortcut: 7,
     alwaysVisible: false,
     visibleOn: ['profile'], // Only on person pages
     badge: false,
@@ -89,7 +98,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'company',
     label: 'Company',
     icon: Building2,
-    shortcut: 7,
+    shortcut: 8,
     alwaysVisible: false,
     visibleOn: ['company'], // Only on company pages
     badge: false,
@@ -103,7 +112,7 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'onboarding',
     label: 'Get Started',
     icon: Rocket,
-    shortcut: 8,
+    shortcut: 9,
     alwaysVisible: false, // Only shown on first run
     badge: false,
   },

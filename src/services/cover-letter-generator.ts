@@ -239,8 +239,8 @@ function extractJobContext(jobPosting: string): JobContext {
     }
   }
 
-  // Extract key requirements using keyword extractor
-  const keyRequirements = extractKeywordsFromJobDescription(jobPosting);
+  // Extract key requirements using keyword extractor (pass role for industry detection)
+  const keyRequirements = extractKeywordsFromJobDescription(jobPosting, role);
 
   // Determine culture
   const culture = detectCultureLevel(jobPosting);
@@ -576,7 +576,9 @@ function buildNarrative(
 
 function buildHook(_profile: UserProfile, _jobContext: JobContext, _matchReport: any): string {
   const topMatch = _matchReport.matches[0];
-  const skill = topMatch ? topMatch.requirement.phrase : _jobContext.keyRequirements[0].phrase;
+  const skill = topMatch
+    ? topMatch.requirement.phrase
+    : _jobContext.keyRequirements[0]?.phrase || _profile.title || 'professional experience';
 
   return `${_profile.metadata.totalYearsExperience}+ years of ${skill} experience, passionate about ${_jobContext.company}'s mission`;
 }

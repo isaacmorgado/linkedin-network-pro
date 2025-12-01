@@ -14,6 +14,7 @@ import { log, LogCategory } from '../../utils/logger';
 import { ProfileTab } from '../tabs/ProfileTab';
 import { CompanyTab } from '../tabs/CompanyTab';
 import { WatchlistTab } from '../tabs/WatchlistTab';
+import { SearchTab } from '../tabs/SearchTab';
 import { OnboardingTab } from '../tabs/OnboardingTab';
 import { SettingsTab } from '../tabs/SettingsTab';
 import { FeedTab } from '../tabs/FeedTab';
@@ -43,6 +44,7 @@ const FeedTabWithErrorBoundary: React.FC<TabContentProps> = (props) => (
 // Tab content components
 const TabContent: Record<string, React.ComponentType<TabContentProps>> = {
   feed: FeedTabWithErrorBoundary,
+  search: SearchTab,
   profile: ProfileTab,
   company: CompanyTab,
   watchlist: WatchlistTab,

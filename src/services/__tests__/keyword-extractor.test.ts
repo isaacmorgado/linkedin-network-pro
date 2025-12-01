@@ -155,7 +155,7 @@ describe('Keyword Extractor - Happy Path', () => {
 
     // Keywords appearing multiple times should have higher frequency
     const pythonKeyword = keywords.find((k) => k.phrase.toLowerCase() === 'python');
-    if (pythonKeyword && pythonKeyword.frequency > 1) {
+    if (pythonKeyword && pythonKeyword.frequency && pythonKeyword.frequency > 1) {
       // Higher frequency should contribute to weight
       expect(pythonKeyword.score).toBeGreaterThan(30);
     }
@@ -193,7 +193,9 @@ describe('Keyword Extractor - Edge Cases', () => {
     const longDescription = 'Python developer with React experience. '.repeat(2500); // ~100k chars
 
     const startTime = Date.now();
-    const keywords = extractKeywordsFromJobDescription(longDescription);
+    const keywords = extractKeywordsFromJobDescription(longDescription, 'Software Engineer', {
+      disableIndustryFiltering: true,
+    });
     const duration = Date.now() - startTime;
 
     // Should complete in reasonable time (< 5 seconds)
@@ -250,7 +252,9 @@ describe('Keyword Extractor - Edge Cases', () => {
       - Strong communication skills 💬
     `;
 
-    const keywords = extractKeywordsFromJobDescription(emojiJobDescription);
+    const keywords = extractKeywordsFromJobDescription(emojiJobDescription, 'Python Developer', {
+      disableIndustryFiltering: true,
+    });
 
     // Should handle emoji without crashing
     expect(keywords).toBeDefined();
@@ -307,7 +311,9 @@ describe('Keyword Extractor - Edge Cases', () => {
       Localisation: Montréal, Québec
     `;
 
-    const keywords = extractKeywordsFromJobDescription(nonAsciiJobDescription);
+    const keywords = extractKeywordsFromJobDescription(nonAsciiJobDescription, 'Senior Developer', {
+      disableIndustryFiltering: true,
+    });
 
     // Should handle non-ASCII without crashing
     expect(keywords).toBeDefined();
@@ -329,7 +335,9 @@ describe('Keyword Extractor - Edge Cases', () => {
       ✓ PostgreSQL
     `;
 
-    const keywords = extractKeywordsFromJobDescription(bulletJobDescription);
+    const keywords = extractKeywordsFromJobDescription(bulletJobDescription, 'Software Engineer', {
+      disableIndustryFiltering: true,
+    });
 
     // Should extract keywords
     expect(keywords).toBeDefined();

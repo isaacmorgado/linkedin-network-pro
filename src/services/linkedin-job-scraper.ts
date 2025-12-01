@@ -15,7 +15,7 @@ function querySelectorDeep(selector: string): Element | null {
   if (element) return element;
 
   // Recursively search through all shadow roots (including nested)
-  function searchShadowDOMRecursive(root: Document | ShadowRoot): Element | null {
+  function searchShadowDOMRecursive(root: Document | globalThis.ShadowRoot): Element | null {
     // Try to find in current root
     const found = root.querySelector(selector);
     if (found) return found;
@@ -49,7 +49,7 @@ function querySelectorAllDeep(selector: string): Element[] {
   results.push(...Array.from(document.querySelectorAll(selector)));
 
   // Recursively search through all shadow roots
-  function searchShadowDOMRecursive(root: Document | ShadowRoot): void {
+  function searchShadowDOMRecursive(root: Document | globalThis.ShadowRoot): void {
     // Get matches in current root
     results.push(...Array.from(root.querySelectorAll(selector)));
 
@@ -478,6 +478,47 @@ export function scrapeJobData(): LinkedInJobData | null {
 }
 
 /**
+ * Clean and normalize extracted job title
+ * Handles LinkedIn DOM quirks: duplicate titles, verification badges, excess whitespace
+ */
+function cleanJobTitle(rawTitle: string): string {
+  if (!rawTitle) return '';
+
+  // Step 1: Normalize whitespace (collapse newlines, tabs, multiple spaces)
+  let title = rawTitle.replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+
+  // Step 2: Remove "with verification" suffix (case-insensitive)
+  title = title.replace(/\s+with\s+verification\s*$/i, '').trim();
+
+  // Step 3: Handle duplicate titles (e.g., "Title Title" or "Title \n\n Title")
+  // Split by multiple spaces/newlines and check for duplicates
+  const parts = title.split(/\s{2,}/);
+  if (parts.length === 2 && parts[0].trim() === parts[1].trim()) {
+    title = parts[0].trim();
+  }
+
+  // Step 4: If title contains the same text twice in a row, take the first half
+  const halfLength = Math.floor(title.length / 2);
+  const firstHalf = title.substring(0, halfLength).trim();
+  const secondHalf = title.substring(halfLength).trim();
+
+  if (firstHalf && secondHalf &&
+      (title === firstHalf + ' ' + firstHalf || // "Title Title"
+       title === firstHalf + firstHalf || // "TitleTitle"
+       secondHalf.startsWith(firstHalf))) { // Second half starts with first half
+    title = firstHalf;
+  }
+
+  // Step 5: Final cleanup - remove any remaining "with verification" that might be embedded
+  title = title.replace(/\s+with\s+verification\s*/gi, ' ').trim();
+
+  // Step 6: Collapse any remaining multiple spaces
+  title = title.replace(/\s{2,}/g, ' ').trim();
+
+  return title;
+}
+
+/**
  * Validate if a title is a real job title (not UI noise)
  * Returns true if valid, false if it should be skipped
  */
@@ -560,9 +601,13 @@ function extractJobTitle(): string {
 
       for (const heading of Array.from(headings)) {
         if (heading?.textContent?.trim()) {
-          const title = heading.textContent.trim();
+          const rawTitle = heading.textContent.trim();
+          const title = cleanJobTitle(rawTitle);
           if (isValidJobTitle(title)) {
             console.log(`[Uproot] ✅ Found job title in expandable-text-box parent (depth ${depth}): "${title}"`);
+            if (rawTitle !== title) {
+              console.log(`[Uproot] 🧹 Cleaned title from: "${rawTitle}"`);
+            }
             return title;
           } else {
             console.log(`[Uproot] Skipping invalid title at depth ${depth}: "${title}"`);
@@ -602,9 +647,13 @@ function extractJobTitle(): string {
         if (ariaLabel) {
           const match = ariaLabel.match(/^Dismiss\s+(.+?)\s+job$/i);
           if (match && match[1]) {
-            const jobTitle = match[1].trim();
+            const rawTitle = match[1].trim();
+            const jobTitle = cleanJobTitle(rawTitle);
             if (jobTitle.length > 3 && jobTitle.length < 150) {
               console.log(`[Uproot] ✅ Found job title using ARIA label in ${containerSelector}: "${jobTitle}"`);
+              if (rawTitle !== jobTitle) {
+                console.log(`[Uproot] 🧹 Cleaned title from: "${rawTitle}"`);
+              }
               return jobTitle;
             }
           }
@@ -646,9 +695,13 @@ function extractJobTitle(): string {
         for (const titleSelector of titleSelectors) {
           const titleElement = jobCard.querySelector(titleSelector);
           if (titleElement?.textContent?.trim()) {
-            const title = titleElement.textContent.trim();
+            const rawTitle = titleElement.textContent.trim();
+            const title = cleanJobTitle(rawTitle);
             if (isValidJobTitle(title)) {
               console.log(`[Uproot] ✅ Found job title in job card: "${title}"`);
+              if (rawTitle !== title) {
+                console.log(`[Uproot] 🧹 Cleaned title from: "${rawTitle}"`);
+              }
               return title;
             }
           }
@@ -664,9 +717,13 @@ function extractJobTitle(): string {
     // or: "Job Title - Company Name | LinkedIn"
     const titleMatch = document.title.match(/^(.+?)\s+[\|\-]\s+.+?\s+\|\s+LinkedIn$/);
     if (titleMatch && titleMatch[1]) {
-      const title = titleMatch[1].trim();
+      const rawTitle = titleMatch[1].trim();
+      const title = cleanJobTitle(rawTitle);
       if (isValidJobTitle(title)) {
         console.log(`[Uproot] ✅ Found job title in document.title: "${title}"`);
+        if (rawTitle !== title) {
+          console.log(`[Uproot] 🧹 Cleaned title from: "${rawTitle}"`);
+        }
         return title;
       }
     }
@@ -683,9 +740,13 @@ function extractJobTitle(): string {
 
       for (const heading of Array.from(headings)) {
         if (heading?.textContent?.trim()) {
-          const title = heading.textContent.trim();
+          const rawTitle = heading.textContent.trim();
+          const title = cleanJobTitle(rawTitle);
           if (isValidJobTitle(title)) {
             console.log(`[Uproot] ✅ Found job title in ${containerSelector} h1/h2: "${title}"`);
+            if (rawTitle !== title) {
+              console.log(`[Uproot] 🧹 Cleaned title from: "${rawTitle}"`);
+            }
             return title;
           } else {
             console.log(`[Uproot] Skipping invalid title in ${containerSelector}: "${title}"`);

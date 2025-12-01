@@ -1,15 +1,16 @@
 /**
  * Tab Navigation Type Definitions - Simplified Structure
  *
- * 4 core tabs (always visible) + 3 context-sensitive + 1 special
+ * 5 core tabs (always visible) + 3 context-sensitive + 1 special
  */
 
 import type { LucideIcon } from 'lucide-react';
 
 // Simplified Tab IDs
 export type TabId =
-  // Always visible (4 core tabs)
+  // Always visible (5 core tabs)
   | 'feed'          // Activity feed (includes all notifications/alerts)
+  | 'search'        // Universal network search
   | 'watchlist'     // Saved people/companies/paths
   | 'resume'        // Resume editor
   | 'settings'      // Preferences

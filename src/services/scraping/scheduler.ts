@@ -270,7 +270,7 @@ export async function triggerConnectionSync(): Promise<void> {
  */
 export function setupOnlineStatusMonitoring(): void {
   // Use 'self' in service worker context, 'window' in other contexts
-  const globalContext = typeof window !== 'undefined' ? window : self;
+  const globalContext = typeof window !== 'undefined' ? window : (globalThis as any);
 
   // Listen for offline event
   globalContext.addEventListener('offline', async () => {

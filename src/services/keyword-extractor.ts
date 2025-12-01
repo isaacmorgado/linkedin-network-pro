@@ -9,10 +9,181 @@ import { log, LogCategory } from '../utils/logger';
 import { skillsDatabase } from '../types/skills';
 
 /**
+ * Job industry types for contextual validation
+ */
+type JobIndustry =
+  | 'technology'
+  | 'healthcare'
+  | 'finance'
+  | 'hr'
+  | 'sales'
+  | 'marketing'
+  | 'customer-service'
+  | 'retail'
+  | 'education'
+  | 'legal'
+  | 'engineering'
+  | 'operations'
+  | 'general';
+
+/**
+ * Mapping of job industries to allowed skill categories
+ * This prevents false positives like "Next.js" appearing in customer service roles
+ */
+const INDUSTRY_SKILL_MAP: Record<JobIndustry, Set<string>> = {
+  'technology': new Set([
+    'programming-language', 'frontend-framework', 'backend-framework', 'database',
+    'cloud-platform', 'devops-tool', 'testing-framework', 'methodology',
+    'soft-skill', 'certification', 'other'
+  ]),
+  'healthcare': new Set([
+    'medical-skill', 'healthcare-system', 'medical-certification',
+    'compliance-framework', 'soft-skill', 'certification', 'other'
+  ]),
+  'finance': new Set([
+    'financial-skill', 'accounting-tool', 'business-analysis', 'financial-certification',
+    'compliance-framework', 'analytics-platform', 'soft-skill', 'certification', 'other'
+  ]),
+  'hr': new Set([
+    'hr-skill', 'hr-system', 'hr-certification', 'soft-skill',
+    'compliance-framework', 'certification', 'other'
+  ]),
+  'sales': new Set([
+    'sales-skill', 'crm-tool', 'sales-methodology', 'soft-skill',
+    'business-analysis', 'certification', 'other'
+  ]),
+  'marketing': new Set([
+    'marketing-skill', 'marketing-tool', 'analytics-platform', 'marketing-certification',
+    'crm-tool', 'soft-skill', 'certification', 'other'
+  ]),
+  'customer-service': new Set([
+    'customer-service-skill', 'support-tool', 'customer-service-certification',
+    'crm-tool', 'soft-skill', 'certification', 'other'
+  ]),
+  'retail': new Set([
+    'retail-skill', 'ecommerce-platform', 'pos-system', 'customer-service-skill',
+    'soft-skill', 'certification', 'other'
+  ]),
+  'education': new Set([
+    'instructional-design', 'lms-platform', 'elearning-tool', 'education-certification',
+    'soft-skill', 'certification', 'other'
+  ]),
+  'legal': new Set([
+    'legal-skill', 'legal-software', 'compliance-framework', 'legal-certification',
+    'soft-skill', 'certification', 'other'
+  ]),
+  'engineering': new Set([
+    'cad-software', 'engineering-skill', 'engineering-certification',
+    'soft-skill', 'certification', 'other'
+  ]),
+  'operations': new Set([
+    'methodology', 'analytics-platform', 'soft-skill', 'certification',
+    'business-analysis', 'other'
+  ]),
+  'general': new Set([
+    'soft-skill', 'certification', 'methodology', 'other',
+    'business-analysis', 'analytics-platform'
+  ])
+};
+
+/**
+ * Infer job industry from job title and description
+ */
+function inferJobIndustry(jobDescription: string, jobTitle?: string): JobIndustry {
+  const text = `${jobTitle || ''} ${jobDescription}`.toLowerCase();
+
+  // Technology indicators (most specific first)
+  if (/\b(software|developer|engineer|programmer|frontend|backend|fullstack|full[- ]stack|devops|sre|data scientist|ml engineer|ai engineer)\b/i.test(jobTitle || '')) {
+    return 'technology';
+  }
+  if (/\b(react|angular|vue|python|java|javascript|typescript|aws|azure|docker|kubernetes|api|microservices)\b/i.test(text) &&
+      /\b(develop|code|build|engineer|architect)\b/i.test(text)) {
+    return 'technology';
+  }
+
+  // Healthcare
+  if (/\b(nurse|physician|doctor|medical|healthcare|clinical|patient|hospital|ehr|emr|epic|cerner)\b/i.test(text)) {
+    return 'healthcare';
+  }
+
+  // Finance & Accounting
+  if (/\b(accountant|cpa|financial analyst|finance|accounting|investment|banking|auditor|controller|gaap|ifrs)\b/i.test(text)) {
+    return 'finance';
+  }
+
+  // HR & Recruiting
+  if (/\b(recruiter|hr|human resources|talent acquisition|employee relations|hris|workday|bamboohr)\b/i.test(text)) {
+    return 'hr';
+  }
+
+  // Sales & Business Development
+  if (/\b(sales|account executive|business development|bdr|sdr|account manager|salesforce|crm|quota)\b/i.test(text)) {
+    return 'sales';
+  }
+
+  // Marketing
+  if (/\b(marketing|seo|sem|content marketing|digital marketing|social media marketing|campaign)\b/i.test(text)) {
+    return 'marketing';
+  }
+
+  // Customer Service & Support
+  if (/\b(customer service|customer support|support specialist|call center|help desk|customer care|support agent|service representative)\b/i.test(text)) {
+    return 'customer-service';
+  }
+
+  // Retail
+  if (/\b(retail|store manager|cashier|sales associate|merchandising|pos|point of sale)\b/i.test(text)) {
+    return 'retail';
+  }
+
+  // Education
+  if (/\b(teacher|instructor|professor|education|training|curriculum|lms|learning)\b/i.test(text)) {
+    return 'education';
+  }
+
+  // Legal
+  if (/\b(attorney|lawyer|legal|paralegal|compliance|counsel|litigation)\b/i.test(text)) {
+    return 'legal';
+  }
+
+  // Engineering (non-software)
+  if (/\b(mechanical engineer|civil engineer|electrical engineer|cad|autocad|solidworks)\b/i.test(text)) {
+    return 'engineering';
+  }
+
+  // Operations & Project Management
+  if (/\b(operations|project manager|program manager|scrum master|product manager|agile|pmp)\b/i.test(text)) {
+    return 'operations';
+  }
+
+  // Default to general for unclassified
+  return 'general';
+}
+
+/**
+ * Check if a skill category is relevant for the detected job industry
+ */
+function isRelevantSkillCategory(category: string, industry: JobIndustry): boolean {
+  const allowedCategories = INDUSTRY_SKILL_MAP[industry];
+
+  // Always allow soft skills, certifications, and other
+  if (category === 'soft-skill' || category === 'certification' || category === 'other') {
+    return true;
+  }
+
+  return allowedCategories.has(category);
+}
+
+/**
  * Extract keywords from job description
  * Uses frequency analysis, position weighting, and contextual analysis
+ * Now includes industry-aware filtering to prevent false positives
  */
-export function extractKeywordsFromJobDescription(jobDescription: string): ExtractedKeyword[] {
+export function extractKeywordsFromJobDescription(
+  jobDescription: string,
+  jobTitle?: string,
+  options?: { disableIndustryFiltering?: boolean }
+): ExtractedKeyword[] {
   // Handle null/undefined input
   if (!jobDescription || typeof jobDescription !== 'string') {
     log.warn(LogCategory.SERVICE, 'Invalid job description input', { jobDescription });
@@ -27,6 +198,16 @@ export function extractKeywordsFromJobDescription(jobDescription: string): Extra
     log.debug(LogCategory.SERVICE, 'Starting keyword extraction', {
       textLength: jobDescription.length,
       wordCount: jobDescription.split(/\s+/).length,
+    });
+
+    // STEP 0: Detect job industry for contextual filtering
+    const detectedIndustry = inferJobIndustry(jobDescription, jobTitle);
+    const industryFilteringEnabled = !options?.disableIndustryFiltering;
+
+    log.info(LogCategory.SERVICE, 'Job industry detected', {
+      industry: detectedIndustry,
+      filteringEnabled: industryFilteringEnabled,
+      jobTitle: jobTitle || '(not provided)',
     });
 
     const keywords: Map<string, ExtractedKeyword> = new Map();
@@ -52,7 +233,16 @@ export function extractKeywordsFromJobDescription(jobDescription: string): Extra
           const required = isRequiredSkill(canonicalTerm, jobDescription);
           const weight = calculateKeywordWeight(canonicalTerm, frequency, jobDescription, required) + 20; // +20 bonus for known skills
 
-          if (weight >= 30) {
+          // CONTEXTUAL VALIDATION: Check if skill category is relevant for detected industry
+          const isRelevant = !industryFilteringEnabled || isRelevantSkillCategory(skill.category, detectedIndustry);
+
+          if (!isRelevant) {
+            log.debug(LogCategory.SERVICE, `Filtered out "${canonicalTerm}" (not relevant for ${detectedIndustry} industry)`, {
+              skillCategory: skill.category,
+              detectedIndustry,
+              weight,
+            });
+          } else if (weight >= 30) {
             keywords.set(canonicalTerm.toLowerCase(), {
               phrase: canonicalTerm,
               score: weight,
@@ -68,6 +258,7 @@ export function extractKeywordsFromJobDescription(jobDescription: string): Extra
               required,
               weight,
               frequency,
+              category: skill.category,
             });
 
             knownSkillsFound++;
@@ -75,7 +266,7 @@ export function extractKeywordsFromJobDescription(jobDescription: string): Extra
             log.debug(LogCategory.SERVICE, `Filtered out "${canonicalTerm}" (weight too low)`, {
               required,
               weight,
-              threshold: 20,
+              threshold: 30,
             });
           }
 
@@ -129,11 +320,13 @@ export function extractKeywordsFromJobDescription(jobDescription: string): Extra
     }
     // Remaining keywords have empty context array (saves time)
 
-    // Return all keywords (already filtered by score >= 40 threshold)
+    // Return all keywords (already filtered by score >= 30 threshold and industry relevance)
     log.info(LogCategory.SERVICE, 'Keyword extraction completed', {
       totalExtracted: sortedKeywords.length,
       requiredCount: sortedKeywords.filter((k) => k.required).length,
       preferredCount: sortedKeywords.filter((k) => !k.required).length,
+      detectedIndustry,
+      industryFilteringEnabled,
       topKeywords: sortedKeywords.slice(0, 10).map((k) => k.phrase),
     });
 
@@ -716,43 +909,14 @@ function categorizeKeyword(term: string): KeywordCategory {
 }
 
 /**
- * Generate common synonyms for keyword
- */
-function generateSynonyms(term: string): string[] {
-  const synonyms: string[] = [term];
-
-  // Technical skill synonyms
-  const techSynonyms: Record<string, string[]> = {
-    'react': ['react.js', 'reactjs', 'react js'],
-    'node': ['node.js', 'nodejs', 'node js'],
-    'javascript': ['js', 'javascript', 'ecmascript'],
-    'typescript': ['ts', 'typescript'],
-    'python': ['py', 'python'],
-    'c++': ['cpp', 'c++', 'c plus plus'],
-    'c#': ['csharp', 'c#', 'c sharp'],
-    'sql': ['sql', 'structured query language'],
-    'nosql': ['nosql', 'no sql', 'non-relational'],
-    'aws': ['amazon web services', 'aws'],
-    'gcp': ['google cloud platform', 'gcp', 'google cloud'],
-    'azure': ['microsoft azure', 'azure'],
-  };
-
-  const lowerTerm = term.toLowerCase();
-  for (const [key, syns] of Object.entries(techSynonyms)) {
-    if (lowerTerm.includes(key) || key.includes(lowerTerm)) {
-      synonyms.push(...syns);
-    }
-  }
-
-  // Remove duplicates and return
-  return Array.from(new Set(synonyms));
-}
-
-/**
  * Extract required vs preferred skills from job description
  * Returns categorized lists
  */
-export function categorizeJobRequirements(jobDescription: string): {
+export function categorizeJobRequirements(
+  jobDescription: string,
+  jobTitle?: string,
+  options?: { disableIndustryFiltering?: boolean }
+): {
   required: string[];
   preferred: string[];
 } {
@@ -762,7 +926,7 @@ export function categorizeJobRequirements(jobDescription: string): {
 
   try {
     log.debug(LogCategory.SERVICE, 'Categorizing job requirements into required vs preferred');
-    const keywords = extractKeywordsFromJobDescription(jobDescription);
+    const keywords = extractKeywordsFromJobDescription(jobDescription, jobTitle, options);
 
     const required = keywords
       .filter((k) => k.required)

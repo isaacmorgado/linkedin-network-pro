@@ -44,8 +44,8 @@ const createMockJob = (overrides: Partial<JobDescriptionAnalysis> = {}): JobDesc
   location: 'San Francisco, CA',
   jobUrl: 'https://linkedin.com/jobs/123',
   extractedKeywords: [
-    { term: 'React', category: 'technical-skill', required: true, frequency: 2, weight: 90, synonyms: ['React.js', 'ReactJS'] },
-    { term: 'TypeScript', category: 'technical-skill', required: true, frequency: 2, weight: 85, synonyms: ['TS'] },
+    { phrase: 'React', score: 90, occurrences: 2, category: 'framework', required: true, frequency: 2, synonyms: ['React.js', 'ReactJS'] },
+    { phrase: 'TypeScript', score: 85, occurrences: 2, category: 'language', required: true, frequency: 2, synonyms: ['TS'] },
   ],
   requiredSkills: ['React', 'TypeScript'],
   preferredSkills: ['Node.js', 'GraphQL'],
@@ -271,8 +271,8 @@ describe('JobsTab Component', () => {
     it('should show keyword count for analyzed job', async () => {
       const mockJob = createMockJob({
         extractedKeywords: [
-          { term: 'React', category: 'technical-skill', required: true, frequency: 2, weight: 90 },
-          { term: 'TypeScript', category: 'technical-skill', required: true, frequency: 2, weight: 85 },
+          { phrase: 'React', score: 90, occurrences: 2, category: 'framework', required: true, frequency: 2 },
+          { phrase: 'TypeScript', score: 85, occurrences: 2, category: 'language', required: true, frequency: 2 },
         ],
       });
       vi.mocked(storage.getJobDescriptionAnalyses).mockResolvedValue([mockJob]);
@@ -558,15 +558,15 @@ describe('JobsTab Component', () => {
         createMockJob({
           id: 'job_1',
           extractedKeywords: [
-            { term: 'React', category: 'technical-skill', required: true, frequency: 1, weight: 90 },
+            { phrase: 'React', score: 90, occurrences: 1, category: 'framework', required: true, frequency: 1 },
           ],
         }),
         createMockJob({
           id: 'job_2',
           extractedKeywords: [
-            { term: 'React', category: 'technical-skill', required: true, frequency: 1, weight: 90 },
-            { term: 'Node', category: 'technical-skill', required: true, frequency: 1, weight: 85 },
-            { term: 'TypeScript', category: 'technical-skill', required: true, frequency: 1, weight: 80 },
+            { phrase: 'React', score: 90, occurrences: 1, category: 'framework', required: true, frequency: 1 },
+            { phrase: 'Node', score: 85, occurrences: 1, category: 'framework', required: true, frequency: 1 },
+            { phrase: 'TypeScript', score: 80, occurrences: 1, category: 'language', required: true, frequency: 1 },
           ],
         }),
       ];

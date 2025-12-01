@@ -35,11 +35,13 @@ interface JobContext {
 }
 
 interface ExtractedKeyword {
-  term: string;
-  category: string;
-  required: boolean;
-  frequency: number;
-  weight: number;
+  phrase: string;
+  score: number;
+  occurrences: number;
+  category?: string;
+  source?: 'lexicon' | 'inferred';
+  required?: boolean;
+  frequency?: number;
   context?: string[];
   synonyms?: string[];
 }

@@ -46,8 +46,8 @@ const createMockJob = (overrides: Partial<JobDescriptionAnalysis> = {}): JobDesc
   location: 'San Francisco, CA',
   jobUrl: 'https://linkedin.com/jobs/123',
   extractedKeywords: [
-    { term: 'React', category: 'technical-skill', required: true, frequency: 2, weight: 90, synonyms: ['React.js', 'ReactJS'] },
-    { term: 'TypeScript', category: 'technical-skill', required: true, frequency: 2, weight: 85, synonyms: ['TS'] },
+    { phrase: 'React', score: 90, occurrences: 2, category: 'framework', required: true, frequency: 2, synonyms: ['React.js', 'ReactJS'] },
+    { phrase: 'TypeScript', score: 85, occurrences: 2, category: 'language', required: true, frequency: 2, synonyms: ['TS'] },
   ],
   requiredSkills: ['React', 'TypeScript'],
   preferredSkills: ['Node.js', 'GraphQL'],
@@ -383,7 +383,7 @@ describe('JobsTab Timeout Tests', () => {
       );
 
       vi.mocked(keywordExtractor.extractKeywordsFromJobDescription).mockReturnValue([
-        { term: 'React', category: 'technical-skill', required: true, frequency: 2, weight: 90, synonyms: ['React.js'] },
+        { phrase: 'React', score: 90, occurrences: 2, category: 'framework', required: true, frequency: 2, synonyms: ['React.js'] },
       ]);
 
       vi.mocked(keywordExtractor.categorizeJobRequirements).mockReturnValue({
@@ -509,9 +509,9 @@ describe('JobsTab Timeout Tests', () => {
       const analyzeButton = screen.getByText('Analyze Current LinkedIn Job Page');
       await user.click(analyzeButton);
 
-      // Should show validation error
+      // Should show validation error message that appears when job data is invalid
       await waitFor(() => {
-        expect(screen.getByText(/Invalid response/)).toBeDefined();
+        expect(screen.getByText(/Unable to extract job information from this page/)).toBeDefined();
       }, { timeout: 3000 });
     });
 
@@ -543,7 +543,7 @@ describe('JobsTab Timeout Tests', () => {
       });
 
       vi.mocked(keywordExtractor.extractKeywordsFromJobDescription).mockReturnValue([
-        { term: 'React', category: 'technical-skill', required: true, frequency: 2, weight: 90, synonyms: [] },
+        { phrase: 'React', score: 90, occurrences: 2, category: 'framework', required: true, frequency: 2, synonyms: [] },
       ]);
 
       vi.mocked(keywordExtractor.categorizeJobRequirements).mockReturnValue({

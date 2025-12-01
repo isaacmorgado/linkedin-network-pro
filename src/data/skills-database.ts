@@ -1,3 +1,5 @@
+import { COMPREHENSIVE_SKILLS_EXPANSION } from './comprehensive-skills-expansion';
+
 export interface Skill {
   id: string;              // Canonical lowercase name: 'react'
   name: string;            // Display name: 'React'
@@ -7,6 +9,7 @@ export interface Skill {
 }
 
 export type SkillCategory =
+  // Tech (existing)
   | 'programming-language'
   | 'frontend-framework'
   | 'backend-framework'
@@ -15,6 +18,53 @@ export type SkillCategory =
   | 'devops-tool'
   | 'testing-framework'
   | 'methodology'
+  // Healthcare
+  | 'medical-skill'
+  | 'healthcare-system'
+  | 'medical-certification'
+  // Business & Finance
+  | 'financial-skill'
+  | 'accounting-tool'
+  | 'business-analysis'
+  | 'financial-certification'
+  // HR
+  | 'hr-skill'
+  | 'hr-system'
+  | 'hr-certification'
+  // Sales
+  | 'sales-skill'
+  | 'crm-tool'
+  | 'sales-methodology'
+  // Marketing
+  | 'marketing-skill'
+  | 'marketing-tool'
+  | 'analytics-platform'
+  | 'marketing-certification'
+  // Customer Service
+  | 'customer-service-skill'
+  | 'support-tool'
+  | 'customer-service-certification'
+  // Retail & Ecommerce
+  | 'retail-skill'
+  | 'ecommerce-platform'
+  | 'pos-system'
+  // Education
+  | 'instructional-design'
+  | 'lms-platform'
+  | 'elearning-tool'
+  | 'education-certification'
+  // Legal
+  | 'legal-skill'
+  | 'legal-software'
+  | 'compliance-framework'
+  | 'legal-certification'
+  // Engineering (non-software)
+  | 'cad-software'
+  | 'engineering-skill'
+  | 'engineering-certification'
+  // Universal
+  | 'soft-skill'
+  | 'certification'
   | 'other';
 
 export const SKILLS_DATA: Skill[] = [
@@ -3699,5 +3749,7 @@ export const SKILLS_DATA: Skill[] = [
     category: 'other',
     synonyms: ['airflow', 'airflow orchestration', 'apache airflow dags'],
     popularity: 85
-  }
+  },
+  // Import comprehensive skills expansion (Healthcare, Finance, HR, Sales, Marketing, etc.)
+  ...COMPREHENSIVE_SKILLS_EXPANSION
 ];

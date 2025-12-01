@@ -2,4 +2,4 @@
  * Type definitions for WatchlistTab
  */
 
-export type WatchlistView = 'network' | 'people' | 'companies' | 'search';
+export type WatchlistView = 'network' | 'people' | 'companies';

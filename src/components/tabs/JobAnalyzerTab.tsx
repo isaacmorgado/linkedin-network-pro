@@ -68,8 +68,8 @@ export function JobAnalyzerTab({ panelWidth = 400 }: JobAnalyzerTabProps) {
 
     // Simulate AI processing delay
     setTimeout(() => {
-      const keywords = extractKeywordsFromJobDescription(jobText);
-      const { required, preferred } = categorizeJobRequirements(jobText);
+      const keywords = extractKeywordsFromJobDescription(jobText, jobTitle || undefined);
+      const { required, preferred } = categorizeJobRequirements(jobText, jobTitle || undefined);
 
       const analysis: JobDescriptionAnalysis = {
         id: `job_${Date.now()}`,

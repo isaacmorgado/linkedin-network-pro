@@ -10,9 +10,234 @@ import type {
   GeneratedResume,
   ResumeContent,
   ResumeSectionItem,
+  ExperienceBullet,
 } from '../types/resume';
 import { calculateATSScore } from './ats-optimizer';
 import { log, LogCategory } from '../utils/logger';
+
+/**
+ * Extract factual claims from a bullet point for anti-hallucination verification
+ * Returns metrics, technologies, and key facts that AI must preserve
+ */
+function extractBulletFacts(bullet: ExperienceBullet): {
+  metrics: string[];
+  technologies: string[];
+  keyFacts: string[];
+} {
+  const facts = {
+    metrics: [] as string[],
+    technologies: [] as string[],
+    keyFacts: [] as string[],
+  };
+
+  // Extract metrics (numbers, percentages, dollar amounts, time periods)
+  const metricPatterns = [
+    /\d+[%]/g, // 40%, 100%
+    /\$[\d,]+[KMB]?/g, // $2M, $500K, $1000
+    /\d+[KMB]?\s*(users?|customers?|requests?|records?)/gi, // 500K users, 10M requests
+    /\d+\s*-\s*\d+/g, // 5-10, 100-200
+    /\d+\+/g, // 50+, 100+
+    /\d+x/g, // 2x, 10x
+    /reduced?\s+.*?by\s+\d+[%]/gi, // reduced latency by 40%
+    /increased?\s+.*?by\s+\d+[%]/gi, // increased revenue by 30%
+    /\d+\s*(months?|years?|weeks?|days?)/gi, // 3 months, 2 years
+  ];
+
+  for (const pattern of metricPatterns) {
+    const matches = bullet.text.match(pattern);
+    if (matches) {
+      facts.metrics.push(...matches);
+    }
+  }
+
+  // Extract from explicit metrics field
+  if (bullet.metrics) {
+    for (const metric of bullet.metrics) {
+      facts.metrics.push(metric.value);
+      facts.keyFacts.push(metric.context);
+    }
+  }
+
+  // Extract technologies from keywords
+  facts.technologies.push(...bullet.keywords);
+
+  // Extract key action verbs and subjects (for preserving core achievement)
+  const actionVerbPattern = /^(Built|Developed|Implemented|Led|Managed|Architected|Created|Designed|Improved|Reduced|Increased|Launched|Shipped|Deployed|Optimized|Automated|Collaborated)/i;
+  const actionMatch = bullet.text.match(actionVerbPattern);
+  if (actionMatch) {
+    facts.keyFacts.push(actionMatch[0]);
+  }
+
+  // Extract APR components if available
+  if (bullet.action) facts.keyFacts.push(bullet.action);
+  if (bullet.project) facts.keyFacts.push(bullet.project);
+  if (bullet.result) facts.keyFacts.push(bullet.result);
+
+  return facts;
+}
+
+/**
+ * Tailor experience bullets to a specific job using Claude API
+ * Uses strict anti-hallucination prompts to ensure factual accuracy
+ */
+async function tailorBulletsToJob(
+  bullets: ExperienceBullet[],
+  job: JobDescriptionAnalysis,
+  experienceTitle: string,
+  company: string
+): Promise<string[]> {
+  return log.trackAsync(LogCategory.SERVICE, 'tailorBulletsToJob', async () => {
+    // Initialize Anthropic client
+    const apiKey = process.env.VITE_ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      log.warn(LogCategory.SERVICE, 'API key not available, using original bullets');
+      return bullets.map((b) => b.text);
+    }
+
+    const anthropic = new Anthropic({ apiKey });
+
+    // Extract job keywords (prioritize required skills)
+    const topKeywords = job.extractedKeywords
+      .filter((k) => k.required)
+      .slice(0, 10)
+      .map((k) => k.phrase)
+      .concat(
+        job.extractedKeywords
+          .filter((k) => !k.required)
+          .slice(0, 5)
+          .map((k) => k.phrase)
+      );
+
+    log.debug(LogCategory.SERVICE, 'Tailoring bullets to job', {
+      experienceTitle,
+      company,
+      bulletCount: bullets.length,
+      topKeywords: topKeywords.slice(0, 5),
+    });
+
+    // Extract facts from each bullet for verification
+    const bulletFacts = bullets.map((b) => ({
+      original: b.text,
+      facts: extractBulletFacts(b),
+    }));
+
+    // Build strict anti-hallucination prompt
+    const factsJSON = JSON.stringify(
+      bulletFacts.map((bf, i) => ({
+        bulletNumber: i + 1,
+        originalText: bf.original,
+        requiredMetrics: bf.facts.metrics,
+        requiredTechnologies: bf.facts.technologies,
+        requiredKeyFacts: bf.facts.keyFacts,
+      })),
+      null,
+      2
+    );
+
+    const prompt = `CRITICAL ANTI-HALLUCINATION RULES:
+1. You MUST use ONLY the facts, metrics, and technologies provided for each bullet
+2. DO NOT add new metrics, percentages, or numbers not in the original
+3. DO NOT invent team sizes, project durations, or scope
+4. DO NOT add technologies or tools not mentioned in the original
+5. DO NOT inflate achievements or exaggerate impact
+6. You CAN reword sentences for clarity and keyword optimization
+7. You CAN reorder bullets by relevance to the target job
+8. You CAN emphasize matching keywords from the job description
+
+ORIGINAL EXPERIENCE:
+Position: ${experienceTitle}
+Company: ${company}
+
+ORIGINAL BULLETS WITH REQUIRED FACTS:
+${factsJSON}
+
+TARGET JOB:
+Title: ${job.jobTitle}
+Company: ${job.company}
+Top Keywords to Emphasize: ${topKeywords.join(', ')}
+Required Skills: ${job.requiredSkills.slice(0, 5).join(', ')}
+
+TASK:
+Rewrite each bullet to:
+1. Emphasize keywords matching the target job (use top keywords naturally)
+2. Keep ALL original metrics, technologies, and facts EXACTLY as provided
+3. Improve readability and ATS optimization
+4. Reorder bullets so most relevant achievements appear first
+
+RULES FOR OUTPUT:
+- Return EXACTLY ${bullets.length} bullets (one per original bullet)
+- Each bullet must start with a strong action verb
+- Each bullet must preserve all facts from the "Required Facts" for that bullet number
+- Format: Return only the bullets, one per line, no numbering, no extra text
+- DO NOT add a preamble or explanation
+- Start each bullet with "•" character
+
+Begin:`;
+
+    log.debug(LogCategory.SERVICE, 'Sending bullet tailoring request to Claude API', {
+      promptLength: prompt.length,
+      temperature: 0.3,
+    });
+
+    const message = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1500,
+      temperature: 0.3, // Low temperature to reduce hallucination risk
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    });
+
+    const response = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+
+    // Parse bullets from response
+    const tailoredBullets = response
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('•'))
+      .map((line) => line.substring(1).trim()); // Remove bullet character
+
+    // Verification: Ensure we got the right number of bullets
+    if (tailoredBullets.length !== bullets.length) {
+      log.warn(LogCategory.SERVICE, 'Bullet count mismatch, using original bullets', {
+        expected: bullets.length,
+        received: tailoredBullets.length,
+      });
+      return bullets.map((b) => b.text);
+    }
+
+    // Basic hallucination check: Ensure all original metrics are preserved
+    for (let i = 0; i < bullets.length; i++) {
+      const originalFacts = bulletFacts[i].facts;
+      const tailoredText = tailoredBullets[i];
+
+      // Check if metrics are preserved
+      for (const metric of originalFacts.metrics) {
+        if (!tailoredText.includes(metric)) {
+          log.warn(LogCategory.SERVICE, 'Metric missing in tailored bullet, using original', {
+            bulletIndex: i,
+            missingMetric: metric,
+            originalBullet: bullets[i].text,
+            tailoredBullet: tailoredText,
+          });
+          // Revert to original bullet if metrics are missing
+          tailoredBullets[i] = bullets[i].text;
+        }
+      }
+    }
+
+    log.info(LogCategory.SERVICE, 'Bullets tailored successfully', {
+      bulletCount: tailoredBullets.length,
+      experienceTitle,
+      company,
+    });
+
+    return tailoredBullets;
+  });
+}
 
 /**
  * Generate a custom resume tailored to a specific job
@@ -47,13 +272,14 @@ export async function generateResumeWithAI(
     const professionalSummary = await generateProfessionalSummary(profile, job);
     log.info(LogCategory.SERVICE, 'Professional summary generated', { length: professionalSummary.length });
 
-    // Build resume content
-    log.debug(LogCategory.SERVICE, 'Building resume content');
-    const content = buildResumeContent(
+    // Build resume content (now async - tailors bullets with AI)
+    log.debug(LogCategory.SERVICE, 'Building resume content with tailored bullets');
+    const content = await buildResumeContent(
       profile,
       relevantJobs,
       relevantSkills,
-      professionalSummary
+      professionalSummary,
+      job // Pass job for bullet tailoring
     );
     log.info(LogCategory.SERVICE, 'Resume content built', { sections: content.sections.length });
 
@@ -359,13 +585,15 @@ function parseDate(dateStr: string): Date | null {
 
 /**
  * Build formatted resume content
+ * NOW ASYNC: Tailors bullets to specific job using AI
  */
-function buildResumeContent(
+async function buildResumeContent(
   profile: ProfessionalProfile,
   selectedJobs: ProfessionalProfile['jobs'],
   selectedSkills: ProfessionalProfile['technicalSkills'],
-  professionalSummary: string
-): ResumeContent {
+  professionalSummary: string,
+  job: JobDescriptionAnalysis
+): Promise<ResumeContent> {
   const endTrace = log.trace(LogCategory.SERVICE, 'buildResumeContent', {
     selectedJobs: selectedJobs.length,
     selectedSkills: selectedSkills.length,
@@ -384,14 +612,27 @@ function buildResumeContent(
     order: 0,
   });
 
-  // Work Experience
-  const experienceItems: ResumeSectionItem[] = selectedJobs.map((job) => ({
-    title: job.title,
-    subtitle: job.company,
-    location: job.location,
-    dates: formatDateRange(job.startDate, job.endDate, job.current),
-    bullets: job.bullets.slice(0, 4).map((b) => b.text),
-  }));
+  // Work Experience - NOW WITH AI BULLET TAILORING
+  log.debug(LogCategory.SERVICE, 'Tailoring experience bullets to job requirements');
+  const experienceItems: ResumeSectionItem[] = [];
+
+  for (const jobExp of selectedJobs) {
+    // Tailor bullets to this specific job using AI
+    const tailoredBullets = await tailorBulletsToJob(
+      jobExp.bullets.slice(0, 4), // Take top 4 bullets
+      job,
+      jobExp.title,
+      jobExp.company
+    );
+
+    experienceItems.push({
+      title: jobExp.title,
+      subtitle: jobExp.company,
+      location: jobExp.location,
+      dates: formatDateRange(jobExp.startDate, jobExp.endDate, jobExp.current),
+      bullets: tailoredBullets, // Use tailored bullets instead of original
+    });
+  }
 
   sections.push({
     type: 'experience',

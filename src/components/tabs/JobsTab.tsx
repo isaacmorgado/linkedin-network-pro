@@ -157,8 +157,8 @@ export function JobsTab({ panelWidth: _panelWidth = 400 }: JobsTabProps) {
       }
 
       // Extract keywords and requirements (now safe - description is validated)
-      const keywords = extractKeywordsFromJobDescription(description);
-      const requirements = categorizeJobRequirements(description);
+      const keywords = extractKeywordsFromJobDescription(description, jobTitle);
+      const requirements = categorizeJobRequirements(description, jobTitle);
 
       // Create job analysis (using validated fields)
       const jobAnalysis: JobDescriptionAnalysis = {
