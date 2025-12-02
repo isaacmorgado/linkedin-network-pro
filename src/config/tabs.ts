@@ -2,6 +2,14 @@
  * Tab Configuration - Simplified 5+3+1 Structure
  *
  * Defines all tabs, their properties, and visibility rules
+ *
+ * Tab Order:
+ * 1. Feed (always visible)
+ * 2. Search (always visible)
+ * 3. Watchlist (always visible)
+ * 4. Resume (always visible)
+ * 5. Jobs/Profile/Company (context-sensitive - appears in position 5 based on page)
+ * 6. Settings (always visible - always last)
  */
 
 import {
@@ -20,7 +28,7 @@ import type { TabConfig } from '../types/navigation';
 
 export const TAB_CONFIGS: TabConfig[] = [
   // ========================================
-  // ALWAYS VISIBLE (5 core tabs)
+  // ALWAYS VISIBLE (4 core tabs)
   // ========================================
 
   {
@@ -60,11 +68,15 @@ export const TAB_CONFIGS: TabConfig[] = [
     badge: false,
   },
 
+  // ========================================
+  // CONTEXT-SENSITIVE (3 tabs - position 5)
+  // ========================================
+
   {
     id: 'jobs',
     label: 'Jobs',
     icon: Briefcase,
-    shortcut: 5,
+    shortcut: 5, // Alt+5 (Ctrl+5 on Mac)
     alwaysVisible: false,
     visibleOn: ['job'], // Only on LinkedIn job pages
     badge: true, // Show count of analyzed jobs
@@ -72,23 +84,10 @@ export const TAB_CONFIGS: TabConfig[] = [
   },
 
   {
-    id: 'settings',
-    label: 'Settings',
-    icon: Settings2,
-    shortcut: 6,
-    alwaysVisible: true,
-    badge: false,
-  },
-
-  // ========================================
-  // CONTEXT-SENSITIVE (3 tabs)
-  // ========================================
-
-  {
     id: 'profile',
     label: 'Profile',
     icon: UserCircle,
-    shortcut: 7,
+    shortcut: 5, // Alt+5 (Ctrl+5 on Mac) - same as Jobs
     alwaysVisible: false,
     visibleOn: ['profile'], // Only on person pages
     badge: false,
@@ -98,9 +97,18 @@ export const TAB_CONFIGS: TabConfig[] = [
     id: 'company',
     label: 'Company',
     icon: Building2,
-    shortcut: 8,
+    shortcut: 5, // Alt+5 (Ctrl+5 on Mac) - same as Jobs/Profile
     alwaysVisible: false,
     visibleOn: ['company'], // Only on company pages
+    badge: false,
+  },
+
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: Settings2,
+    shortcut: 6, // Alt+6 (Ctrl+6 on Mac)
+    alwaysVisible: true,
     badge: false,
   },
 

@@ -14,18 +14,31 @@ function detectContext(): PageContext {
   // Profile page detection
   if (url.includes('/in/') || pathname.match(/^\/in\/[^/]+\/?$/)) {
     // Try multiple selectors for name (LinkedIn changes DOM frequently)
-    const nameElement =
+    let nameElement =
       document.querySelector('h1.text-heading-xlarge') ||
       document.querySelector('h1[class*="text-heading"]') ||
       document.querySelector('[data-anonymize="person-name"]') ||
-      document.querySelector('h1');
+      document.querySelector('.ph5.pb5 h1') ||
+      document.querySelector('.pv-text-details__left-panel h1') ||
+      document.querySelector('.mt2.relative h1');
+
+    // If still not found, look for any H1 that has reasonable text
+    if (!nameElement) {
+      const allH1s = Array.from(document.querySelectorAll('h1'));
+      nameElement = allH1s.find(h1 => {
+        const text = h1.textContent?.trim() || '';
+        return text.length > 0 && text.length < 100 && !text.includes('\n');
+      }) || null;
+    }
 
     // Try multiple selectors for headline
     const headlineElement =
       document.querySelector('div.text-body-medium.break-words') ||
       document.querySelector('div.text-body-medium') ||
       document.querySelector('[data-generated-suggestion-target]') ||
-      document.querySelector('.pv-text-details__left-panel .text-body-medium');
+      document.querySelector('.pv-text-details__left-panel .text-body-medium') ||
+      document.querySelector('.pv-text-details__left-panel div[class*="text-body"]') ||
+      document.querySelector('.mt2.relative div[class*="text-body"]');
 
     // Try to get profile image - multiple strategies for reliability
     let profileImage: string | null = null;
@@ -36,7 +49,13 @@ function detectContext(): PageContext {
       document.querySelector('img[class*="profile"][class*="photo"]') ||
       document.querySelector('button[aria-label*="profile"] img') ||
       document.querySelector('.pv-top-card img') ||
-      document.querySelector('.pv-top-card-profile-picture img');
+      document.querySelector('.pv-top-card-profile-picture img') ||
+      document.querySelector('.ph5.pb5 img') ||
+      document.querySelector('[class*="profile-photo"] img') ||
+      Array.from(document.querySelectorAll('img')).find(img =>
+        img.alt?.toLowerCase().includes('profile') ||
+        img.src?.includes('profile')
+      );
 
     if (imageElement) {
       profileImage = (imageElement as HTMLImageElement).src;
@@ -156,23 +175,39 @@ function detectContext(): PageContext {
   // Company page detection
   if (url.includes('/company/') || pathname.match(/^\/company\/[^/]+\/?$/)) {
     // Try multiple selectors for company name
-    const nameElement =
+    let nameElement =
       document.querySelector('h1.org-top-card-summary__title') ||
       document.querySelector('h1[data-anonymize="company-name"]') ||
       document.querySelector('.org-top-card-summary__title') ||
-      document.querySelector('h1');
+      document.querySelector('.org-top-card-primary-content__title') ||
+      document.querySelector('[data-test-id="company-name"]');
+
+    // If still not found, look for any H1 that has reasonable text
+    if (!nameElement) {
+      const allH1s = Array.from(document.querySelectorAll('h1'));
+      nameElement = allH1s.find(h1 => {
+        const text = h1.textContent?.trim() || '';
+        return text.length > 0 && text.length < 100 && !text.includes('\n');
+      }) || null;
+    }
 
     // Try to get industry/tagline
     const industryElement =
       document.querySelector('.org-top-card-summary__tagline') ||
       document.querySelector('[data-anonymize="industry"]') ||
-      document.querySelector('.org-page-details__definition-text');
+      document.querySelector('.org-page-details__definition-text') ||
+      document.querySelector('[class*="org-top-card"] [class*="tagline"]');
 
     // Try to get company logo
     const logoElement =
       document.querySelector('img.org-top-card-primary-content__logo') ||
       document.querySelector('img[alt*="logo" i]') ||
-      document.querySelector('.org-top-card-primary-content__logo img');
+      document.querySelector('.org-top-card-primary-content__logo img') ||
+      document.querySelector('[class*="org-top-card"] img') ||
+      Array.from(document.querySelectorAll('img')).find(img =>
+        img.alt?.toLowerCase().includes('logo') ||
+        img.src?.includes('logo')
+      );
 
     // Try to get follower/employee counts
     const statsElements = document.querySelectorAll('.org-top-card-summary-info-list__info-item');

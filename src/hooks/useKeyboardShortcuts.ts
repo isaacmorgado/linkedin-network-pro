@@ -1,25 +1,14 @@
 /**
  * Keyboard Shortcuts Hook
  * Provides power user navigation via keyboard
+ *
+ * Windows/Linux: Alt+1-6
+ * Mac: Ctrl+1-6
  */
 
 import { useEffect } from 'react';
 import type { TabId } from '../types/navigation';
-
-interface KeyboardShortcutConfig {
-  [key: string]: TabId | 'nextTab' | 'prevTab';
-}
-
-const SHORTCUTS: KeyboardShortcutConfig = {
-  'alt+1': 'feed',
-  'alt+2': 'watchlist',
-  'alt+3': 'resume',
-  'alt+4': 'settings',
-  'alt+5': 'profile',      // Context-sensitive
-  'alt+6': 'company',      // Context-sensitive
-  'alt+7': 'jobs',         // Context-sensitive
-  'alt+8': 'onboarding',   // First-run only
-};
+import { TAB_CONFIGS } from '../config/tabs';
 
 interface UseKeyboardShortcutsProps {
   activeTab: TabId;
@@ -38,61 +27,41 @@ export function useKeyboardShortcuts({
     if (!enabled) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't trigger if user is typing in input/textarea
-      const target = event.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
       const key = event.key.toLowerCase();
-      const modifiers = {
-        alt: event.altKey,
-        ctrl: event.ctrlKey,
-        shift: event.shiftKey,
-        meta: event.metaKey,
-      };
 
-      // Build shortcut string (e.g., "alt+1")
-      const shortcutParts: string[] = [];
-      if (modifiers.alt) shortcutParts.push('alt');
-      if (modifiers.ctrl) shortcutParts.push('ctrl');
-      if (modifiers.shift) shortcutParts.push('shift');
-      if (modifiers.meta) shortcutParts.push('meta');
-      shortcutParts.push(key);
+      // Check for Alt (Windows/Linux) or Ctrl (Mac)
+      // Windows/Linux: Alt+1-6
+      // Mac: Ctrl+1-6
+      const isShortcutModifier = event.altKey || event.ctrlKey;
 
-      const shortcut = shortcutParts.join('+');
+      if (!isShortcutModifier) return;
 
-      // Check if this shortcut is mapped
-      const action = SHORTCUTS[shortcut];
+      // Check if key is a number 1-9
+      const shortcutNumber = parseInt(key);
+      if (isNaN(shortcutNumber) || shortcutNumber < 1 || shortcutNumber > 9) return;
 
-      if (action) {
+      // Find visible tab with this shortcut number
+      const matchingTab = TAB_CONFIGS.find(
+        (tab) => tab.shortcut === shortcutNumber && visibleTabs.includes(tab.id)
+      );
+
+      if (matchingTab) {
+        // Prevent default browser behavior (e.g., focus search bar)
         event.preventDefault();
+        event.stopPropagation();
 
-        if (action === 'nextTab') {
-          const currentIndex = visibleTabs.indexOf(activeTab);
-          const nextIndex = (currentIndex + 1) % visibleTabs.length;
-          onTabChange(visibleTabs[nextIndex]);
-        } else if (action === 'prevTab') {
-          const currentIndex = visibleTabs.indexOf(activeTab);
-          const prevIndex = (currentIndex - 1 + visibleTabs.length) % visibleTabs.length;
-          onTabChange(visibleTabs[prevIndex]);
-        } else {
-          // Direct tab navigation
-          const tabId = action as TabId;
-          if (visibleTabs.includes(tabId)) {
-            onTabChange(tabId);
-          }
+        // Blur any focused element (input/textarea) to prevent focus trap
+        const activeElement = document.activeElement as HTMLElement;
+        if (activeElement && typeof activeElement.blur === 'function') {
+          activeElement.blur();
         }
+
+        // Switch to the selected tab
+        onTabChange(matchingTab.id);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTab, visibleTabs, onTabChange, enabled]);
-
-  return SHORTCUTS;
 }

@@ -61,7 +61,7 @@ Locations: content-scripts/content.js:76071, content-scripts/content.js:76120
 ```
 
 **Root Cause:**
-Keyboard shortcuts Alt+1, Alt+2, Alt+3 were globally registered and triggered on LinkedIn pages, but these shortcuts were intended only for 3rd party job application websites. On LinkedIn, Alt+1-5 should be used for tab navigation (Feed, Watchlist, Resume, Settings, Profile).
+Keyboard shortcuts Alt+1, Alt+2, Alt+3 were globally registered and triggered on LinkedIn pages, but these shortcuts were intended only for 3rd party job application websites. On LinkedIn, Alt+1-6 (⌘+1-6 on Mac) should be used for tab navigation (Feed, Search, Watchlist, Resume, Jobs/Profile/Company, Settings).
 
 **Fix Applied:**
 
@@ -95,11 +95,12 @@ case 'save-question':
 
 | Shortcut | LinkedIn | Job Sites |
 |----------|----------|-----------|
-| Alt+1 | Go to Feed Tab | - |
-| Alt+2 | Go to Watchlist Tab | - |
-| Alt+3 | Go to Resume Tab | - |
-| Alt+4 | Go to Settings Tab | - |
-| Alt+5 | Go to Profile/Company Tab | - |
+| Alt+1 (⌘+1 on Mac) | Go to Feed Tab | - |
+| Alt+2 (⌘+2 on Mac) | Go to Search Tab | - |
+| Alt+3 (⌘+3 on Mac) | Go to Watchlist Tab | - |
+| Alt+4 (⌘+4 on Mac) | Go to Resume Tab | - |
+| Alt+5 (⌘+5 on Mac) | Go to Jobs/Profile/Company Tab (context-sensitive) | - |
+| Alt+6 (⌘+6 on Mac) | Go to Settings Tab | - |
 | Alt+Shift+P | - | Toggle Panel |
 | Alt+Shift+S | - | Save Question |
 | Alt+Shift+G | - | Paste to Generate |
@@ -224,8 +225,11 @@ To verify the fixes work correctly, follow these steps:
 ### Test Issue 2 & 3: Keyboard Shortcuts
 1. **On LinkedIn:**
    - ✅ Navigate to https://www.linkedin.com/feed/
-   - ✅ Press Alt+1, Alt+2, Alt+3, Alt+4, Alt+5
-   - ✅ Verify: Tab navigation works (Feed, Watchlist, Resume, Settings, Profile)
+   - ✅ Press Alt+1, Alt+2, Alt+3, Alt+4, Alt+6 (⌘+1, ⌘+2, ⌘+3, ⌘+4, ⌘+6 on Mac)
+   - ✅ Verify: Tab navigation works (Feed, Search, Watchlist, Resume, Settings)
+   - ✅ On a job page, press Alt+5 (⌘+5 on Mac) to go to Jobs tab
+   - ✅ On a profile page, press Alt+5 (⌘+5 on Mac) to go to Profile tab
+   - ✅ On a company page, press Alt+5 (⌘+5 on Mac) to go to Company tab
    - ✅ Press Alt+Shift+S and Alt+Shift+G without highlighting text
    - ✅ Verify: No warning messages appear in console
 
@@ -238,7 +242,8 @@ To verify the fixes work correctly, follow these steps:
    - ✅ Verify: Text is pasted to Generate section
 
 **Expected behavior:**
-- LinkedIn uses Alt+1-5 for tab navigation
+- LinkedIn uses Alt+1-6 (⌘+1-6 on Mac) for tab navigation
+- Alt+5 (⌘+5 on Mac) is context-sensitive and goes to Jobs, Profile, or Company depending on page type
 - Job sites use Alt+Shift+S/G for autofill features
 - No warnings when shortcuts pressed without context
 
@@ -284,7 +289,8 @@ Consider implementing the retry logic at the service layer rather than scraper l
 
 ### 3. Keyboard Shortcut Documentation
 Create a help modal or settings page documenting all keyboard shortcuts:
-- LinkedIn shortcuts (Alt+1-5)
+- LinkedIn shortcuts (Alt+1-6 on Windows/Linux, ⌘+1-6 on Mac)
+- Alt+5/⌘+5 is context-sensitive (goes to Jobs/Profile/Company based on page type)
 - Job site shortcuts (Alt+Shift+P/S/G)
 - Context-aware behavior
 
