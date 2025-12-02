@@ -72,16 +72,24 @@ export function matchesJobPreferences(
     }
   }
 
-  // Check remote preference
-  if (preferences.remote === true) {
+  // Check work location preference
+  if (preferences.workLocation && preferences.workLocation.length > 0) {
     const location = jobAlert.location?.toLowerCase() || '';
     const title = jobAlert.jobTitle?.toLowerCase() || '';
-    const isRemote =
-      location.includes('remote') ||
-      title.includes('remote') ||
-      location.includes('work from home');
 
-    if (!isRemote) {
+    const isRemote = location.includes('remote') || title.includes('remote') || location.includes('work from home');
+    const isHybrid = location.includes('hybrid');
+    const isOnsite = !isRemote && !isHybrid;
+
+    // Check if job matches any of the preferred work location types
+    const matchesWorkLocation = preferences.workLocation.some((type) => {
+      if (type === 'remote') return isRemote;
+      if (type === 'hybrid') return isHybrid;
+      if (type === 'onsite') return isOnsite;
+      return false;
+    });
+
+    if (!matchesWorkLocation) {
       return false;
     }
   }

@@ -12,6 +12,8 @@ import {
   markAllFeedItemsAsRead,
   deleteFeedItem as storageDeleteFeedItem,
   getFeedStats,
+  clearFeed as storageClearFeed,
+  clearCompanySnapshots,
 } from '../utils/storage';
 import { FEED_STORAGE_KEY } from '../types/feed';
 
@@ -37,6 +39,7 @@ export function useFeed() {
   // Load feed items from storage
   const loadFeed = useCallback(async () => {
     try {
+      console.log('[Uproot] Loading feed - starting...');
       setIsLoading(true);
       setError(null);
 
@@ -45,9 +48,14 @@ export function useFeed() {
 
       // Load all feed items (including deadline alerts from background)
       const items = await getFeedItems();
+      console.log('[Uproot] Loaded feed items from storage:', items.length, 'items');
+      if (items.length > 0) {
+        console.log('[Uproot] Feed items:', items.map(i => ({ id: i.id, type: i.type, title: i.title })));
+      }
       const feedStats = await getFeedStats();
       setFeedItems(items);
       setStats(feedStats);
+      console.log('[Uproot] Feed loaded successfully - items:', items.length, 'unread:', feedStats.unreadCount);
     } catch (err) {
       console.error('[Uproot] Error loading feed:', err);
       setError('Failed to load feed');
@@ -144,6 +152,39 @@ export function useFeed() {
     }
   }, [loadFeed]);
 
+  // Clear all feed items
+  const clearAllFeed = useCallback(async () => {
+    try {
+      console.log('[Uproot] Clearing feed - starting...');
+
+      // Clear both feed items AND company snapshots
+      // This forces fresh detection when visiting company pages again
+      await Promise.all([
+        storageClearFeed(),
+        clearCompanySnapshots()
+      ]);
+
+      console.log('[Uproot] Feed and snapshots cleared from storage successfully');
+
+      // Optimistically update local state
+      setFeedItems([]);
+      setStats(initialStats);
+      console.log('[Uproot] Local state cleared - feedItems: 0, stats reset');
+
+      // Verify the feed is actually empty in storage
+      const verifyItems = await getFeedItems();
+      console.log('[Uproot] Verification - items in storage after clear:', verifyItems.length);
+      if (verifyItems.length > 0) {
+        console.error('[Uproot] WARNING: Feed still has items after clearing!', verifyItems);
+      }
+    } catch (err) {
+      console.error('[Uproot] Error clearing feed:', err);
+      setError('Failed to clear feed');
+      // Reload to restore correct state
+      await loadFeed();
+    }
+  }, [loadFeed]);
+
   return {
     feedItems,
     stats,
@@ -153,6 +194,7 @@ export function useFeed() {
     toggleRead,
     markAllAsRead,
     deleteFeedItem,
+    clearAllFeed,
     reload: loadFeed,
   };
 }

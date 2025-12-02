@@ -497,12 +497,21 @@ function detectNewUpdates(
   previousSnapshot?: CompanySnapshot
 ): LinkedInCompanyUpdate[] {
   if (!previousSnapshot) {
-    // First time, only show most recent update
-    return currentUpdates.slice(0, 1);
+    // First time visiting or after clearing - don't show any updates
+    // Just establish the baseline snapshot for future comparisons
+    // Only show notifications for posts that appear AFTER this initial snapshot
+    console.log('[Uproot] No previous snapshot - establishing baseline, showing 0 notifications');
+    return [];
   }
 
   const previousUpdateIds = new Set(previousSnapshot.updates.map((u) => u.id));
-  return currentUpdates.filter((update) => !previousUpdateIds.has(update.id));
+  const newUpdates = currentUpdates.filter((update) => !previousUpdateIds.has(update.id));
+
+  if (newUpdates.length > 0) {
+    console.log(`[Uproot] Detected ${newUpdates.length} truly new updates (not in previous snapshot)`);
+  }
+
+  return newUpdates;
 }
 
 /**
@@ -513,6 +522,21 @@ async function generateCompanyUpdateFeedItem(
   company: WatchlistCompany
 ): Promise<void> {
   try {
+    // Deduplication: Check if this exact update already exists in feed
+    const { getFeedItems } = await import('../utils/storage/feed-storage');
+    const existingFeed = await getFeedItems();
+
+    const isDuplicate = existingFeed.some(item =>
+      item.type === 'company_update' &&
+      item.company === company.name &&
+      item.actionUrl === update.url
+    );
+
+    if (isDuplicate) {
+      console.log(`[Uproot] Skipping duplicate update for ${company.name} (already in feed)`);
+      return;
+    }
+
     await addFeedItem({
       type: 'company_update',
       timestamp: update.timestamp,

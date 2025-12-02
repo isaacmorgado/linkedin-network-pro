@@ -90,7 +90,7 @@ const mockCompanyAntropic: Omit<WatchlistCompany, 'id' | 'addedAt'> = {
   jobPreferences: {
     keywords: ['ML', 'research', 'NLP'],
     experienceLevel: ['Entry', 'Mid'],
-    remote: true,
+    workLocation: ['remote'],
     location: ['San Francisco', 'Remote'],
   },
 };
@@ -152,7 +152,7 @@ describe('Company Watchlist Storage', () => {
       expect(company.jobPreferences).toEqual({
         keywords: ['ML', 'research', 'NLP'],
         experienceLevel: ['Entry', 'Mid'],
-        remote: true,
+        workLocation: ['remote'],
         location: ['San Francisco', 'Remote'],
       });
     });
@@ -268,12 +268,12 @@ describe('Company Watchlist Storage', () => {
       await updateWatchlistCompany(company.id, {
         jobPreferences: {
           ...company.jobPreferences!,
-          remote: true,
+          workLocation: ['remote'],
         },
       });
 
       const watchlist = await getCompanyWatchlist();
-      expect(watchlist[0].jobPreferences?.remote).toBe(true);
+      expect(watchlist[0].jobPreferences?.workLocation).toEqual(['remote']);
     });
 
     it('should update job preferences (experience level)', async () => {

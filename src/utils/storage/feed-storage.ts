@@ -209,6 +209,19 @@ export async function cleanupOldFeedItems(maxAgeDays = 30): Promise<number> {
 }
 
 /**
+ * Clear company update snapshots
+ * Useful when clearing feed to force fresh detection
+ */
+export async function clearCompanySnapshots(): Promise<void> {
+  try {
+    await chrome.storage.local.remove('uproot_company_snapshots');
+    console.log('[Uproot] Company snapshots cleared');
+  } catch (error) {
+    console.error('[Uproot] Error clearing company snapshots:', error);
+  }
+}
+
+/**
  * Get current storage usage stats
  * @returns Storage usage information
  */

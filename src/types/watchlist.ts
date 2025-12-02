@@ -3,6 +3,8 @@
  * For saving and tracking LinkedIn profiles, companies, and connection paths
  */
 
+import type { WorkLocationType } from './onboarding';
+
 export interface ConnectionPath {
   id: string; // Unique identifier (target profile URL)
   targetName: string;
@@ -50,7 +52,7 @@ export interface WatchlistCompany {
     // What types of jobs to watch for at this company
     keywords?: string[]; // Job title keywords (e.g., ["marketing", "manager"])
     experienceLevel?: string[]; // Entry, Mid, Senior, Director, etc.
-    remote?: boolean; // Only remote jobs?
+    workLocation?: WorkLocationType[]; // Remote, Hybrid, On-site
     location?: string[]; // Preferred locations
   };
   lastChecked?: number; // Last time we checked for new jobs

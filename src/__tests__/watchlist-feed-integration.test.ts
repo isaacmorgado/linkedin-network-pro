@@ -111,7 +111,7 @@ const mockCompanyAntropic: Omit<WatchlistCompany, 'id' | 'addedAt'> = {
   jobPreferences: {
     keywords: ['ML', 'research'],
     experienceLevel: ['entry', 'mid'],
-    remote: true,
+    workLocation: ['remote'],
     location: ['San Francisco', 'Remote'],
   },
 };

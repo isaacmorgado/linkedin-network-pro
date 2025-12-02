@@ -184,7 +184,7 @@ describe('Feed Integration Tests', () => {
         }),
         createCompanyWatchlist('Stripe', true, {
           keywords: ['marketing'],
-          remote: true,
+          workLocation: ['remote'],
         }),
         createCompanyWatchlist('Apple', false), // Disabled
         createCompanyWatchlist('Amazon', true), // No preferences

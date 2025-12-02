@@ -63,6 +63,7 @@ export {
   deleteFeedItem,
   getFeedStats,
   clearFeed,
+  clearCompanySnapshots,
 } from './storage/feed-storage';
 
 // ============================================================================

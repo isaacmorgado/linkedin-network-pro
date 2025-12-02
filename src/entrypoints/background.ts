@@ -24,11 +24,17 @@ import { initializeScheduler, setupOnlineStatusMonitoring } from '../services/sc
 import { generateDeadlineAlertsForUser } from '../services/deadline-alerts';
 import { getApplications, addFeedItem } from '../utils/storage';
 import { cleanupOldFeedItems, getStorageStats } from '../utils/storage/feed-storage';
+import { runMigrations } from '../utils/storage/data-migration';
 import { STORAGE_KEYS } from '../types';
 import type { SavedJob } from '../types';
 
 export default defineBackground(() => {
   log.info(LogCategory.BACKGROUND, 'Background script initialized');
+
+  // Run data migrations on startup (non-blocking)
+  runMigrations().catch((error) => {
+    console.error('[Uproot] Migration error on startup:', error);
+  });
 
   // Initialize scraping scheduler
   initializeScheduler();
@@ -96,7 +102,8 @@ export default defineBackground(() => {
         previousVersion: details.previousVersion,
         currentVersion: chrome.runtime.getManifest().version
       });
-      // Handle migration if needed
+      // Run migrations for updated extension
+      await runMigrations();
     }
   });
 

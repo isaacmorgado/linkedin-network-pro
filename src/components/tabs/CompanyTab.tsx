@@ -8,8 +8,8 @@
  * 3. View Company Jobs - Quick link to company's job listings
  */
 
-import React, { useState } from 'react';
-import { Building2, Bell, Briefcase, BookmarkPlus, Loader2, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building2, Bell, Briefcase, BookmarkPlus, Loader2, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { usePageContext } from '../../hooks/usePageContext';
 import { useWatchlist } from '../../hooks/useWatchlist';
 
@@ -21,6 +21,8 @@ export function CompanyTab({ panelWidth: _panelWidth = 400 }: CompanyTabProps) {
   const pageContext = usePageContext();
   const { addCompany } = useWatchlist();
   const [isAddingToWatchlist, setIsAddingToWatchlist] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   // Extract company data from context
   const companyData = pageContext.companyData;
@@ -29,6 +31,16 @@ export function CompanyTab({ panelWidth: _panelWidth = 400 }: CompanyTabProps) {
   const companyLogo = companyData?.companyLogo;
   const followerCount = companyData?.followerCount;
   const employeeCount = companyData?.employeeCount;
+
+  // Auto-hide notification after 3 seconds
+  useEffect(() => {
+    if (showNotification) {
+      const timer = setTimeout(() => {
+        setShowNotification(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showNotification]);
 
   const handleAddToWatchlist = async (enableJobAlerts: boolean = false) => {
     if (!companyData) {
@@ -47,6 +59,10 @@ export function CompanyTab({ panelWidth: _panelWidth = 400 }: CompanyTabProps) {
       });
 
       console.log('[Uproot] Added company to watchlist:', name, { jobAlerts: enableJobAlerts });
+
+      // Show success notification
+      setNotificationMessage(`${name} was added to watchlist`);
+      setShowNotification(true);
     } catch (error) {
       console.error('[Uproot] Failed to add company to watchlist:', error);
     } finally {
@@ -165,6 +181,43 @@ export function CompanyTab({ panelWidth: _panelWidth = 400 }: CompanyTabProps) {
           </div>
         </div>
       </div>
+
+      {/* Success Notification Banner */}
+      {showNotification && (
+        <div
+          style={{
+            margin: '0 20px',
+            padding: '10px 14px',
+            backgroundColor: '#30D158',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            fontWeight: '500',
+            boxShadow: '0 2px 8px rgba(48, 209, 88, 0.2)',
+            animation: 'fadeIn 300ms ease-out',
+          }}
+        >
+          <CheckCircle2 size={16} strokeWidth={2.5} />
+          {notificationMessage}
+          <style>
+            {`
+              @keyframes fadeIn {
+                from {
+                  opacity: 0;
+                  transform: translateY(-5px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+            `}
+          </style>
+        </div>
+      )}
 
       {/* Action Cards */}
       <div

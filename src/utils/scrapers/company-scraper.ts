@@ -44,6 +44,18 @@ export function scrapeCompanyUpdates(companyUrl: string): LinkedInCompanyUpdate[
 }
 
 /**
+ * Simple deterministic hash function for generating stable IDs
+ * Uses djb2 algorithm for consistent hashing
+ */
+function simpleHash(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i); // hash * 33 + char
+  }
+  return Math.abs(hash).toString(36);
+}
+
+/**
  * Extract update data from a single post card
  */
 function extractUpdateFromCard(card: HTMLElement): LinkedInCompanyUpdate | null {
@@ -51,7 +63,6 @@ function extractUpdateFromCard(card: HTMLElement): LinkedInCompanyUpdate | null 
     // Post URL
     const linkElement = card.querySelector('a[href*="/feed/update/"]') as HTMLAnchorElement;
     const url = linkElement?.href || '';
-    const id = url.match(/urn:li:activity:(\d+)/)?.[1] || `update_${Date.now()}`;
 
     // Post text preview
     const textElement = card.querySelector('.feed-shared-text__text-view span[dir="ltr"]');
@@ -64,6 +75,15 @@ function extractUpdateFromCard(card: HTMLElement): LinkedInCompanyUpdate | null 
     // Timestamp
     const timeElement = card.querySelector('time') as HTMLTimeElement;
     const timestamp = timeElement?.dateTime ? new Date(timeElement.dateTime).getTime() : Date.now();
+
+    // Generate stable ID: try LinkedIn URN first, fallback to deterministic hash
+    let id = url.match(/urn:li:activity:(\d+)/)?.[1];
+    if (!id) {
+      // Fallback: Generate stable ID from URL + timestamp + preview
+      // Use a simple hash of the content to create a consistent ID
+      const contentHash = simpleHash(url + timestamp + preview.slice(0, 50));
+      id = `update_${contentHash}`;
+    }
 
     // Infer type from content
     let type: 'post' | 'article' | 'event' | 'hiring' = 'post';

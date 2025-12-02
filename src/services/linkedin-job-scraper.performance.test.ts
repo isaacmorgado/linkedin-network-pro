@@ -7,12 +7,22 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { waitForJobDetails } from './linkedin-job-scraper';
 
 describe('LinkedIn Job Scraper - Timeout Performance Test', () => {
+  let pendingTimeouts: NodeJS.Timeout[] = [];
+
   beforeEach(() => {
     // Setup DOM environment
+    document.body.innerHTML = '';
+    pendingTimeouts = [];
+  });
+
+  afterEach(() => {
+    // Clear all pending timeouts to prevent interference between tests
+    pendingTimeouts.forEach(timeout => clearTimeout(timeout));
+    pendingTimeouts = [];
     document.body.innerHTML = '';
   });
 
@@ -21,12 +31,13 @@ describe('LinkedIn Job Scraper - Timeout Performance Test', () => {
     const SLOW_NETWORK_DELAY = 7000;
 
     // Schedule DOM update to occur after delay (simulating slow network)
-    setTimeout(() => {
+    const timeout1 = setTimeout(() => {
       const descriptionDiv = document.createElement('div');
       descriptionDiv.className = 'jobs-description__content';
       descriptionDiv.textContent = 'A'.repeat(150); // Sufficient content (>100 chars)
       document.body.appendChild(descriptionDiv);
     }, SLOW_NETWORK_DELAY);
+    pendingTimeouts.push(timeout1);
 
     // Test with current timeout (5000ms) - should fail because content loads at 7000ms
     const startTime = Date.now();
@@ -46,12 +57,13 @@ describe('LinkedIn Job Scraper - Timeout Performance Test', () => {
     const SLOW_NETWORK_DELAY = 7000;
 
     // Schedule DOM update to occur after delay
-    setTimeout(() => {
+    const timeout2 = setTimeout(() => {
       const descriptionDiv = document.createElement('div');
       descriptionDiv.className = 'jobs-description__content';
       descriptionDiv.textContent = 'A'.repeat(150); // Sufficient content (>100 chars)
       document.body.appendChild(descriptionDiv);
     }, SLOW_NETWORK_DELAY);
+    pendingTimeouts.push(timeout2);
 
     // Test with increased timeout (10000ms) - should succeed
     const startTime = Date.now();
@@ -79,12 +91,13 @@ describe('LinkedIn Job Scraper - Timeout Performance Test', () => {
       document.body.innerHTML = '';
 
       // Schedule DOM update
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         const descriptionDiv = document.createElement('div');
         descriptionDiv.className = 'job-details-jobs-unified-description__content';
         descriptionDiv.textContent = 'B'.repeat(200); // Sufficient content
         document.body.appendChild(descriptionDiv);
       }, SLOW_NETWORK_DELAY);
+      pendingTimeouts.push(timeout);
 
       const startTime = Date.now();
       const result = await waitForJobDetails(scenario.timeout);
@@ -102,12 +115,13 @@ describe('LinkedIn Job Scraper - Timeout Performance Test', () => {
     // Content loads at exactly 5000ms
     const BOUNDARY_DELAY = 5000;
 
-    setTimeout(() => {
+    const timeout4 = setTimeout(() => {
       const descriptionDiv = document.createElement('div');
       descriptionDiv.className = 'jobs-description__content';
       descriptionDiv.textContent = 'C'.repeat(150);
       document.body.appendChild(descriptionDiv);
     }, BOUNDARY_DELAY);
+    pendingTimeouts.push(timeout4);
 
     const result = await waitForJobDetails(5000);
 

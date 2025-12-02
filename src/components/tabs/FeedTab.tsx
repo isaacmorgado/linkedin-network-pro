@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 import type { FeedItem } from '../../types/feed';
 import { useFeed } from '../../hooks/useFeed';
@@ -37,7 +38,7 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Use the useFeed hook for data management
-  const { feedItems, stats, isLoading, error, toggleRead, markAllAsRead, reload } = useFeed();
+  const { feedItems, stats, isLoading, error, toggleRead, markAllAsRead, clearAllFeed, reload } = useFeed();
 
   const hasItems = feedItems.length > 0;
 
@@ -190,25 +191,61 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {unreadCount > 0 && (
+              <div
+                style={{
+                  padding: '4px 10px',
+                  backgroundColor: 'rgba(255, 149, 0, 0.1)',
+                  borderRadius: '12px',
+                  fontSize: panelWidth < 360 ? '11px' : '12px',
+                  fontWeight: '600',
+                  color: '#FF9500',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {unreadCount} new
+              </div>
+            )}
+            {hasItems && (
               <>
-                <div
-                  style={{
-                    padding: '4px 10px',
-                    backgroundColor: 'rgba(255, 149, 0, 0.1)',
-                    borderRadius: '12px',
-                    fontSize: panelWidth < 360 ? '11px' : '12px',
-                    fontWeight: '600',
-                    color: '#FF9500',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {unreadCount} new
-                </div>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    style={{
+                      padding: panelWidth < 360 ? '4px 8px' : '6px 10px',
+                      backgroundColor: '#0077B5',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: panelWidth < 360 ? '10px' : '11px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 150ms',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#005885';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#0077B5';
+                    }}
+                    title="Mark all as read"
+                  >
+                    <CheckCircle2 size={panelWidth < 360 ? 10 : 12} />
+                    {panelWidth >= 360 && 'Mark all read'}
+                  </button>
+                )}
                 <button
-                  onClick={markAllAsRead}
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to clear all notifications? This cannot be undone.')) {
+                      clearAllFeed();
+                    }
+                  }}
                   style={{
                     padding: panelWidth < 360 ? '4px 8px' : '6px 10px',
-                    backgroundColor: '#0077B5',
+                    backgroundColor: '#FF3B30',
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: '8px',
@@ -222,15 +259,15 @@ export function FeedTab({ panelWidth = 400 }: FeedTabProps) {
                     whiteSpace: 'nowrap',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#005885';
+                    e.currentTarget.style.backgroundColor = '#D32F2F';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0077B5';
+                    e.currentTarget.style.backgroundColor = '#FF3B30';
                   }}
-                  title="Mark all as read"
+                  title="Clear all notifications"
                 >
-                  <CheckCircle2 size={panelWidth < 360 ? 10 : 12} />
-                  {panelWidth >= 360 && 'Mark all read'}
+                  <Trash2 size={panelWidth < 360 ? 10 : 12} />
+                  {panelWidth >= 360 && 'Clear All'}
                 </button>
               </>
             )}
