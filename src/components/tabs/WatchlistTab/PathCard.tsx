@@ -1,10 +1,11 @@
 /**
  * Path Card Component
  * Displays a connection path from the watchlist
+ * Enhanced with target bubble + expandable sub-steps
  */
 
-import { useState } from 'react';
-import { User, Briefcase, Trash2, ExternalLink, Loader2, CheckCircle2, Circle } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Trash2, ExternalLink, Loader2, CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import type { ConnectionPath } from '../../../types/watchlist';
 
 interface PathCardProps {
@@ -17,70 +18,86 @@ interface PathCardProps {
 
 export function PathCard({ path, onRemove, onViewProfile, onMarkStepConnected, isRemoving }: PathCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const progressPercentage = path.totalSteps > 0 ? (path.completedSteps / path.totalSteps) * 100 : 0;
 
   return (
     <div
       style={{
-        padding: '16px',
-        borderRadius: '12px',
-        border: '1px solid rgba(0, 0, 0, 0.08)',
+        borderRadius: '16px',
+        border: '2px solid #0077B5',
         backgroundColor: '#FFFFFF',
-        boxShadow: isHovered ? '0 4px 12px rgba(0, 0, 0, 0.08)' : '0 2px 4px rgba(0, 0, 0, 0.04)',
+        boxShadow: isHovered ? '0 4px 12px rgba(0, 119, 181, 0.15)' : '0 2px 8px rgba(0, 119, 181, 0.1)',
         transition: 'all 200ms cubic-bezier(0.4, 0.0, 0.2, 1)',
         transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+        overflow: 'hidden',
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+      {/* Target Person Bubble - Clickable Header */}
+      <div
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{
+          padding: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          cursor: 'pointer',
+          backgroundColor: '#FAFAFA',
+          transition: 'background-color 150ms',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = '#F0F0F0';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = '#FAFAFA';
+        }}
+      >
         {/* Target Profile Image or Fallback */}
-        {path.targetProfileImage ? (
-          <img
-            src={path.targetProfileImage}
-            alt={path.targetName}
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              objectFit: 'cover',
-              border: '2px solid rgba(0, 119, 181, 0.2)',
-              flexShrink: 0,
-            }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              flexShrink: 0,
-            }}
-          >
-            <User size={24} strokeWidth={2} />
-          </div>
-        )}
+        <div
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            backgroundColor: '#E5E5EA',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            flexShrink: 0,
+            border: '2px solid #0077B5',
+          }}
+        >
+          {path.targetProfileImage ? (
+            <img
+              src={path.targetProfileImage}
+              alt={path.targetName}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <User size={28} color="#0077B5" />
+          )}
+        </div>
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3
             style={{
-              fontSize: '15px',
-              fontWeight: '600',
+              fontSize: '16px',
+              fontWeight: '700',
               margin: '0 0 4px 0',
               color: '#1d1d1f',
-              wordBreak: 'break-word',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
             {path.targetName}
@@ -90,28 +107,37 @@ export function PathCard({ path, onRemove, onViewProfile, onMarkStepConnected, i
               style={{
                 fontSize: '13px',
                 color: '#6e6e73',
-                margin: '0 0 8px 0',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '6px',
-                lineHeight: '1.4',
-                wordBreak: 'break-word',
-                whiteSpace: 'normal',
+                margin: '0 0 6px 0',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               }}
             >
-              <Briefcase size={12} style={{ marginTop: '2px', flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>{path.targetHeadline}</span>
+              {path.targetHeadline}
             </p>
           )}
 
-          {/* Progress */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          {/* Progress Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: '600',
+                padding: '3px 8px',
+                backgroundColor: path.isComplete ? '#D1FAE5' : '#E5F1FB',
+                color: path.isComplete ? '#065F46' : '#0077B5',
+                borderRadius: '12px',
+              }}
+            >
+              {path.isComplete ? '🎉 Complete!' : `${path.completedSteps}/${path.totalSteps} Steps`}
+            </span>
             <div
               style={{
                 flex: 1,
-                height: '6px',
+                minWidth: '60px',
+                height: '4px',
                 backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                borderRadius: '3px',
+                borderRadius: '2px',
                 overflow: 'hidden',
               }}
             >
@@ -124,92 +150,179 @@ export function PathCard({ path, onRemove, onViewProfile, onMarkStepConnected, i
                 }}
               />
             </div>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: '#6e6e73', minWidth: '60px', textAlign: 'right' }}>
-              {path.completedSteps}/{path.totalSteps} steps
-            </span>
           </div>
+        </div>
 
-          {/* Status Badge */}
-          {path.isComplete && (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                backgroundColor: 'rgba(48, 209, 88, 0.1)',
-                borderRadius: '6px',
-                fontSize: '12px',
-                color: '#30D158',
-                fontWeight: '600',
-                marginBottom: '12px',
-              }}
-            >
-              <CheckCircle2 size={12} />
-              Path Complete!
-            </div>
+        {/* Expand Icon */}
+        <div style={{ flexShrink: 0 }}>
+          {isExpanded ? (
+            <ChevronUp size={20} color="#0077B5" />
+          ) : (
+            <ChevronDown size={20} color="#0077B5" />
           )}
         </div>
       </div>
 
-      {/* Connection Steps */}
-      <div style={{ marginBottom: '12px', paddingLeft: '12px', borderLeft: '2px solid rgba(0, 119, 181, 0.2)' }}>
-        {path.path.map((step, index) => (
-          <div
-            key={index}
+      {/* Expandable Content - Connection Steps */}
+      {isExpanded && (
+        <div style={{ padding: '16px', borderTop: '1px solid #E5E5EA' }}>
+          <h4
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 0',
-              opacity: step.connected ? 0.6 : 1,
+              margin: '0 0 12px 0',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#1d1d1f',
             }}
           >
-            <button
-              onClick={() => onMarkStepConnected(path.id, index)}
-              disabled={step.connected}
-              style={{
-                width: '20px',
-                height: '20px',
-                borderRadius: '50%',
-                border: step.connected ? 'none' : '2px solid rgba(0, 119, 181, 0.4)',
-                backgroundColor: step.connected ? '#30D158' : 'transparent',
-                color: 'white',
-                cursor: step.connected ? 'default' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 0,
-                transition: 'all 150ms',
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => {
-                if (!step.connected) {
-                  e.currentTarget.style.backgroundColor = 'rgba(0, 119, 181, 0.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!step.connected) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              {step.connected ? <CheckCircle2 size={12} /> : <Circle size={12} />}
-            </button>
-            <span style={{ fontSize: '13px', color: step.connected ? '#6e6e73' : '#1d1d1f' }}>
-              {step.name}
-            </span>
-            {step.connected && (
-              <span style={{ fontSize: '11px', color: '#30D158', marginLeft: 'auto' }}>✓ Connected</span>
-            )}
-          </div>
-        ))}
-      </div>
+            Connection Path ({path.totalSteps} {path.totalSteps === 1 ? 'Step' : 'Steps'})
+          </h4>
 
-      {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <button
-          onClick={onViewProfile}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+            {path.path.map((step, index) => (
+              <React.Fragment key={index}>
+                {/* Step Card */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    backgroundColor: step.connected ? '#F0FDF4' : '#FFFFFF',
+                    border: `1px solid ${step.connected ? '#BBF7D0' : '#E5E5EA'}`,
+                    borderRadius: '8px',
+                    transition: 'all 150ms',
+                  }}
+                >
+                  {/* Status Checkbox */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMarkStepConnected(path.id, index);
+                    }}
+                    disabled={step.connected}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      border: step.connected ? 'none' : '2px solid rgba(0, 119, 181, 0.4)',
+                      backgroundColor: step.connected ? '#30D158' : 'transparent',
+                      color: 'white',
+                      cursor: step.connected ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      transition: 'all 150ms',
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!step.connected) {
+                        e.currentTarget.style.backgroundColor = 'rgba(0, 119, 181, 0.1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!step.connected) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    {step.connected ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                  </button>
+
+                  {/* Profile Image */}
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      backgroundColor: '#E5E5EA',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {step.profileImage ? (
+                      <img
+                        src={step.profileImage}
+                        alt={step.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <User size={20} color="#6e6e73" />
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: step.connected ? '#065F46' : '#1d1d1f',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {step.name}
+                    </p>
+                    <p
+                      style={{
+                        margin: '2px 0 0 0',
+                        fontSize: '12px',
+                        color: '#6e6e73',
+                      }}
+                    >
+                      {step.degree}° Connection
+                    </p>
+                  </div>
+
+                  {/* Step Number */}
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      backgroundColor: step.connected ? '#30D158' : '#0077B5',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    {index + 1}
+                  </div>
+                </div>
+
+                {/* Arrow Connector */}
+                {index < path.path.length - 1 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      padding: '4px 0',
+                    }}
+                  >
+                    <ArrowRight size={20} color="#0077B5" strokeWidth={2} />
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewProfile();
+              }}
           style={{
             padding: '6px 12px',
             backgroundColor: '#0077B5',
@@ -235,9 +348,12 @@ export function PathCard({ path, onRemove, onViewProfile, onMarkStepConnected, i
           View Profile
         </button>
 
-        <button
-          onClick={onRemove}
-          disabled={isRemoving}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              disabled={isRemoving}
           style={{
             padding: '6px 12px',
             backgroundColor: 'rgba(255, 59, 48, 0.1)',
@@ -262,10 +378,12 @@ export function PathCard({ path, onRemove, onViewProfile, onMarkStepConnected, i
             e.currentTarget.style.backgroundColor = 'rgba(255, 59, 48, 0.1)';
           }}
         >
-          {isRemoving ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={12} />}
-          Remove
-        </button>
-      </div>
+              {isRemoving ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={12} />}
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

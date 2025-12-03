@@ -633,16 +633,11 @@ describe('Connection Scraper - Main Function', () => {
 
   it('should handle errors gracefully', async () => {
     document.body.innerHTML = '<div>Not a connections page</div>';
-    vi.useFakeTimers();
 
     const { scrapeConnections } = await import('../connection-scraper');
 
-    const promise = scrapeConnections();
-    await vi.runAllTimersAsync();
-
-    await expect(promise).rejects.toThrow();
-
-    vi.useRealTimers();
+    // The scraper should reject when it can't find the connection card selector
+    await expect(scrapeConnections()).rejects.toThrow('Element .mn-connection-card not found within');
   });
 
   it.skip('should save progress on stop', async () => {
@@ -655,12 +650,10 @@ describe('Connection Scraper - Retry Logic', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     vi.clearAllMocks();
-    vi.useFakeTimers();
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
-    vi.useRealTimers();
   });
 
   it('should retry on failure', async () => {
@@ -668,11 +661,10 @@ describe('Connection Scraper - Retry Logic', () => {
 
     const { scrapeConnectionsWithRetry } = await import('../connection-scraper');
 
-    const promise = scrapeConnectionsWithRetry({}, 3);
-    await vi.runAllTimersAsync();
-
-    await expect(promise).rejects.toThrow();
-  });
+    // The scraper should retry 3 times and then fail with timeout error
+    // Note: This will take ~15s per attempt (3 attempts total) plus exponential backoff delays
+    await expect(scrapeConnectionsWithRetry({}, 3)).rejects.toThrow('Element .mn-connection-card not found within');
+  }, 60000); // 60 second timeout to account for 3 retries with 15s timeout each + backoff delays
 
   it.skip('should succeed on retry after initial failure', async () => {
     // This test requires complex module mocking that doesn't work well with Vitest's module system

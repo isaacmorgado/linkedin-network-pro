@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { User, Briefcase, ExternalLink, GitBranch, MessageSquare, Loader2 } from 'lucide-react';
-import type { SearchResult } from '../../../services/universal-connection/universal-connection-types';
+import type { SearchResult } from '../../../types/search';
 
 interface SearchResultsProps {
   results: SearchResult[];
@@ -19,7 +19,7 @@ export function SearchResults({ results, onFindPath, onGenerateMessage, onViewPr
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   const handleFindPath = async (result: SearchResult) => {
-    setActioningId(result.profile.id);
+    setActioningId(result.profileId);
     try {
       await onFindPath(result);
     } finally {
@@ -28,7 +28,7 @@ export function SearchResults({ results, onFindPath, onGenerateMessage, onViewPr
   };
 
   const handleGenerateMessage = async (result: SearchResult) => {
-    setActioningId(`msg-${result.profile.id}`);
+    setActioningId(`msg-${result.profileId}`);
     try {
       await onGenerateMessage(result);
     } finally {
@@ -39,8 +39,9 @@ export function SearchResults({ results, onFindPath, onGenerateMessage, onViewPr
   const handleViewProfile = (result: SearchResult) => {
     if (onViewProfile) {
       onViewProfile(result);
-    } else if (result.profile.profileUrl) {
-      window.open(result.profile.profileUrl, '_blank');
+    } else {
+      // Construct LinkedIn profile URL from profileId
+      window.open(`https://www.linkedin.com/in/${result.profileId}`, '_blank');
     }
   };
 
@@ -193,14 +194,14 @@ export function SearchResults({ results, onFindPath, onGenerateMessage, onViewPr
       {/* Result Cards */}
       {results.map((result) => (
         <ResultCard
-          key={result.profile.id}
+          key={result.profileId}
           result={result}
           onFindPath={() => handleFindPath(result)}
           onGenerateMessage={() => handleGenerateMessage(result)}
           onViewProfile={() => handleViewProfile(result)}
           getDegreeBadge={getDegreeBadge}
           getMatchScore={getMatchScore}
-          isActioning={actioningId === result.profile.id || actioningId === `msg-${result.profile.id}`}
+          isActioning={actioningId === result.profileId || actioningId === `msg-${result.profileId}`}
         />
       ))}
     </div>
@@ -219,7 +220,7 @@ interface ResultCardProps {
 
 function ResultCard({ result, onFindPath, onGenerateMessage, onViewProfile, getDegreeBadge, getMatchScore, isActioning }: ResultCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const { profile, matchScore } = result;
+  const { name, headline, matchScore, connectionDegree } = result;
 
   return (
     <div
@@ -236,42 +237,24 @@ function ResultCard({ result, onFindPath, onGenerateMessage, onViewProfile, getD
       onMouseLeave={() => setIsHovered(false)}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-        {/* Profile Image or Avatar */}
-        {profile.profileImage ? (
-          <img
-            src={profile.profileImage}
-            alt={profile.name}
-            style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              objectFit: 'cover',
-              border: '2px solid rgba(0, 119, 181, 0.2)',
-              flexShrink: 0,
-            }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              flexShrink: 0,
-            }}
-          >
-            <User size={28} strokeWidth={2} />
-          </div>
-        )}
+        {/* Profile Image or Avatar - Note: SearchResult doesn't have profileImage field */}
+        <div
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #0077B5 0%, #00A0DC 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            flexShrink: 0,
+          }}
+        >
+          <User size={28} strokeWidth={2} />
+        </div>
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -285,13 +268,13 @@ function ResultCard({ result, onFindPath, onGenerateMessage, onViewProfile, getD
                 wordBreak: 'break-word',
               }}
             >
-              {profile.name}
+              {name}
             </h3>
-            {profile.connectionDegree && getDegreeBadge(profile.connectionDegree)}
+            {connectionDegree && getDegreeBadge(connectionDegree)}
             {getMatchScore(matchScore)}
           </div>
 
-          {profile.headline && (
+          {headline && (
             <p
               style={{
                 fontSize: '13px',
@@ -305,7 +288,7 @@ function ResultCard({ result, onFindPath, onGenerateMessage, onViewProfile, getD
               }}
             >
               <Briefcase size={12} style={{ marginTop: '2px', flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>{profile.headline}</span>
+              <span style={{ flex: 1 }}>{headline}</span>
             </p>
           )}
 

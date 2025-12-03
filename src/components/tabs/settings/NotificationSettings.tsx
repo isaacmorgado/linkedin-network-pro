@@ -1,10 +1,10 @@
 /**
  * Notification Settings Component
- * Manage email, SMS, and push notification preferences
+ * Manage email and push notification preferences
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Mail, MessageSquare, Save } from 'lucide-react';
+import { Bell, Mail, Save } from 'lucide-react';
 import { useSettingsStore } from '../../../stores/settings';
 import type { NotificationPreferences } from '../../../types';
 import { LoadingSpinner, Toggle, Checkbox, RadioButton, Button } from '../../shared';
@@ -32,7 +32,6 @@ export function NotificationSettings({ panelWidth = 400 }: NotificationSettingsP
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const [emailAddress, setEmailAddress] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
 
   const isCompact = panelWidth < 380;
 
@@ -106,29 +105,6 @@ export function NotificationSettings({ panelWidth = 400 }: NotificationSettingsP
     }));
   }, []);
 
-  // Toggle SMS enabled
-  const toggleSMSEnabled = useCallback(() => {
-    setLocalNotifications((prev) => ({
-      ...prev,
-      sms: {
-        ...prev.sms,
-        enabled: !prev.sms.enabled,
-      },
-    }));
-  }, []);
-
-  // Toggle SMS notification type
-  const toggleSMSType = useCallback((type: NotificationType) => {
-    setLocalNotifications((prev) => ({
-      ...prev,
-      sms: {
-        ...prev.sms,
-        types: prev.sms.types.includes(type)
-          ? prev.sms.types.filter((t) => t !== type)
-          : [...prev.sms.types, type],
-      },
-    }));
-  }, []);
 
   // Toggle push enabled
   const togglePushEnabled = useCallback(() => {
@@ -295,79 +271,6 @@ export function NotificationSettings({ panelWidth = 400 }: NotificationSettingsP
                     label={freq.label}
                     checked={localNotifications.email.frequency === freq.value}
                     onChange={() => updateEmailFrequency(freq.value)}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-      </Section>
-
-      {/* SMS Notifications */}
-      <Section title="SMS Notifications" icon={<MessageSquare size={18} color={accentColor} />} textColor={textColor}>
-        <div style={{ marginBottom: '16px' }}>
-          <Toggle
-            label="Enable SMS notifications"
-            checked={localNotifications.sms.enabled}
-            onChange={toggleSMSEnabled}
-          />
-        </div>
-
-        {localNotifications.sms.enabled && (
-          <>
-            <div style={{ marginBottom: '16px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  marginBottom: '6px',
-                  color: textColor,
-                }}
-              >
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+1 (555) 123-4567"
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: `1px solid ${textColor}20`,
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontFamily: 'inherit',
-                  color: textColor,
-                  backgroundColor: 'transparent',
-                }}
-              />
-              <p style={{ fontSize: '11px', color: `${textColor}80`, margin: '4px 0 0 0' }}>
-                Standard messaging rates may apply
-              </p>
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  marginBottom: '8px',
-                  color: textColor,
-                }}
-              >
-                Notify me about
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {notificationTypes.filter((t) => ['job_alert', 'connection_accepted'].includes(t.value)).map((type) => (
-                  <Checkbox
-                    key={type.value}
-                    label={type.label}
-                    description={type.description}
-                    checked={localNotifications.sms.types.includes(type.value)}
-                    onChange={() => toggleSMSType(type.value)}
                   />
                 ))}
               </div>

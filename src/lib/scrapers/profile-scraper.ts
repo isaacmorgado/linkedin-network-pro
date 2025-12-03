@@ -10,16 +10,21 @@ import { LinkedInProfile } from '@/types';
 import type { ActivityEvent } from '@/types/network';
 import { waitForElement, inferIndustryFromHeadline, parseDateString, extractNumberFromText } from './helpers';
 import { scrapeActivityForProfile, processActivityData } from './profile-scraper-activities';
+import { scrapeMultipleSkillEndorsers } from './endorsement-scraper';
 
 /**
  * Scrape profile data from LinkedIn profile page
  *
  * @param options - Optional scraping configuration
  * @param options.includeActivity - Whether to scrape activity/engagement data (default: false)
+ * @param options.includeEndorsers - Whether to scrape WHO endorsed each skill (default: false, slower)
+ * @param options.maxEndorsedSkills - Maximum number of skills to scrape endorsers for (default: 5)
  * @returns Profile data with optional activity events
  */
 export async function scrapeProfileData(options?: {
   includeActivity?: boolean;
+  includeEndorsers?: boolean;
+  maxEndorsedSkills?: number;
 }): Promise<Partial<LinkedInProfile> & { activities?: ActivityEvent[] } | null> {
   try {
     // Wait for profile to load
@@ -163,6 +168,10 @@ export async function scrapeProfileData(options?: {
     const skillsSection = document.querySelector('#skills');
     if (skillsSection) {
       const skillItems = skillsSection.parentElement?.querySelectorAll('.pvs-list__item--line-separated');
+
+      // First pass: Collect skill names and counts
+      const skillElements: Array<{ element: Element; name: string; count: number }> = [];
+
       skillItems?.forEach((item) => {
         const skillElement = item.querySelector('.t-bold span[aria-hidden="true"]');
         const endorsementElement =
@@ -174,13 +183,43 @@ export async function scrapeProfileData(options?: {
           : 0;
 
         if (skillElement) {
+          const skillName = skillElement.textContent?.trim() || '';
+          skillElements.push({
+            element: item,
+            name: skillName,
+            count: endorsementCount,
+          });
+
+          // Add skill with empty endorsedBy (will fill in if includeEndorsers is true)
           profileData.skills?.push({
-            name: skillElement.textContent?.trim() || '',
+            name: skillName,
             endorsementCount,
             endorsedBy: [],
           });
         }
       });
+
+      // Second pass (optional): Scrape WHO endorsed each skill
+      if (options?.includeEndorsers && skillElements.length > 0) {
+        console.log('[ProfileScraper] Scraping endorsers for skills...');
+
+        const maxSkills = options?.maxEndorsedSkills || 5;
+        const endorserMap = await scrapeMultipleSkillEndorsers(
+          skillElements.map(s => ({ element: s.element, name: s.name })),
+          maxSkills
+        );
+
+        // Update skills with endorser data
+        profileData.skills?.forEach((skill) => {
+          const endorsers = endorserMap.get(skill.name);
+          if (endorsers) {
+            skill.endorsedBy = endorsers;
+            console.log(`[ProfileScraper] Found ${endorsers.length} endorsers for ${skill.name}`);
+          }
+        });
+
+        console.log('[ProfileScraper] Finished scraping endorsers');
+      }
     }
 
     // Connection count

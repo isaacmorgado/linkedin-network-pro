@@ -15,6 +15,7 @@ import { getCurrentLinkedInUser } from '@/utils/linkedin-scraper';
 import { addProfileToGraph } from '@/services/network-builder-service';
 import { scrapeConnectionsSafe, pauseScraping, resumeScraping } from '@/lib/scrapers/connection-scraper';
 import type { NetworkNode } from '@/types';
+import '@/utils/load-test-data'; // Expose test data utilities to window
 
 export default defineContentScript({
   matches: ['<all_urls>'],

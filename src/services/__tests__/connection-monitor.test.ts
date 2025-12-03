@@ -261,6 +261,11 @@ describe('logConnectionAcceptance', () => {
   });
 
   it('should create feed item with connection_update type', async () => {
+    // Initialize storage with a path so we can test the enhanced feed notification
+    await chrome.storage.local.set({
+      uproot_connection_paths: [mockConnectionPath1],
+    });
+
     await logConnectionAcceptance(
       'https://linkedin.com/in/target-person',
       0,
@@ -274,7 +279,10 @@ describe('logConnectionAcceptance', () => {
     expect(feedItems.length).toBe(1);
     expect(feedItems[0].type).toBe('connection_update');
     expect(feedItems[0].connectionName).toBe('Alice Intermediary');
-    expect(feedItems[0].title).toBe('Connection Accepted');
+    // Should show step progress (Step 1/2 Complete) not 'Connection Accepted'
+    expect(feedItems[0].title).toBe('✅ Step 1/2 Complete');
+    expect(feedItems[0].description).toContain('Alice Intermediary connected!');
+    expect(feedItems[0].description).toContain('1 step remaining');
     expect(feedItems[0].read).toBe(false);
   });
 

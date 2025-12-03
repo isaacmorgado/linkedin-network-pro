@@ -11,7 +11,7 @@ import { log, LogCategory } from '../utils/logger';
  */
 function querySelectorDeep(selector: string): Element | null {
   // Try normal querySelector first
-  let element = document.querySelector(selector);
+  const element = document.querySelector(selector);
   if (element) return element;
 
   // Recursively search through all shadow roots (including nested)
@@ -1192,7 +1192,7 @@ function extractDescription(): string {
     }
 
     if (element?.textContent?.trim()) {
-      let text = element.textContent.trim().replace(/\s+/g, ' ').replace(/Show (more|less)/gi, '');
+      const text = element.textContent.trim().replace(/\s+/g, ' ').replace(/Show (more|less)/gi, '');
 
       if (text.length > 200) { // Higher threshold for ARIA selectors (may include more content)
         console.log(`[Uproot] ✅ Found description using ARIA/semantic selector: ${selector} (${text.length} chars)`);
@@ -1709,7 +1709,7 @@ export async function waitForJobDetails(timeout?: number): Promise<boolean> {
         }
 
         // === ENHANCED DEBUG LOGGING: Log each selector attempt ===
-        let selectorResults: Array<{ selector: string; found: boolean; textLength: number; reason?: string }> = [];
+        const selectorResults: Array<{ selector: string; found: boolean; textLength: number; reason?: string }> = [];
 
         // Try all known selectors with RECURSIVE Shadow DOM search
         for (const selector of descriptionSelectors) {

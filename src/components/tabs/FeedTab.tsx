@@ -608,6 +608,8 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
         return <Flame size={iconSize} color="#FF3B30" />;
       case 'deadline_alert':
         return <AlertCircle size={iconSize} color="#FF9500" />;
+      case 'warm_path_opened':
+        return <TrendingUp size={iconSize} color="#00C7BE" />;
       default:
         return <TrendingUp size={iconSize} color="#6e6e73" />;
     }
@@ -630,6 +632,8 @@ function FeedCard({ item, panelWidth = 400, onToggleRead }: FeedCardProps) {
         return 'rgba(255, 59, 48, 0.1)';
       case 'deadline_alert':
         return 'rgba(255, 149, 0, 0.1)';
+      case 'warm_path_opened':
+        return 'rgba(0, 199, 190, 0.1)';
       default:
         return 'rgba(0, 0, 0, 0.05)';
     }

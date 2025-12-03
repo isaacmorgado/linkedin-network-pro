@@ -1,12 +1,14 @@
 /**
  * Universal Search Component
  * Natural language search input for network exploration
+ * Now with AI-powered conversational interface
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Search, Loader2, X } from 'lucide-react';
+import { Search, Loader2, X, Sparkles, Bot } from 'lucide-react';
 import { chatAgent } from '../../../services/universal-connection/chat';
-import type { SearchResult } from '../../../services/universal-connection/universal-connection-types';
+import { aiSearchChat } from '../../../services/universal-connection/search/ai-search-chat';
+import type { SearchResult } from '../../../types/search';
 
 interface UniversalSearchProps {
   onSearchResults: (results: SearchResult[]) => void;
@@ -16,6 +18,8 @@ interface UniversalSearchProps {
 export function UniversalSearch({ onSearchResults, onError }: UniversalSearchProps) {
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string>('');
+  const [useAI, setUseAI] = useState(true); // Toggle AI chat mode
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input on mount
@@ -27,28 +31,27 @@ export function UniversalSearch({ onSearchResults, onError }: UniversalSearchPro
     if (!searchQuery.trim() || isSearching) return;
 
     setIsSearching(true);
+    setAiResponse('');
 
     try {
-      const response = await chatAgent.chat(searchQuery);
+      if (useAI) {
+        // Use AI chat interface (conversational ChatGPT-like experience)
+        const chatMessage = await aiSearchChat.chat(searchQuery);
 
-      // Extract search results from metadata and convert format
-      const rawResults = response.metadata?.searchResults || [];
-      // Convert from chat SearchResult to universal-connection SearchResult
-      const results = rawResults.map((r: any) => ({
-        profile: {
-          id: r.profileId,
-          name: r.name,
-          headline: r.headline,
-          profileUrl: r.profileId,
-          company: r.company,
-          role: r.role,
-          connectionDegree: r.connectionDegree,
-        },
-        matchScore: r.matchScore,
-        reasoning: r.reasoning,
-        pathAvailable: r.pathAvailable,
-      }));
-      onSearchResults(results);
+        // Set AI response for display
+        setAiResponse(chatMessage.content);
+
+        // Extract results from metadata
+        const results = chatMessage.metadata?.searchResults || [];
+        onSearchResults(results);
+      } else {
+        // Use original algorithmic search (no AI)
+        const response = await chatAgent.chat(searchQuery);
+
+        // Extract search results from metadata (already in correct format)
+        const results = response.metadata?.searchResults || [];
+        onSearchResults(results);
+      }
     } catch (error) {
       console.error('[UniversalSearch] Search failed:', error);
       if (onError) {
@@ -66,7 +69,13 @@ export function UniversalSearch({ onSearchResults, onError }: UniversalSearchPro
 
   const handleClear = () => {
     setQuery('');
+    setAiResponse('');
     inputRef.current?.focus();
+  };
+
+  const toggleAIMode = () => {
+    setUseAI(!useAI);
+    setAiResponse('');
   };
 
   return (
@@ -76,6 +85,46 @@ export function UniversalSearch({ onSearchResults, onError }: UniversalSearchPro
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
       }}
     >
+      {/* AI Mode Toggle */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          marginBottom: '8px',
+        }}
+      >
+        <button
+          onClick={toggleAIMode}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            fontSize: '12px',
+            fontWeight: '500',
+            color: useAI ? '#FFFFFF' : '#0077B5',
+            backgroundColor: useAI ? '#0077B5' : 'transparent',
+            border: `1px solid ${useAI ? '#0077B5' : 'rgba(0, 119, 181, 0.3)'}`,
+            borderRadius: '20px',
+            cursor: 'pointer',
+            transition: 'all 150ms',
+          }}
+          onMouseEnter={(e) => {
+            if (!useAI) {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 119, 181, 0.05)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!useAI) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          {useAI ? <Sparkles size={14} /> : <Bot size={14} />}
+          <span>{useAI ? 'AI Chat' : 'Fast Search'}</span>
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} style={{ position: 'relative' }}>
         <div
           style={{
@@ -102,6 +151,8 @@ export function UniversalSearch({ onSearchResults, onError }: UniversalSearchPro
                   animation: 'spin 1s linear infinite',
                 }}
               />
+            ) : useAI ? (
+              <Sparkles size={18} color="#0077B5" />
             ) : (
               <Search size={18} color="#6e6e73" />
             )}
@@ -113,7 +164,7 @@ export function UniversalSearch({ onSearchResults, onError }: UniversalSearchPro
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your network..."
+            placeholder={useAI ? "Ask me anything about your network..." : "Search your network..."}
             disabled={isSearching}
             style={{
               width: '100%',
@@ -178,6 +229,31 @@ export function UniversalSearch({ onSearchResults, onError }: UniversalSearchPro
         </div>
       </form>
 
+      {/* AI Response Display */}
+      {aiResponse && (
+        <div
+          style={{
+            marginTop: '12px',
+            padding: '12px',
+            backgroundColor: 'rgba(0, 119, 181, 0.05)',
+            border: '1px solid rgba(0, 119, 181, 0.2)',
+            borderRadius: '8px',
+            fontSize: '13px',
+            lineHeight: '1.6',
+            color: '#1d1d1f',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+            <Sparkles size={14} color="#0077B5" />
+            <span style={{ fontWeight: '600', fontSize: '12px', color: '#0077B5' }}>
+              AI Assistant
+            </span>
+          </div>
+          {aiResponse}
+        </div>
+      )}
+
       {/* Helper Text */}
       <p
         style={{
@@ -187,7 +263,9 @@ export function UniversalSearch({ onSearchResults, onError }: UniversalSearchPro
           paddingLeft: '4px',
         }}
       >
-        Try: "Find ML engineers at Google" or "Who works in AI Ethics?"
+        {useAI
+          ? 'Try: "Who do I know at Netflix?" or "Find people who endorsed leadership"'
+          : 'Try: "Find ML engineers at Google" or "Who works in AI Ethics?"'}
       </p>
     </div>
   );

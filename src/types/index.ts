@@ -311,10 +311,6 @@ export const NotificationPreferencesSchema = z.object({
     types: z.array(NotificationTypeSchema).default([]),
     frequency: z.enum(['instant', 'daily', 'weekly']).default('daily'),
   }),
-  sms: z.object({
-    enabled: z.boolean().default(false),
-    types: z.array(NotificationTypeSchema).default([]),
-  }),
   push: z.object({
     enabled: z.boolean().default(true),
     types: z.array(NotificationTypeSchema).default(['job_alert', 'connection_accepted']),

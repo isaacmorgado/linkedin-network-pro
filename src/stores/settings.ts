@@ -43,7 +43,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   notifications: {
     email: { enabled: false, types: [], frequency: 'daily' },
-    sms: { enabled: false, types: [] },
     push: { enabled: true, types: ['job_alert', 'connection_accepted'] },
   },
   privacy: {

@@ -20,7 +20,7 @@ export default defineConfig({
       'idle',
     ],
     host_permissions: [
-      'https://www.linkedin.com/*',
+      'https://*.linkedin.com/*', // All LinkedIn subdomains (www, media, static, etc.)
       'https://*.supabase.co/*',
     ],
     action: {

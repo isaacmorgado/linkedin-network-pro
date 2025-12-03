@@ -8,7 +8,6 @@ import { log, LogCategory } from '../utils/logger';
 import type { FeedItem } from '../types/feed';
 import type { LinkedInProfile } from '../types';
 import { getCompanyWatchlist } from '../utils/storage/company-watchlist-storage';
-import { isCompanyInWatchlist } from '../utils/storage/company-watchlist-storage';
 import { addFeedItem } from '../utils/storage/feed-storage';
 import {
   addWarmPathDedupe,
@@ -100,6 +99,23 @@ export async function detectWarmPathForConnection(
 // ============================================================================
 
 /**
+ * Check if a company is in the watchlist by name (case-insensitive)
+ */
+async function isCompanyWatchlistedByName(companyName: string): Promise<boolean> {
+  try {
+    const companies = await getCompanyWatchlist();
+    const normalizedName = companyName.toLowerCase().trim();
+    return companies.some((c) => c.name.toLowerCase().trim() === normalizedName);
+  } catch (error) {
+    log.error(LogCategory.MONITORING, 'Error checking if company is watchlisted', {
+      error,
+      companyName,
+    });
+    return false;
+  }
+}
+
+/**
  * Detects path length 1: New connection works at a watchlisted company
  */
 async function detectDirectWarmPath(
@@ -108,7 +124,6 @@ async function detectDirectWarmPath(
 ): Promise<WarmPathDescriptor | null> {
   // 1. Extract current company from profile
   const currentCompany = profile.currentRole?.company;
-  const currentCompanyUrl = ''; // companyUrl not available in currentRole
 
   if (!currentCompany) {
     log.debug(LogCategory.MONITORING, 'No company info in profile', {
@@ -117,27 +132,26 @@ async function detectDirectWarmPath(
     return null; // No company info available
   }
 
-  // 2. Check if company is watchlisted
-  const isWatchlisted = await isCompanyInWatchlist(currentCompanyUrl || currentCompany);
+  // 2. Check if company is watchlisted (by name since URL not available in currentRole)
+  const isWatchlisted = await isCompanyWatchlistedByName(currentCompany);
 
   if (!isWatchlisted) {
     log.debug(LogCategory.MONITORING, 'Company not watchlisted', {
       company: currentCompany,
-      companyUrl: currentCompanyUrl,
     });
     return null; // Not a target company
   }
 
-  // 3. Get company details from watchlist for logo
+  // 3. Get company details from watchlist for logo and URL
   const watchlist = await getCompanyWatchlist();
   const watchlistedCompany = watchlist.find(
-    (c) => c.companyUrl === currentCompanyUrl
+    (c) => c.name.toLowerCase().trim() === currentCompany.toLowerCase().trim()
   );
 
   // 4. Build descriptor
   const descriptor: WarmPathDescriptor = {
-    targetCompany: currentCompany || '',
-    targetCompanyUrl: currentCompanyUrl || '',
+    targetCompany: currentCompany,
+    targetCompanyUrl: watchlistedCompany?.companyUrl || '',
     targetCompanyLogo: watchlistedCompany?.companyLogo || undefined,
     viaPersonName: profile.name,
     viaPersonProfileUrl: profileUrl,

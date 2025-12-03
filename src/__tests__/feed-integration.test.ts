@@ -416,7 +416,8 @@ describe('Feed Integration Tests', () => {
       expect(feedItem.connectionName).toBe('Alice Intermediary');
       expect(feedItem.connectionUpdate).toContain('Alice Intermediary');
       expect(feedItem.connectionUpdate).toContain('accepted');
-      expect(feedItem.title).toBe('Connection Accepted');
+      // The enhanced feed notification shows progress: "Step 1/2 Complete" instead of "Connection Accepted"
+      expect(feedItem.title).toBe('✅ Step 1/2 Complete');
     });
 
     it('should update connection path completion status', async () => {

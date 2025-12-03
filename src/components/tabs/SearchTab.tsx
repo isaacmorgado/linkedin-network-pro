@@ -10,7 +10,8 @@ import { SearchResults } from './WatchlistTab/SearchResults';
 import { ConnectionPathView } from './WatchlistTab/ConnectionPathView';
 import { MessageComposer } from './WatchlistTab/MessageComposer';
 import { apiClient } from '../../services/api';
-import type { SearchResult, EnhancedConnectionRoute } from '../../services/universal-connection/universal-connection-types';
+import type { SearchResult } from '../../types/search';
+import type { EnhancedConnectionRoute } from '../../services/universal-connection/universal-connection-types';
 
 interface SearchTabProps {
   panelWidth?: number;
@@ -48,7 +49,7 @@ export function SearchTab({ panelWidth: _panelWidth }: SearchTabProps) {
       const route = await apiClient.findPath({
         userId,
         sourceProfileId: userId,
-        targetProfileId: result.profile.id,
+        targetProfileId: result.profileId,
       });
 
       setSelectedPath(route);
@@ -71,9 +72,18 @@ export function SearchTab({ panelWidth: _panelWidth }: SearchTabProps) {
         // Add other profile fields
       };
 
+      // Create a profile object from SearchResult
+      const targetProfile = {
+        id: result.profileId,
+        name: result.name,
+        headline: result.headline,
+        company: result.company,
+        role: result.role,
+      };
+
       const response = await apiClient.generateMessage({
         userId,
-        targetProfile: result.profile,
+        targetProfile: targetProfile as any,
         sourceProfile: currentUserProfile as any,
         context: {
           purpose: 'networking',

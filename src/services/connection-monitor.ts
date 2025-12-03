@@ -73,15 +73,28 @@ export async function logConnectionAcceptance(
   personName: string,
   personProfileUrl: string
 ): Promise<void> {
-  // Create feed item
+  // Get connection path to show progress details
+  const pathsResult = await chrome.storage.local.get('uproot_connection_paths');
+  const paths: ConnectionPath[] = pathsResult['uproot_connection_paths'] || [];
+  const pathIndex = paths.findIndex((p) => p.id === pathId);
+  const targetPath = paths[pathIndex];
+
+  // Calculate progress
+  const totalSteps = targetPath?.totalSteps || 1;
+  const completedSteps = (targetPath?.completedSteps || 0) + 1;
+  const isComplete = completedSteps >= totalSteps;
+
+  // Create enhanced feed item with progress details
   const feedItem: Omit<FeedItem, 'id'> = {
     type: 'connection_update',
     timestamp: Date.now(),
     read: false,
     connectionName: personName,
     connectionUpdate: `${personName} accepted your connection request`,
-    title: 'Connection Accepted',
-    description: `${personName} is now in your network`,
+    title: isComplete ? '🎉 Connection Path Complete!' : `✅ Step ${completedSteps}/${totalSteps} Complete`,
+    description: isComplete
+      ? `${personName} connected! You've completed your path to ${targetPath?.targetName || 'your target'}`
+      : `${personName} connected! ${totalSteps - completedSteps} ${totalSteps - completedSteps === 1 ? 'step' : 'steps'} remaining to reach ${targetPath?.targetName || 'your target'}`,
     actionUrl: personProfileUrl,
     actionLabel: 'View Profile',
   };
@@ -94,10 +107,6 @@ export async function logConnectionAcceptance(
   await chrome.storage.local.set({ uproot_feed: feedItems });
 
   // Update connection path to mark step as connected
-  const pathsResult = await chrome.storage.local.get('uproot_connection_paths');
-  const paths: ConnectionPath[] = pathsResult['uproot_connection_paths'] || [];
-
-  const pathIndex = paths.findIndex((p) => p.id === pathId);
   if (pathIndex !== -1) {
     const path = paths[pathIndex];
 
