@@ -9,7 +9,6 @@ import {
   Briefcase,
   GraduationCap,
   Code,
-  Sparkles,
   RefreshCw,
 } from 'lucide-react';
 import type { ProfessionalProfile } from '../../types/resume';
@@ -18,13 +17,12 @@ import { SubTabButton } from './ResumeTab/shared/SubTabButton';
 import { ExperienceTab } from './ResumeTab/experience/ExperienceTab';
 import { SkillsTab } from './ResumeTab/skills/SkillsTab';
 import { EducationTab } from './ResumeTab/education/EducationTab';
-import { GenerateTab } from './ResumeTab/generate/GenerateTab';
 
 interface ResumeTabProps {
   panelWidth?: number;
 }
 
-type SubTab = 'experience' | 'skills' | 'education' | 'generate';
+type SubTab = 'experience' | 'skills' | 'education';
 
 export function ResumeTab({ panelWidth = 400 }: ResumeTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('experience');
@@ -178,13 +176,6 @@ export function ResumeTab({ panelWidth = 400 }: ResumeTabProps) {
             onClick={() => setActiveSubTab('education')}
             panelWidth={panelWidth}
           />
-          <SubTabButton
-            icon={<Sparkles size={14} strokeWidth={2} />}
-            label="Generate"
-            isActive={activeSubTab === 'generate'}
-            onClick={() => setActiveSubTab('generate')}
-            panelWidth={panelWidth}
-          />
         </div>
       </div>
 
@@ -193,7 +184,6 @@ export function ResumeTab({ panelWidth = 400 }: ResumeTabProps) {
         {activeSubTab === 'experience' && <ExperienceTab profile={profile} onUpdate={loadProfile} />}
         {activeSubTab === 'skills' && <SkillsTab profile={profile} onUpdate={loadProfile} />}
         {activeSubTab === 'education' && <EducationTab profile={profile} onUpdate={loadProfile} />}
-        {activeSubTab === 'generate' && <GenerateTab profile={profile} />}
       </div>
     </div>
   );

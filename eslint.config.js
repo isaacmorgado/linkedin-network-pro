@@ -61,6 +61,7 @@ export default [
         HTMLAnchorElement: 'readonly',
         HTMLLabelElement: 'readonly',
         HTMLTimeElement: 'readonly',
+        HTMLFormElement: 'readonly',
         Element: 'readonly',
         Node: 'readonly',
         Event: 'readonly',

@@ -7,6 +7,23 @@ interface ProjectFormProps {
 }
 
 export function ProjectForm({ onSave, onCancel }: ProjectFormProps) {
+  // Get current year for date range validation
+  const currentYear = new Date().getFullYear();
+  const months = [
+    { value: '01', label: 'January' },
+    { value: '02', label: 'February' },
+    { value: '03', label: 'March' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'May' },
+    { value: '06', label: 'June' },
+    { value: '07', label: 'July' },
+    { value: '08', label: 'August' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ];
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -27,8 +44,35 @@ export function ProjectForm({ onSave, onCancel }: ProjectFormProps) {
   const [techInput, setTechInput] = useState('');
   const [tagInput, setTagInput] = useState('');
 
+  // Helper to parse date string (YYYY-MM) into month and year
+  const parseDate = (dateString: string) => {
+    if (!dateString) return { month: '', year: '' };
+    const [year, month] = dateString.split('-');
+    return { month: month || '', year: year || '' };
+  };
+
+  // Helper to format month and year into date string (YYYY-MM)
+  const formatDate = (month: string, year: string) => {
+    if (!month && !year) return '';
+    if (!month) return `${year}-`;
+    if (!year) return `-${month}`;
+    return `${year}-${month}`;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check form validity and scroll to first invalid field
+    const form = e.currentTarget as HTMLFormElement;
+    if (!form.checkValidity()) {
+      const firstInvalid = form.querySelector(':invalid') as HTMLElement;
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalid.focus();
+      }
+      return;
+    }
+
     if (!formData.name.trim() || !formData.description.trim()) return;
     onSave(formData);
   };
@@ -54,7 +98,7 @@ export function ProjectForm({ onSave, onCancel }: ProjectFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ backgroundColor: 'white', border: '1px solid rgba(0, 0, 0, 0.08)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+    <form onSubmit={handleSubmit} noValidate style={{ position: 'relative', backgroundColor: 'white', border: '1px solid rgba(0, 0, 0, 0.08)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1d1d1f', margin: '0 0 16px 0' }}>
         Add Project
       </h3>
@@ -165,28 +209,122 @@ export function ProjectForm({ onSave, onCancel }: ProjectFormProps) {
 
       {/* Dates */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+        {/* Start Date */}
         <div>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#1d1d1f', marginBottom: '6px' }}>
             Start Date
           </label>
-          <input
-            type="month"
-            value={formData.startDate}
-            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-            style={{ width: '100%', padding: '10px 12px', border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: '6px', fontSize: '13px', fontFamily: 'inherit' }}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 80px', gap: '8px' }}>
+            <select
+              value={parseDate(formData.startDate).month}
+              onChange={(e) => {
+                const { year } = parseDate(formData.startDate);
+                setFormData({ ...formData, startDate: formatDate(e.target.value, year) });
+              }}
+              style={{
+                width: '100%',
+                padding: '14px 4px',
+                paddingRight: '24px',
+                border: '1px solid rgba(0, 0, 0, 0.12)',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontFamily: 'inherit',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+                minHeight: '42px',
+                lineHeight: '1.2',
+              }}
+            >
+              <option value="">Month</option>
+              {months.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={parseDate(formData.startDate).year}
+              onChange={(e) => {
+                const { month } = parseDate(formData.startDate);
+                setFormData({ ...formData, startDate: formatDate(month, e.target.value) });
+              }}
+              placeholder="Year"
+              min="1950"
+              max={currentYear + 10}
+              style={{
+                width: '100%',
+                padding: '14px 8px',
+                border: '1px solid rgba(0, 0, 0, 0.12)',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontFamily: 'inherit',
+                backgroundColor: 'white',
+                textAlign: 'center',
+                minHeight: '42px',
+                lineHeight: '1.2',
+              }}
+            />
+          </div>
         </div>
 
+        {/* End Date */}
         <div>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#1d1d1f', marginBottom: '6px' }}>
             End Date
           </label>
-          <input
-            type="month"
-            value={formData.endDate}
-            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-            style={{ width: '100%', padding: '10px 12px', border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: '6px', fontSize: '13px', fontFamily: 'inherit' }}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 80px', gap: '8px' }}>
+            <select
+              value={parseDate(formData.endDate).month}
+              onChange={(e) => {
+                const { year } = parseDate(formData.endDate);
+                setFormData({ ...formData, endDate: formatDate(e.target.value, year) });
+              }}
+              style={{
+                width: '100%',
+                padding: '14px 4px',
+                paddingRight: '24px',
+                border: '1px solid rgba(0, 0, 0, 0.12)',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontFamily: 'inherit',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+                minHeight: '42px',
+                lineHeight: '1.2',
+              }}
+            >
+              <option value="">Month</option>
+              {months.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={parseDate(formData.endDate).year}
+              onChange={(e) => {
+                const { month } = parseDate(formData.endDate);
+                setFormData({ ...formData, endDate: formatDate(month, e.target.value) });
+              }}
+              placeholder="Year"
+              min="1950"
+              max={currentYear + 10}
+              style={{
+                width: '100%',
+                padding: '14px 8px',
+                border: '1px solid rgba(0, 0, 0, 0.12)',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontFamily: 'inherit',
+                backgroundColor: 'white',
+                textAlign: 'center',
+                minHeight: '42px',
+                lineHeight: '1.2',
+              }}
+            />
+          </div>
         </div>
       </div>
 

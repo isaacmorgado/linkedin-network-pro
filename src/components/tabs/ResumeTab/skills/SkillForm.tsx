@@ -20,6 +20,18 @@ export function SkillForm({ existingData, onSave, onCancel }: SkillFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check form validity and scroll to first invalid field
+    const form = e.currentTarget as HTMLFormElement;
+    if (!form.checkValidity()) {
+      const firstInvalid = form.querySelector(':invalid') as HTMLElement;
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalid.focus();
+      }
+      return;
+    }
+
     if (!formData.name.trim()) return;
     onSave(formData);
   };
@@ -41,7 +53,7 @@ export function SkillForm({ existingData, onSave, onCancel }: SkillFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ backgroundColor: 'white', border: '1px solid rgba(0, 0, 0, 0.08)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+    <form onSubmit={handleSubmit} noValidate style={{ position: 'relative', backgroundColor: 'white', border: '1px solid rgba(0, 0, 0, 0.08)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1d1d1f', margin: '0 0 16px 0' }}>
         {existingData ? 'Edit Skill' : 'Add Technical Skill'}
       </h3>

@@ -840,7 +840,7 @@ function EmptyState() {
           margin: 0,
         }}
       >
-        💡 Tip: Use Alt+2 to open your Watchlist
+        💡 Tip: M:control+2 / W:alt+2 to open your Watchlist
       </p>
     </div>
   );

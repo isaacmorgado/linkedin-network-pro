@@ -456,18 +456,29 @@ export async function checkCompanyUpdates(company: WatchlistCompany): Promise<vo
       log.debug(LogCategory.SERVICE, 'Detecting new updates');
       const newUpdates = detectNewUpdates(currentUpdates, previousSnapshot);
 
-      console.log(`[Uproot] Found ${newUpdates.length} new updates for ${company.name}`);
+      console.log(`[Uproot] Found ${newUpdates.length} new updates for ${company.name}`, {
+        hasPreviousSnapshot: !!previousSnapshot,
+        previousUpdateCount: previousSnapshot?.updates.length ?? 0,
+        currentUpdateCount: currentUpdates.length,
+      });
       log.info(LogCategory.SERVICE, `Detected ${newUpdates.length} new updates`, {
         companyName: company.name,
         totalUpdates: currentUpdates.length,
+        hasPreviousSnapshot: !!previousSnapshot,
       });
 
-      // Generate feed items for new updates
-      log.debug(LogCategory.SERVICE, 'Generating feed items for new updates');
-      for (const update of newUpdates) {
-        await generateCompanyUpdateFeedItem(update, company);
+      // Generate feed items for new updates (ONLY if we have a previous snapshot)
+      // This prevents notifications on first visit
+      if (newUpdates.length > 0 && previousSnapshot) {
+        log.debug(LogCategory.SERVICE, 'Generating feed items for new updates');
+        for (const update of newUpdates) {
+          await generateCompanyUpdateFeedItem(update, company);
+        }
+        log.info(LogCategory.SERVICE, `Created ${newUpdates.length} company update feed items`);
+      } else if (newUpdates.length > 0 && !previousSnapshot) {
+        console.log(`[Uproot] Skipping notifications - first visit baseline being established`);
+        log.info(LogCategory.SERVICE, 'Skipping notifications for first visit baseline');
       }
-      log.info(LogCategory.SERVICE, `Created ${newUpdates.length} company update feed items`);
 
       // Update snapshot
       log.debug(LogCategory.SERVICE, 'Updating company updates snapshot');
@@ -522,6 +533,16 @@ async function generateCompanyUpdateFeedItem(
   company: WatchlistCompany
 ): Promise<void> {
   try {
+    // Time-based filter: Only create notifications for recent updates (within last 7 days)
+    // This prevents old posts from triggering notifications on first visit or extension reload
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const updateAge = Date.now() - update.timestamp;
+
+    if (updateAge > SEVEN_DAYS_MS) {
+      console.log(`[Uproot] Skipping old update for ${company.name} (${Math.floor(updateAge / (24 * 60 * 60 * 1000))} days old)`);
+      return;
+    }
+
     // Deduplication: Check if this exact update already exists in feed
     const { getFeedItems } = await import('../utils/storage/feed-storage');
     const existingFeed = await getFeedItems();
@@ -559,6 +580,10 @@ async function generateCompanyUpdateFeedItem(
 // MAIN MONITORING FUNCTION
 // ============================================================================
 
+// Track when the content script was loaded to prevent spurious notifications on extension reload
+const CONTENT_SCRIPT_LOAD_TIME = Date.now();
+const MONITORING_COOLDOWN_MS = 5000; // 5 seconds cooldown after extension load
+
 /**
  * Monitor all watchlist items on current page
  * Call this when user visits a LinkedIn page
@@ -570,6 +595,14 @@ export async function monitorCurrentPage(
 ): Promise<void> {
   return log.trackAsync(LogCategory.SERVICE, 'monitorCurrentPage', async () => {
     const currentUrl = window.location.href;
+
+    // Skip monitoring if we're within the cooldown period after extension load
+    // This prevents notifications from being created immediately after extension reload
+    const timeSinceLoad = Date.now() - CONTENT_SCRIPT_LOAD_TIME;
+    if (timeSinceLoad < MONITORING_COOLDOWN_MS) {
+      console.log(`[Uproot] Skipping monitoring - within cooldown period (${timeSinceLoad}ms since load)`);
+      return;
+    }
 
     console.log('[Uproot] Monitoring current page:', currentUrl);
     log.debug(LogCategory.SERVICE, 'Starting page monitoring', {

@@ -76,7 +76,7 @@ export function UniversalSearch({ onSearchResults, onError }: UniversalSearchPro
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
       }}
     >
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ position: 'relative' }}>
         <div
           style={{
             position: 'relative',
