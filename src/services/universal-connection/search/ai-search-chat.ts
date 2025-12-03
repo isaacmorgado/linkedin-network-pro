@@ -10,6 +10,15 @@ import { aiProvider } from '../../ai-provider';
 import { searchGraph } from './graph-query';
 import type { SearchQuery, SearchResult } from '../../../types/search';
 import type { AIMessage } from '../../ai-provider';
+import {
+  extractCompany,
+  extractLocation,
+  extractRole,
+  extractConnectionDegree,
+  extractYearsExperience,
+  buildCleanQuery,
+} from './query-extractors';
+import { getDegreeSuffix } from './search-helpers';
 
 export interface AIChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -89,7 +98,7 @@ export class AISearchChat {
     const topResults = results.slice(0, 5);
 
     const resultsContext = topResults
-      .map((r, i) => `${i + 1}. ${r.name} - ${r.headline || 'No headline'} (${r.connectionDegree}${this.getDegreeSuffix(r.connectionDegree)} degree, ${r.matchScore}% match)\n   Company: ${r.company || 'Unknown'}\n   Role: ${r.role || 'Unknown'}\n   Reasoning: ${r.reasoning}`)
+      .map((r, i) => `${i + 1}. ${r.name} - ${r.headline || 'No headline'} (${r.connectionDegree}${getDegreeSuffix(r.connectionDegree)} degree, ${r.matchScore}% match)\n   Company: ${r.company || 'Unknown'}\n   Role: ${r.role || 'Unknown'}\n   Reasoning: ${r.reasoning}`)
       .join('\n\n');
 
     const prompt = `You are a LinkedIn networking assistant helping users understand their network search results.
@@ -132,59 +141,35 @@ Response:`;
 
   /**
    * Parse natural language query into structured search query
+   * Uses shared query extractors for consistency
    */
   private parseSearchQuery(message: string): SearchQuery {
-    const lowerMessage = message.toLowerCase();
+    // Extract filters using shared extractor functions
+    const company = extractCompany(message);
+    const location = extractLocation(message);
+    const role = extractRole(message);
+    const connectionDegree = extractConnectionDegree(message);
+    const yearsExperience = extractYearsExperience(message);
 
-    // Extract company
-    let company: string | undefined;
-    const companyMatch = message.match(/at\s+([A-Za-z0-9\s&.'-]+?)(?:\s+(?:in|who|and|or|with)|$)/i);
-    if (companyMatch) {
-      company = companyMatch[1].trim();
-    }
+    // Build extracted object for buildCleanQuery
+    const extracted = {
+      company,
+      location,
+      role,
+      connectionDegree,
+    };
 
-    // Extract location
-    let location: string | undefined;
-    const locationMatch = message.match(/in\s+([A-Za-z\s.-]+?)(?=\s+(?:at|who|and|or|with|$))/i);
-    if (locationMatch) {
-      location = locationMatch[1].trim();
-    }
-
-    // Extract role/seniority
-    let role: string | undefined;
-    if (lowerMessage.includes('senior')) role = 'senior';
-    else if (lowerMessage.includes('junior')) role = 'junior';
-    else if (lowerMessage.includes('lead')) role = 'lead';
-    else if (lowerMessage.includes('principal')) role = 'principal';
-
-    // Extract degree filter
-    let connectionDegree: number[] | undefined;
-    if (lowerMessage.includes('1st degree')) connectionDegree = [1];
-    else if (lowerMessage.includes('2nd degree')) connectionDegree = [2];
-    else if (lowerMessage.includes('3rd degree')) connectionDegree = [3];
-    else if (lowerMessage.includes('direct connections')) connectionDegree = [1];
-
-    // Extract main query (remove filters)
-    let query = message
-      .replace(/at\s+[A-Za-z0-9\s&.'-]+/gi, '')
-      .replace(/in\s+[A-Za-z\s.-]+/gi, '')
-      .replace(/\d+(st|nd|rd|th)?\s+degree/gi, '')
-      .replace(/direct connections/gi, '')
-      .replace(/who|find|show|list|search|people|engineers?|designers?|managers?/gi, '')
-      .trim();
-
-    // If query is empty after filtering, try to extract keywords
-    if (!query && lowerMessage.match(/(engineers?|designers?|managers?|developers?)/)) {
-      query = lowerMessage.match(/(engineers?|designers?|managers?|developers?)/)?.[1] || '';
-    }
+    // Build clean query by removing filter keywords
+    const query = buildCleanQuery(message, extracted);
 
     return {
       query,
       filters: {
-        company,
-        location,
-        role,
-        connectionDegree,
+        company: company || undefined,
+        location: location || undefined,
+        role: role || undefined,
+        connectionDegree: connectionDegree || undefined,
+        yearsExperience: yearsExperience || undefined,
       },
     };
   }
@@ -249,7 +234,7 @@ Response:`;
     try {
       const resultsContext = previousResults
         .slice(0, 10)
-        .map((r, i) => `${i + 1}. ${r.name} - ${r.headline || 'No headline'}\n   Company: ${r.company}\n   Match: ${r.matchScore}%\n   Degree: ${r.connectionDegree}${this.getDegreeSuffix(r.connectionDegree)}\n   Reasoning: ${r.reasoning}`)
+        .map((r, i) => `${i + 1}. ${r.name} - ${r.headline || 'No headline'}\n   Company: ${r.company}\n   Match: ${r.matchScore}%\n   Degree: ${r.connectionDegree}${getDegreeSuffix(r.connectionDegree)}\n   Reasoning: ${r.reasoning}`)
         .join('\n\n');
 
       const prompt = `You are a LinkedIn networking assistant. The user previously searched and got these results:
@@ -304,16 +289,6 @@ Response:`;
   clearHistory(): void {
     this.history = [];
     this.context = {};
-  }
-
-  /**
-   * Helper to get degree suffix
-   */
-  private getDegreeSuffix(degree: number): string {
-    if (degree === 1) return 'st';
-    if (degree === 2) return 'nd';
-    if (degree === 3) return 'rd';
-    return 'th';
   }
 }
 

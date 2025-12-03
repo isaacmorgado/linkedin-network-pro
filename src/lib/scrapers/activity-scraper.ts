@@ -8,7 +8,7 @@
  * educational purposes. Use official LinkedIn APIs in production.
  */
 
-import type { ActivityEvent } from '@/types/network';
+import { ActivityEventSchema, type ActivityEvent } from '@/types/network';
 import { waitForElement } from './helpers';
 import { rateLimiter } from '@/lib/rate-limiter';
 import {
@@ -16,7 +16,8 @@ import {
   scrollToLoadMore,
   sleep,
 } from './activity-scraper-helpers';
-import { extractActivity } from './activity-scraper-extraction';
+import { extractActivity, extractEngagementMetrics } from './activity-scraper-extraction';
+import { z } from 'zod';
 
 const ACTIVITY_CONTAINER_SELECTORS = [
   '.profile-creator-shared-feed-update__container',
@@ -69,10 +70,80 @@ export async function scrapeProfileActivity(profileUrl: string): Promise<Activit
       `[ActivityScraper] Successfully extracted ${activities.length} activities`
     );
 
-    return activities;
+    // Validate activities against schema
+    const validated = z.array(ActivityEventSchema).parse(activities);
+
+    return validated;
   } catch (error) {
     console.error('[ActivityScraper] Failed to scrape activities:', error);
     return [];
+  }
+}
+
+/**
+ * Scrape profile activity with engagement metrics
+ * Returns both activities and a map of postId -> engagement metrics
+ */
+export async function scrapeProfileActivityWithMetrics(profileUrl: string): Promise<{
+  activities: ActivityEvent[];
+  engagementMetrics: Map<string, { likes: number; comments: number }>;
+}> {
+  const activities: ActivityEvent[] = [];
+  const engagementMetrics = new Map<string, { likes: number; comments: number }>();
+
+  try {
+    console.log('[ActivityScraper] Starting activity scrape with metrics:', profileUrl);
+
+    const activityUrl = profileUrl.endsWith('/')
+      ? `${profileUrl}recent-activity/all/`
+      : `${profileUrl}/recent-activity/all/`;
+
+    console.log('[ActivityScraper] Activity URL:', activityUrl);
+
+    const containerLoaded = await waitForElement(
+      ACTIVITY_CONTAINER_SELECTORS[0],
+      10000
+    );
+
+    if (!containerLoaded) {
+      console.warn('[ActivityScraper] Activity container did not load.');
+      return { activities: [], engagementMetrics };
+    }
+
+    await scrollToLoadMore('.scaffold-finite-scroll__content', 50);
+
+    const activityElements = querySelectorAllFallback(
+      document,
+      ACTIVITY_CONTAINER_SELECTORS
+    );
+
+    console.log(`[ActivityScraper] Found ${activityElements.length} activity elements`);
+
+    for (const element of activityElements) {
+      const activity = extractActivity(element);
+      if (activity) {
+        activities.push(activity);
+
+        // Extract engagement metrics for posts
+        if (activity.type === 'post' && activity.postId) {
+          const metrics = extractEngagementMetrics(element);
+          engagementMetrics.set(activity.postId, metrics);
+          console.log(`[ActivityScraper] Post ${activity.postId}: ${metrics.likes} likes, ${metrics.comments} comments`);
+        }
+      }
+    }
+
+    console.log(
+      `[ActivityScraper] Successfully extracted ${activities.length} activities with ${engagementMetrics.size} engagement metrics`
+    );
+
+    // Validate activities against schema
+    const validated = z.array(ActivityEventSchema).parse(activities);
+
+    return { activities: validated, engagementMetrics };
+  } catch (error) {
+    console.error('[ActivityScraper] Failed to scrape activities:', error);
+    return { activities: [], engagementMetrics };
   }
 }
 

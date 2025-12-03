@@ -17,7 +17,7 @@ import type {
 } from './types';
 
 // Import scrapers
-import { scrapeProfileData } from '@/lib/scrapers/profile-scraper';
+import { scrapeProfileDataSafe } from '@/lib/scrapers/profile-scraper-wrappers';
 import { scrapeProfileActivitySafe } from '@/lib/scrapers/activity-scraper';
 import { scrapeCompanyMapSafe } from '@/lib/scrapers/company-scraper';
 import { networkDB } from '@/lib/storage/network-db';
@@ -475,7 +475,7 @@ class ScrapingOrchestrator {
   private async executeProfileScrape(task: ScraperTask): Promise<void> {
     const { profileUrl: _profileUrl, includeActivity } = task.params;
 
-    const profileData = await scrapeProfileData({ includeActivity });
+    const profileData = await scrapeProfileDataSafe({ includeActivity });
 
     if (profileData) {
       // Convert to NetworkNode and save
@@ -533,7 +533,7 @@ class ScrapingOrchestrator {
       const _profileUrl = profileUrls[i];
 
       try {
-        const profileData = await scrapeProfileData();
+        const profileData = await scrapeProfileDataSafe();
 
         if (profileData) {
           const node: NetworkNode = {

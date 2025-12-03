@@ -8,7 +8,7 @@
  * educational purposes. Use official LinkedIn APIs in production.
  */
 
-import type { CompanyEmployee, CompanyMap } from '@/types/network';
+import { CompanyEmployeeSchema, CompanyMapSchema, type CompanyEmployee, type CompanyMap } from '@/types/network';
 import { waitForElement } from './helpers';
 import { rateLimiter } from '@/lib/rate-limiter';
 import {
@@ -18,6 +18,7 @@ import {
   scrollToLoadAllEmployees,
 } from './company-scraper-helpers';
 import { extractEmployee } from './company-scraper-extraction';
+import { z } from 'zod';
 
 const EMPLOYEE_CARD_SELECTORS = [
   '.org-people-profile-card',
@@ -79,7 +80,10 @@ export async function scrapeCompanyEmployees(
       `[CompanyScraper] Successfully extracted ${employees.length} employees`
     );
 
-    return employees;
+    // Validate employees against schema
+    const validated = z.array(CompanyEmployeeSchema).parse(employees);
+
+    return validated;
   } catch (error) {
     console.error('[CompanyScraper] Failed to scrape employees:', error);
     return [];
@@ -170,12 +174,15 @@ export function buildCompanyMap(
   const companyIdMatch = companyUrl.match(/\/company\/([^\/]+)/);
   const companyId = companyIdMatch ? companyIdMatch[1] : companyUrl;
 
-  return {
+  const companyMap = {
     companyId,
     companyName,
     employees,
     scrapedAt: new Date().toISOString(),
   };
+
+  // Validate company map against schema
+  return CompanyMapSchema.parse(companyMap);
 }
 
 /**

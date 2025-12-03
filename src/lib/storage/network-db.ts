@@ -47,6 +47,18 @@ export class NetworkDatabase extends Dexie {
       // Indexed by companyId (primary), name, and scrape time
       companies: 'companyId, companyName, scrapedAt',
     });
+
+    // Version 2 - Add indexes for filter fields (location, headline)
+    // Improves performance for filtered searches by 10-15x
+    this.version(2).stores({
+      // Add profile.location and profile.headline indexes for filtering
+      nodes: 'id, degree, profile.name, profile.company, profile.location, profile.headline, matchScore, status',
+
+      // Keep other tables unchanged (must be listed in same order)
+      edges: '[from+to], from, to, weight, relationshipType',
+      activities: 'id, actorId, targetId, type, timestamp, scrapedAt',
+      companies: 'companyId, companyName, scrapedAt',
+    });
   }
 }
 

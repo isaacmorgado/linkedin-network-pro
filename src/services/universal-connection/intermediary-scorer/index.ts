@@ -51,6 +51,11 @@ export function findBestIntermediaries(
 
   // Strategy 1: Your connections who are SIMILAR to target (Outbound)
   for (const yourConnection of sampledSourceConnections.sampled) {
+    // Skip if this connection is the target person themselves
+    if (yourConnection.id === targetUser.id || yourConnection.email === targetUser.email) {
+      continue;
+    }
+
     const simToTarget = calculateProfileSimilarity(yourConnection, targetUser);
     const simFromYou = calculateProfileSimilarity(sourceUser, yourConnection);
 
@@ -73,6 +78,11 @@ export function findBestIntermediaries(
 
   // Strategy 2: Target's connections who are SIMILAR to you (Inbound)
   for (const theirConnection of sampledTargetConnections.sampled) {
+    // Skip if this connection is the source person themselves
+    if (theirConnection.id === sourceUser.id || theirConnection.email === sourceUser.email) {
+      continue;
+    }
+
     const simToYou = calculateProfileSimilarity(theirConnection, sourceUser);
     const simToTarget = calculateProfileSimilarity(theirConnection, targetUser);
 

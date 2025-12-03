@@ -134,10 +134,47 @@ export function extractCurrentRole(node: NetworkNode): string | undefined {
 }
 
 /**
+ * Parse duration string to years
+ * Examples: "3 years", "2 yrs", "1 year 6 months", "6 months"
+ */
+function parseDurationString(duration: string): number {
+  if (!duration) return 0;
+
+  const lower = duration.toLowerCase();
+  let totalYears = 0;
+
+  // Match years: "3 years", "2 yrs", "1 year"
+  const yearsMatch = lower.match(/(\d+)\s*(?:years?|yrs?)/);
+  if (yearsMatch) {
+    totalYears += parseInt(yearsMatch[1], 10);
+  }
+
+  // Match months: "6 months", "3 mos"
+  const monthsMatch = lower.match(/(\d+)\s*(?:months?|mos?)/);
+  if (monthsMatch) {
+    totalYears += parseInt(monthsMatch[1], 10) / 12;
+  }
+
+  return totalYears;
+}
+
+/**
  * Calculate total years of experience
  */
 export function calculateExperienceYears(node: NetworkNode): number {
-  // Simple approximation: count number of experiences
-  // In production, would parse duration strings
-  return node.profile.experience.length;
+  let totalYears = 0;
+
+  for (const exp of node.profile.experience) {
+    if (exp.duration) {
+      const parsedYears = parseDurationString(exp.duration);
+      // Use fallback if parsing returned 0 (empty/invalid duration)
+      totalYears += parsedYears > 0 ? parsedYears : 2;
+    } else {
+      // If no duration provided, estimate 2 years per job as fallback
+      totalYears += 2;
+    }
+  }
+
+  // Round to 1 decimal place
+  return Math.round(totalYears * 10) / 10;
 }

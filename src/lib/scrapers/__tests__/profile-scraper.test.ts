@@ -382,24 +382,53 @@ describe('Profile Scraper - Activity Scraping', () => {
     const topCard = createProfileStructure({ name: 'Test User' });
     document.body.appendChild(topCard);
 
-    // Mock activity scraper
-    vi.mock('../activity-scraper', () => ({
-      scrapeProfileActivitySafe: vi.fn().mockResolvedValue([
-        {
-          type: 'post',
-          actorId: 'test-user',
-          targetId: 'test-user',
-          content: 'Excited to announce...',
-          timestamp: new Date('2024-01-15').toISOString(),
-        },
-        {
-          type: 'comment',
-          actorId: 'test-user',
-          targetId: 'other-user',
-          content: 'Great insights!',
-          timestamp: new Date('2024-01-14').toISOString(),
-        },
-      ]),
+    // Mock activity scraper to return new structure with engagement metrics
+    vi.mock('../profile-scraper-activities', () => ({
+      scrapeActivityForProfile: vi.fn().mockResolvedValue({
+        activities: [
+          {
+            id: 'activity-1',
+            type: 'post',
+            actorId: 'test-user',
+            targetId: 'test-user',
+            content: 'Excited to announce...',
+            postId: 'post-1',
+            timestamp: new Date('2024-01-15').toISOString(),
+            scrapedAt: new Date().toISOString(),
+          },
+          {
+            id: 'activity-2',
+            type: 'comment',
+            actorId: 'test-user',
+            targetId: 'other-user',
+            content: 'Great insights!',
+            timestamp: new Date('2024-01-14').toISOString(),
+            scrapedAt: new Date().toISOString(),
+          },
+        ],
+        engagementMetrics: new Map([
+          ['post-1', { likes: 42, comments: 8 }],
+        ]),
+      }),
+      processActivityData: vi.fn().mockResolvedValue({
+        userPosts: [
+          {
+            content: 'Excited to announce...',
+            timestamp: new Date('2024-01-15').toISOString(),
+            likes: 42,
+            comments: 8,
+          },
+        ],
+        engagedPosts: [
+          {
+            authorId: 'other-user',
+            authorName: '',
+            topic: 'Great insights!',
+            timestamp: new Date('2024-01-14').toISOString(),
+            engagementType: 'comment',
+          },
+        ],
+      }),
     }));
 
     const { scrapeProfileData } = await import('../profile-scraper');

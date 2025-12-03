@@ -56,6 +56,23 @@ const SHARE_INDICATORS = [
   '[aria-label*="share"]',
 ];
 
+const LIKES_COUNT_SELECTORS = [
+  '.social-details-social-counts__reactions-count',
+  '.social-details-social-counts__item--reactions-count button',
+  '.social-details-social-counts__count-value',
+  '[data-test-id="reactions-count"]',
+  '.reactions-count',
+  'button[aria-label*="reaction"]',
+];
+
+const COMMENTS_COUNT_SELECTORS = [
+  '.social-details-social-counts__comments',
+  '.social-details-social-counts__item--comments button',
+  '[data-test-id="comments-count"]',
+  '.comments-count',
+  'button[aria-label*="comment"]',
+];
+
 /**
  * Extract activity event data from a single activity element
  */
@@ -137,4 +154,28 @@ function extractProfileId(element: Element | null): string | null {
 
   const match = href.match(/\/in\/([^\/\?]+)/);
   return match ? match[1] : null;
+}
+
+/**
+ * Extract engagement metrics (likes, comments) from activity element
+ */
+export function extractEngagementMetrics(element: Element): { likes: number; comments: number } {
+  try {
+    // Extract likes count
+    const likesElement = querySelectorFallback(element, LIKES_COUNT_SELECTORS);
+    const likesText = likesElement?.textContent?.trim() || likesElement?.getAttribute('aria-label') || '0';
+    const likesMatch = likesText.match(/(\d+[\d,]*)/);
+    const likes = likesMatch ? parseInt(likesMatch[1].replace(/,/g, ''), 10) : 0;
+
+    // Extract comments count
+    const commentsElement = querySelectorFallback(element, COMMENTS_COUNT_SELECTORS);
+    const commentsText = commentsElement?.textContent?.trim() || commentsElement?.getAttribute('aria-label') || '0';
+    const commentsMatch = commentsText.match(/(\d+[\d,]*)/);
+    const comments = commentsMatch ? parseInt(commentsMatch[1].replace(/,/g, ''), 10) : 0;
+
+    return { likes, comments };
+  } catch (error) {
+    console.error('[ActivityScraper] Error extracting engagement metrics:', error);
+    return { likes: 0, comments: 0 };
+  }
 }

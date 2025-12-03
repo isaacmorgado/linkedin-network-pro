@@ -9,7 +9,7 @@ import { z } from 'zod';
  * Natural Language Search Query
  */
 export const SearchQuerySchema = z.object({
-  query: z.string().min(1),
+  query: z.string(),
   filters: z.object({
     company: z.string().optional(),
     role: z.string().optional(),

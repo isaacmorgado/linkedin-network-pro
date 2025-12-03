@@ -6,7 +6,7 @@
  * educational purposes. Use official LinkedIn APIs in production.
  */
 
-import { LinkedInProfile } from '@/types';
+import { LinkedInProfile, LinkedInProfileSchema } from '@/types';
 import type { ActivityEvent } from '@/types/network';
 import { waitForElement, inferIndustryFromHeadline, parseDateString, extractNumberFromText } from './helpers';
 import { scrapeActivityForProfile, processActivityData } from './profile-scraper-activities';
@@ -234,23 +234,29 @@ export async function scrapeProfileData(options?: {
 
     console.log('Scraped profile data:', profileData);
 
+    // Validate scraped data against schema
+    const validated = LinkedInProfileSchema.partial().passthrough().parse(profileData);
+
     // Optionally scrape activity/engagement data
     if (options?.includeActivity) {
       const profileUrl = window.location.href;
-      const activities = await scrapeActivityForProfile(profileUrl, profileData.id);
-      const { userPosts, engagedPosts } = await processActivityData(profileData, activities);
+      const { activities, engagementMetrics } = await scrapeActivityForProfile(profileUrl, profileData.id);
+      const { userPosts, engagedPosts } = await processActivityData(validated, activities, engagementMetrics);
 
       console.log(`[ProfileScraper] Extracted ${userPosts.length} user posts, ${engagedPosts.length} engaged posts`);
 
-      return {
-        ...profileData,
+      const withActivity = {
+        ...validated,
         userPosts,
         engagedPosts,
         activities,
       };
+
+      // Validate again with activity data
+      return LinkedInProfileSchema.partial().passthrough().parse(withActivity);
     }
 
-    return profileData;
+    return validated;
   } catch (error) {
     console.error('Profile scraping error:', error);
     return null;

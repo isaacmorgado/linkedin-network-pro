@@ -9,10 +9,11 @@
  * educational purposes. Use official LinkedIn APIs in production.
  */
 
-import type { NetworkNode } from '@/types';
+import { NetworkNodeSchema, type NetworkNode } from '@/types';
 import { waitForElement } from './helpers';
 import { rateLimiter } from '../rate-limiter';
 import { bulkAddNodes } from '../storage/network-db';
+import { z } from 'zod';
 import {
   type ConnectionScrapeProgress,
   type ProgressUpdate,
@@ -116,6 +117,7 @@ export async function scrapeConnections(options?: {
 
     // Extract connection data with batch processing
     const allConnections: NetworkNode[] = [];
+    const seenIds = new Set<string>(); // O(1) lookup for deduplication
     let currentBatch: NetworkNode[] = [];
     let newConnectionsCount = 0;
 
@@ -128,11 +130,19 @@ export async function scrapeConnections(options?: {
         const connection = extractConnection(cardElement);
 
         if (connection) {
-          const exists = await connectionExists(connection.id, allConnections);
+          // Check if already seen in current session (O(1))
+          if (seenIds.has(connection.id)) {
+            console.log(`[ConnectionScraper] Duplicate in session skipped: ${connection.id}`);
+            continue;
+          }
 
-          if (!exists) {
+          // Check if exists in database
+          const existsInDb = await connectionExists(connection.id, []);
+
+          if (!existsInDb) {
             currentBatch.push(connection);
             allConnections.push(connection);
+            seenIds.add(connection.id); // Track as seen
             newConnectionsCount++;
 
             // Save batch every BATCH_SIZE connections
@@ -160,7 +170,9 @@ export async function scrapeConnections(options?: {
               currentBatch = [];
             }
           } else {
-            console.log(`[ConnectionScraper] Duplicate connection skipped: ${connection.id}`);
+            // Already exists in database, just track it as seen
+            seenIds.add(connection.id);
+            console.log(`[ConnectionScraper] Already in database, skipped: ${connection.id}`);
           }
         }
       } catch (error) {
@@ -197,7 +209,10 @@ export async function scrapeConnections(options?: {
       `[ConnectionScraper] Scraping complete: ${allConnections.length} connections (${newConnectionsCount} new)`
     );
 
-    return allConnections;
+    // Validate connections against schema
+    const validated = z.array(NetworkNodeSchema).parse(allConnections);
+
+    return validated;
   } catch (error) {
     console.error('[ConnectionScraper] Fatal error during scraping:', error);
 

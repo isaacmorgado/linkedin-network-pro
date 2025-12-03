@@ -13,5 +13,10 @@
 
 // Re-export all scraper functions
 export { scrapeProfileData, scrapeRecentActivity } from './profile-scraper';
+export {
+  scrapeProfileDataRateLimited,
+  scrapeProfileDataWithRetry,
+  scrapeProfileDataSafe,
+} from './profile-scraper-wrappers';
 export { scrapeJobData, parseManualJobDescription } from './job-scraper';
 export { detectPageType, waitForElement, extractKeywords, inferIndustryFromHeadline } from './helpers';
